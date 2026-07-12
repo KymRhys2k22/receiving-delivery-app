@@ -2,12 +2,16 @@ import './global.css';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { DefaultTheme, DarkTheme } from '@react-navigation/native';
-import { useColorScheme } from 'react-native';
+import { useColorScheme, LogBox } from 'react-native';
 import { useMemo } from 'react';
 
 import 'react-native-gesture-handler';
 
 import Navigation from './navigation';
+import { AuthProvider } from './context/auth';
+
+// Ignore the deprecated InteractionManager warning from React Native 0.85+ internals
+LogBox.ignoreLogs(['InteractionManager has been deprecated']);
 
 export default function App() {
   const colorScheme = useColorScheme();
@@ -15,7 +19,9 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <Navigation theme={theme} />
+      <AuthProvider>
+        <Navigation theme={theme} />
+      </AuthProvider>
     </SafeAreaProvider>
   );
 }
