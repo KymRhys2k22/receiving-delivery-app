@@ -1,7 +1,8 @@
 import React from 'react';
-import { Text, View, TouchableOpacity, ScrollView, SafeAreaView, StatusBar } from 'react-native';
+import { Text, View, TouchableOpacity, ScrollView, StatusBar } from 'react-native';
 import { LogOut, Info } from 'lucide-react-native';
 import { useAuth } from '../context/auth';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function SettingsScreen() {
   const { operatorId, storeCode, loginDate, signOut } = useAuth();

@@ -1,13 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigation } from '@react-navigation/native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import {
   Text,
   View,
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Animated,
-  Easing,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
@@ -20,15 +18,16 @@ import {
   User,
   Check,
   X,
-  Package,
   Camera,
+  Box,
 } from 'lucide-react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import Papa from 'papaparse';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// AsyncStorage key shared with scanningBox.tsx
+// AsyncStorage keys shared with scanningBox.tsx
 export const MANIFEST_CIDS_KEY = 'manifest_cids';
+export const SCANNED_CIDS_KEY = 'scanned_cids';
 
 interface Item {
   sku: string;
@@ -66,16 +65,13 @@ const INITIAL_BOXES: Box[] = [
 
 export default function TabOneScreen() {
   const navigation = useNavigation();
-  const [currentMode, setCurrentMode] = useState<'dashboard' | 'scan_box' | 'verify_items'>(
-    'dashboard'
-  );
+  const [currentMode, setCurrentMode] = useState<'dashboard' | 'verify_items'>('dashboard');
 
   // Track boxes
   const [boxes, setBoxes] = useState<Box[]>(INITIAL_BOXES);
   const [selectedBoxId, setSelectedBoxId] = useState<string | null>(null);
 
   // Input fields
-  const [manualBoxId, setManualBoxId] = useState('');
   const [manualItemId, setManualItemId] = useState('');
 
   // Toast / Status banner
@@ -85,36 +81,6 @@ export default function TabOneScreen() {
 
   // Upload manifest simulation
   const [isUploading, setIsUploading] = useState(false);
-
-  // Animation for scanner laser line
-  const [scannerAnim] = useState(() => new Animated.Value(0));
-
-  useEffect(() => {
-    if (currentMode === 'scan_box') {
-      const runAnimation = () => {
-        scannerAnim.setValue(0);
-        Animated.loop(
-          Animated.sequence([
-            Animated.timing(scannerAnim, {
-              toValue: 1,
-              duration: 1800,
-              easing: Easing.linear,
-              useNativeDriver: true,
-            }),
-            Animated.timing(scannerAnim, {
-              toValue: 0,
-              duration: 1800,
-              easing: Easing.linear,
-              useNativeDriver: true,
-            }),
-          ])
-        ).start();
-      };
-      runAnimation();
-    } else {
-      scannerAnim.stopAnimation();
-    }
-  }, [currentMode, scannerAnim]);
 
   const showToast = (text: string, type: 'success' | 'error' | 'info' = 'info') => {
     setToast({ text, type });
@@ -128,6 +94,45 @@ export default function TabOneScreen() {
       return () => clearTimeout(timer);
     }
   }, [toast]);
+
+  // Active session scanning progress
+  const [savedProgress, setSavedProgress] = useState<{
+    scanned: number;
+    total: number;
+  } | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      const checkProgress = async () => {
+        try {
+          const storedManifest = await AsyncStorage.getItem(MANIFEST_CIDS_KEY);
+          const storedScanned = await AsyncStorage.getItem(SCANNED_CIDS_KEY);
+
+          if (storedManifest) {
+            const allCids = JSON.parse(storedManifest) as string[];
+            const scannedCids = storedScanned ? (JSON.parse(storedScanned) as string[]) : [];
+
+            const uniqueManifest = Array.from(
+              new Set(allCids.map((c) => c.trim()).filter(Boolean))
+            );
+            const uniqueScanned = Array.from(
+              new Set(scannedCids.map((c) => c.trim()).filter(Boolean))
+            );
+
+            setSavedProgress({
+              scanned: uniqueScanned.length,
+              total: uniqueManifest.length,
+            });
+          } else {
+            setSavedProgress(null);
+          }
+        } catch {
+          setSavedProgress(null);
+        }
+      };
+      checkProgress();
+    }, [])
+  );
 
   /**
    * Step 1 — Upload Box Manifest CSV.
@@ -163,13 +168,19 @@ export default function TabOneScreen() {
           return;
         }
 
-        // Extract the "CID NO" column (trim whitespace from header/value)
-        const cidList: string[] = parsed.data
-          .map((row) => {
-            const key = Object.keys(row).find((k) => k.trim() === 'CID NO');
-            return key ? row[key].trim() : '';
-          })
-          .filter(Boolean);
+        // Extract the "CID NO" column (trim whitespace and deduplicate case-insensitively)
+        const seenCids = new Set<string>();
+        const cidList: string[] = [];
+
+        parsed.data.forEach((row) => {
+          const key = Object.keys(row).find((k) => k.trim() === 'CID NO');
+          const val = key ? row[key].trim() : '';
+          const upper = val.toUpperCase();
+          if (val && !seenCids.has(upper)) {
+            seenCids.add(upper);
+            cidList.push(val);
+          }
+        });
 
         if (cidList.length === 0) {
           setIsUploading(false);
@@ -177,7 +188,8 @@ export default function TabOneScreen() {
           return;
         }
 
-        // Persist to AsyncStorage
+        // Reset scanned CIDs and persist new manifest to AsyncStorage
+        await AsyncStorage.removeItem(SCANNED_CIDS_KEY);
         await AsyncStorage.setItem(MANIFEST_CIDS_KEY, JSON.stringify(cidList));
 
         // Reset boxes to pending
@@ -195,7 +207,6 @@ export default function TabOneScreen() {
         // Navigate to ScanningBox so the user can start scanning immediately
         navigation.navigate('ScanningBox' as never);
       }
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error: unknown) {
       setIsUploading(false);
       const msg = error instanceof Error ? error.message : String(error);
@@ -220,22 +231,9 @@ export default function TabOneScreen() {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error: unknown) {
       showToast('Error picking document', 'error');
+    } finally {
+      setIsUploading(false);
     }
-  };
-
-  const handleScanBox = (boxId: string) => {
-    const cleanId = boxId.trim().toUpperCase();
-    const box = boxes.find((b) => b.id.toUpperCase() === cleanId);
-
-    if (!box) {
-      showToast(`Unknown Box ID: ${cleanId}`, 'error');
-      return;
-    }
-
-    setSelectedBoxId(box.id);
-    setCurrentMode('verify_items');
-    setManualBoxId('');
-    showToast(`Box ${box.id} retrieved. Proceed to scan items.`, 'success');
   };
 
   const handleScanItem = (sku: string) => {
@@ -348,17 +346,51 @@ export default function TabOneScreen() {
           </View>
 
           <ScrollView className="flex-1 px-4 py-4" showsVerticalScrollIndicator={false}>
-            {/* Quick Actions Buttons */}
-            <View className="mb-8 flex-row gap-4">
-              <TouchableOpacity
-                onPress={() => setCurrentMode('scan_box')}
-                className="flex-1 items-center justify-center gap-2 rounded-lg bg-[#e5005c] py-8">
-                <Scan color="#ffffff" size={28} />
-                <Text className="font-jetbrains text-xs font-bold text-[#ffffff]">
-                  Scan New Box
+            {/* Active Box (CID) Session Resume Banner (This from @scanningBox.tsx)*/}
+            {savedProgress && savedProgress.total > 0 && (
+              <View className="mb-6 rounded-xl border border-[#ff80ab]/40 bg-[#ff80ab]/10 p-4">
+                <View className="mb-2 flex-row items-center justify-between">
+                  <View className="flex-row items-center gap-2">
+                    <Scan color="#ff80ab" size={20} />
+                    <Text className="font-hanken text-sm font-bold text-[#fafafa]">
+                      Active Box (CID) Session
+                    </Text>
+                  </View>
+                  <Text className="font-jetbrains text-xs font-bold text-[#ff80ab]">
+                    {savedProgress.scanned}/{savedProgress.total} Scanned
+                  </Text>
+                </View>
+
+                <Text className="mb-3 font-hanken text-xs text-[#a1a1aa]">
+                  {savedProgress.scanned === savedProgress.total
+                    ? 'All boxes in manifest scanned! Resume or reset session anytime.'
+                    : 'Saved scanning progress detected. Resume scanning right where you left off.'}
                 </Text>
-              </TouchableOpacity>
-            </View>
+
+                <View className="flex-row items-center gap-2">
+                  <TouchableOpacity
+                    onPress={() => navigation.navigate('ScanningBox' as never)}
+                    className="flex-1 flex-row items-center justify-center gap-2 rounded-lg bg-[#ff80ab] py-2.5">
+                    <Camera color="#131316" size={16} />
+                    <Text className="font-jetbrains text-xs font-bold text-[#131316]">
+                      {savedProgress.scanned > 0 ? 'RESUME SCANNING' : 'START SCANNING'}
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={async () => {
+                      await AsyncStorage.removeItem(SCANNED_CIDS_KEY);
+                      setSavedProgress((prev) => (prev ? { ...prev, scanned: 0 } : null));
+                      showToast('Scanning progress reset', 'info');
+                    }}
+                    className="rounded-lg border border-[#3f3f46] bg-[#1f1f22] px-3.5 py-2.5">
+                    <Text className="font-jetbrains text-xs font-semibold text-[#a1a1aa]">
+                      RESET
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
 
             {/* Step 1: Upload Box Manifest */}
             <TouchableOpacity
@@ -371,7 +403,7 @@ export default function TabOneScreen() {
                 </View>
               ) : (
                 <View className="mb-4 h-14 w-14 items-center justify-center rounded-lg border border-[#3f3f46] bg-[#2a2a2d]/50">
-                  <FileUp color="#e5005c" size={24} />
+                  <Box color="#e5005c" size={24} />
                 </View>
               )}
               <Text className="mb-1 font-hanken text-base font-bold text-[#fafafa]">
@@ -400,7 +432,7 @@ export default function TabOneScreen() {
                 </View>
               )}
               <Text className="mb-1 font-hanken text-base font-bold text-[#fafafa]">
-                Step 2: Upload Scanning Data
+                Step 2: Upload Scanning Items
               </Text>
               <Text className="mb-5 max-w-[250px] text-center font-hanken text-xs text-[#a1a1aa]">
                 Upload CSV containing item-level scan logs
@@ -413,143 +445,12 @@ export default function TabOneScreen() {
         </View>
       )}
 
-      {/* SCAN BOX BARCODE MODE */}
-      {currentMode === 'scan_box' && (
-        <View className="flex-1">
-          {/* Header */}
-          <View className="flex-row items-center gap-3 border-b border-[#3f3f46] bg-[#131316] px-4 py-4">
-            <TouchableOpacity onPress={() => setCurrentMode('dashboard')}>
-              <ArrowLeft color="#fafafa" size={22} />
-            </TouchableOpacity>
-            <Text className="font-hanken text-xl font-bold text-[#fafafa]">Scan Box Barcode</Text>
-          </View>
-
-          <ScrollView className="flex-1 px-4 py-4" showsVerticalScrollIndicator={false}>
-            {/* Viewfinder Canvas */}
-            <View className="relative mb-4 h-64 items-center justify-center overflow-hidden rounded-lg border border-[#3f3f46] bg-black">
-              <Camera color="#1f1f22" size={56} className="opacity-30" />
-
-              {/* Brackets */}
-              <View className="absolute left-6 top-6 h-8 w-8 border-l-2 border-t-2 border-[#e5005c]" />
-              <View className="absolute right-6 top-6 h-8 w-8 border-r-2 border-t-2 border-[#e5005c]" />
-              <View className="absolute bottom-6 left-6 h-8 w-8 border-b-2 border-l-2 border-[#e5005c]" />
-              <View className="absolute bottom-6 right-6 h-8 w-8 border-b-2 border-r-2 border-[#e5005c]" />
-
-              {/* Red Laser Scanning Line */}
-              <Animated.View
-                style={{
-                  transform: [
-                    {
-                      translateY: scannerAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [-80, 80],
-                      }),
-                    },
-                  ],
-                }}
-                className="absolute left-6 right-6 h-[2px] bg-[#ef4444] shadow shadow-[#ef4444]"
-              />
-
-              <Text className="absolute bottom-6 rounded bg-black/70 px-2.5 py-1 font-jetbrains text-[10px] text-[#a1a1aa]">
-                ALIGN BOX BARCODE IN VIEW
-              </Text>
-            </View>
-
-            {/* Manual Barcode Input */}
-            <View className="flex-row items-center gap-2">
-              <TextInput
-                value={manualBoxId}
-                onChangeText={setManualBoxId}
-                placeholder="Enter Box ID (e.g. BOX-25-B)"
-                placeholderTextColor="#a1a1aa"
-                autoCapitalize="characters"
-                className="h-11 flex-1 rounded-lg border border-[#3f3f46] bg-[#1f1f22] px-3 py-2 font-jetbrains text-sm text-[#fafafa]"
-              />
-              <TouchableOpacity
-                onPress={() => handleScanBox(manualBoxId)}
-                className="h-11 items-center justify-center rounded-lg bg-[#e5005c] px-5">
-                <Text className="font-jetbrains text-xs font-bold text-[#ffffff]">VERIFY</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Simulation Scenarios */}
-            <View className="mb-8 mt-6">
-              <Text className="mb-3 font-jetbrains text-[10px] font-bold uppercase tracking-wider text-[#a1a1aa]">
-                Barcode Simulation Controls
-              </Text>
-
-              {/* Box 25-B simulation */}
-              <TouchableOpacity
-                onPress={() => handleScanBox('BOX-25-B')}
-                className="mb-2.5 flex-row items-center justify-between rounded-lg border border-[#3f3f46] bg-[#1f1f22] p-3.5">
-                <View className="flex-row items-center gap-3">
-                  <Package color="#22c55e" size={20} />
-                  <View>
-                    <Text className="font-hanken text-xs font-bold text-[#fafafa]">
-                      Scan Box BOX-25-B
-                    </Text>
-                    <Text className="mt-0.5 font-hanken text-[10px] text-[#a1a1aa]">
-                      Valid box in manifest (3 items expected)
-                    </Text>
-                  </View>
-                </View>
-                <View className="rounded border border-[#22c55e]/30 bg-[#22c55e]/10 px-2 py-0.5">
-                  <Text className="font-jetbrains text-[9px] font-bold text-[#22c55e]">VALID</Text>
-                </View>
-              </TouchableOpacity>
-
-              {/* Box 24-A simulation */}
-              <TouchableOpacity
-                onPress={() => handleScanBox('BOX-24-A')}
-                className="mb-2.5 flex-row items-center justify-between rounded-lg border border-[#3f3f46] bg-[#1f1f22] p-3.5">
-                <View className="flex-row items-center gap-3">
-                  <Package color="#ef4444" size={20} />
-                  <View>
-                    <Text className="font-hanken text-xs font-bold text-[#fafafa]">
-                      Scan Box BOX-24-A
-                    </Text>
-                    <Text className="mt-0.5 font-hanken text-[10px] text-[#a1a1aa]">
-                      Discrepant box (1 expected item)
-                    </Text>
-                  </View>
-                </View>
-                <View className="rounded border border-[#ef4444]/30 bg-[#ef4444]/10 px-2 py-0.5">
-                  <Text className="font-jetbrains text-[9px] font-bold text-[#ef4444]">
-                    MISMATCH
-                  </Text>
-                </View>
-              </TouchableOpacity>
-
-              {/* Box 26-C simulation */}
-              <TouchableOpacity
-                onPress={() => handleScanBox('BOX-26-C')}
-                className="mb-2.5 flex-row items-center justify-between rounded-lg border border-[#3f3f46] bg-[#1f1f22] p-3.5">
-                <View className="flex-row items-center gap-3">
-                  <Package color="#22c55e" size={20} />
-                  <View>
-                    <Text className="font-hanken text-xs font-bold text-[#fafafa]">
-                      Scan Box BOX-26-C
-                    </Text>
-                    <Text className="mt-0.5 font-hanken text-[10px] text-[#a1a1aa]">
-                      Valid box in manifest (5 items expected)
-                    </Text>
-                  </View>
-                </View>
-                <View className="rounded border border-[#22c55e]/30 bg-[#22c55e]/10 px-2 py-0.5">
-                  <Text className="font-jetbrains text-[9px] font-bold text-[#22c55e]">VALID</Text>
-                </View>
-              </TouchableOpacity>
-            </View>
-          </ScrollView>
-        </View>
-      )}
-
       {/* VERIFY BOX ITEMS MODE */}
       {currentMode === 'verify_items' && activeBox && (
         <View className="flex-1">
           {/* Header */}
           <View className="flex-row items-center gap-3 border-b border-[#3f3f46] bg-[#131316] px-4 py-4">
-            <TouchableOpacity onPress={() => setCurrentMode('scan_box')}>
+            <TouchableOpacity onPress={() => setCurrentMode('dashboard')}>
               <ArrowLeft color="#fafafa" size={22} />
             </TouchableOpacity>
             <View>
