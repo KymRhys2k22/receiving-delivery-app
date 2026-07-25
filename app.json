@@ -1,17 +1,14 @@
 {
   "expo": {
-    "name": "receiving-scanner-app",
+    "name": "Receiving Scanner",
     "slug": "receiving-scanner-app",
-    "version": "1.0.0",
-
+    "version": "2.0.0",
     "web": {
       "favicon": "./assets/favicon.png"
     },
-
     "experiments": {
       "tsconfigPaths": true
     },
-
     "plugins": [
       [
         "expo-splash-screen",
@@ -19,14 +16,17 @@
           "image": "./assets/splash.png",
           "backgroundColor": "#ffffff"
         }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow receiving-scanner-app to access your camera to scan barcodes and QR codes."
+        }
       ]
     ],
-
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-
     "userInterfaceStyle": "light",
-
     "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true
@@ -35,6 +35,13 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
+      },
+      "package": "com.kymrhys.receivingscannerapp",
+      "permissions": ["android.permission.CAMERA", "android.permission.VIBRATE"]
+    },
+    "extra": {
+      "eas": {
+        "projectId": "44ef10d7-c1a9-4960-bf52-335c9bfc8472"
       }
     }
   }

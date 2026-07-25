@@ -96,16 +96,6 @@ const playScanFeedback = async (type: 'success' | 'warning' | 'error') => {
       sound.play().catch(() => {});
       return;
     }
-
-    const { NativeModules } = require('react-native');
-    if (NativeModules?.ExponentAV || NativeModules?.ExponentAVModule) {
-      const { Audio } = require('expo-av');
-      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
-      const { sound } = await Audio.Sound.createAsync({ uri }, { shouldPlay: true, volume: 1.0 });
-      sound.setOnPlaybackStatusUpdate((s: any) => {
-        if (s.isLoaded && s.didJustFinish) sound.unloadAsync();
-      });
-    }
   } catch {}
 };
 
@@ -243,26 +233,26 @@ export default function ScanningBoxScreen() {
   const totalBoxes = unscannedBoxes.length + scannedBoxes.length;
   const progressPct = totalBoxes > 0 ? Math.round((scannedBoxes.length / totalBoxes) * 100) : 0;
 
-  /** Robust, case-insensitive helper to match scanned code against CID list */
+  /** Secure, exact case-insensitive CID matcher (prevents partial prefix false matches) */
   const findMatchingCid = (input: string, list: string[]): string | null => {
     const raw = input.trim();
     if (!raw) return null;
     const cleanUpper = raw.toUpperCase();
 
     // 1. Exact match
-    const exact = list.find((c) => c === raw);
+    const exact = list.find((c) => c.trim() === raw);
     if (exact) return exact;
 
-    // 2. Case-insensitive match
+    // 2. Case-insensitive exact match
     const caseInsensitive = list.find((c) => c.trim().toUpperCase() === cleanUpper);
     if (caseInsensitive) return caseInsensitive;
 
-    // 3. Substring/URL match (in case QR code contains a URL or prefix like "CID:BOX001")
-    const substring = list.find((c) => {
-      const itemUpper = c.trim().toUpperCase();
-      return cleanUpper.includes(itemUpper) || itemUpper.includes(cleanUpper);
-    });
-    if (substring) return substring;
+    // 3. URL query parameter or prefixed string exact token extraction (e.g. "CID:112PK0000" or "?cid=112PK0000")
+    if (raw.includes(':') || raw.includes('=') || raw.includes('/')) {
+      const tokens = raw.split(/[:=/?#&]+/).map((t) => t.trim().toUpperCase());
+      const tokenMatch = list.find((c) => tokens.includes(c.trim().toUpperCase()));
+      if (tokenMatch) return tokenMatch;
+    }
 
     return null;
   };
@@ -287,7 +277,11 @@ export default function ScanningBoxScreen() {
           return updated;
         });
         setLastScanned(unscannedMatch);
-        showNotification('success', '✓ SCANNED SUCCESSFULLY', `Box CID ${unscannedMatch} moved to Scanned`);
+        showNotification(
+          'success',
+          '✓ SCANNED SUCCESSFULLY',
+          `Box CID ${unscannedMatch} moved to Scanned`
+        );
         playScanFeedback('success');
         return;
       }
@@ -502,9 +496,9 @@ export default function ScanningBoxScreen() {
             />
 
             {/* Status Badge */}
-            <View className="absolute top-3 left-0 right-0 items-center justify-center">
+            <View className="absolute left-0 right-0 top-3 items-center justify-center">
               <View
-                className={`flex-row items-center gap-2 rounded-full px-3.5 py-1 border shadow-md ${
+                className={`flex-row items-center gap-2 rounded-full border px-3.5 py-1 shadow-md ${
                   isHoldScanning
                     ? 'border-[#ff80ab] bg-[#ff80ab]/20'
                     : 'border-[#3f3f46] bg-black/60'
@@ -561,7 +555,7 @@ export default function ScanningBoxScreen() {
                   setIsHoldScanning(false);
                 }}
                 activeOpacity={0.8}
-                className={`flex-1 flex-row items-center justify-center gap-2 rounded-xl border py-3 px-3 shadow-lg ${
+                className={`flex-1 flex-row items-center justify-center gap-2 rounded-xl border px-3 py-3 shadow-lg ${
                   isHoldScanning
                     ? 'border-[#ff80ab] bg-[#ff80ab]'
                     : 'border-[#ff80ab]/50 bg-[#ff80ab]/10'

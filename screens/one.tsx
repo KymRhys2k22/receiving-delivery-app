@@ -13,13 +13,12 @@ import {
 import {
   ArrowLeft,
   Scan,
-  FileUp,
   AlertTriangle,
   User,
   Check,
   X,
   Camera,
-  Box,
+  Box as BoxIcon,
 } from 'lucide-react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import Papa from 'papaparse';
@@ -351,7 +350,7 @@ export default function TabOneScreen() {
               <View className="mb-6 rounded-xl border border-[#ff80ab]/40 bg-[#ff80ab]/10 p-4">
                 <View className="mb-2 flex-row items-center justify-between">
                   <View className="flex-row items-center gap-2">
-                    <Scan color="#ff80ab" size={20} />
+                    <BoxIcon color="#ff80ab" size={20} />
                     <Text className="font-hanken text-sm font-bold text-[#fafafa]">
                       Active Box (CID) Session
                     </Text>
@@ -403,7 +402,7 @@ export default function TabOneScreen() {
                 </View>
               ) : (
                 <View className="mb-4 h-14 w-14 items-center justify-center rounded-lg border border-[#3f3f46] bg-[#2a2a2d]/50">
-                  <Box color="#e5005c" size={24} />
+                  <BoxIcon color="#e5005c" size={24} />
                 </View>
               )}
               <Text className="mb-1 font-hanken text-base font-bold text-[#fafafa]">
