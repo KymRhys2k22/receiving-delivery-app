@@ -23,6 +23,7 @@ import {
 import * as DocumentPicker from 'expo-document-picker';
 import Papa from 'papaparse';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { StatusBar } from 'expo-status-bar';
 
 // AsyncStorage keys shared with scanningBox.tsx
 export const MANIFEST_CIDS_KEY = 'manifest_cids';
@@ -307,6 +308,7 @@ export default function TabOneScreen() {
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       className="flex-1 bg-[#131316]">
+      <StatusBar style="light" />
       {/* View Toast Notification */}
       {toast && (
         <View

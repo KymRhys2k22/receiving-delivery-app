@@ -8,6 +8,7 @@ import {
   Platform,
   ScrollView,
   StatusBar,
+  Image,
 } from 'react-native';
 import { Scan, AlertTriangle, Key } from 'lucide-react-native';
 import { useAuth } from '../context/auth';
@@ -59,8 +60,8 @@ export default function LoginScreen() {
         keyboardShouldPersistTaps="handled">
         {/* Terminal Header */}
         <View className="mb-8 items-center">
-          <View className="mb-4 h-14 w-14 items-center justify-center rounded-lg border border-[#3f3f46] bg-[#1f1f22]">
-            <Scan color="#e5005c" size={28} />
+          <View className="mb-4 items-center justify-center">
+            <Image source={require('../assets/daisologo.png')} className="h-60 w-60" />
           </View>
           <Text className="font-hanken text-2xl font-bold tracking-tight text-[#fafafa]">
             Scanner Terminal
@@ -92,7 +93,7 @@ export default function LoginScreen() {
           </View>
 
           {/* Store Code Field */}
-          <View className="mb-4">
+          <View className="mb-4 mt-2">
             <Text className="mb-2 font-jetbrains text-[10px] font-bold uppercase tracking-wider text-[#a1a1aa]">
               Store Code
             </Text>

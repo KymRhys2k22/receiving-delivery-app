@@ -4,13 +4,13 @@ import {
   Text,
   TouchableOpacity,
   ScrollView,
-  SafeAreaView,
   TextInput,
   Animated,
   Easing,
   Modal,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Keyboard, CheckCircle, X, AlertTriangle, Scan } from 'lucide-react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
