@@ -108,6 +108,7 @@ export default function ScanningBoxScreen() {
   const [lastScanned, setLastScanned] = useState<string | null>(null);
   const [showManual, setShowManual] = useState(false);
   const [manualInput, setManualInput] = useState('');
+  const [confirmCidModal, setConfirmCidModal] = useState<string | null>(null);
 
   // Hold-to-scan state: barcode scanning active only while holding the button
   const [isHoldScanning, setIsHoldScanning] = useState(false);
@@ -161,29 +162,42 @@ export default function ScanningBoxScreen() {
   // Debounce: prevent the same barcode from firing twice in quick succession
   const scanCooldown = useRef(false);
 
-  // Animated laser sweep
+  // Animated laser sweep - restarts sweep animation cleanly whenever user holds the button
   const [laserAnim] = useState(() => new Animated.Value(0));
-  useFocusEffect(
-    useCallback(() => {
-      Animated.loop(
+
+  useEffect(() => {
+    let animLoop: Animated.CompositeAnimation | null = null;
+
+    if (isHoldScanning) {
+      laserAnim.setValue(0);
+      animLoop = Animated.loop(
         Animated.sequence([
           Animated.timing(laserAnim, {
             toValue: 1,
-            duration: 1800,
+            duration: 1500,
             easing: Easing.linear,
             useNativeDriver: true,
           }),
           Animated.timing(laserAnim, {
             toValue: 0,
-            duration: 1800,
+            duration: 1500,
             easing: Easing.linear,
             useNativeDriver: true,
           }),
         ])
-      ).start();
-      return () => laserAnim.stopAnimation();
-    }, [laserAnim])
-  );
+      );
+      animLoop.start();
+    } else {
+      laserAnim.stopAnimation();
+      laserAnim.setValue(0);
+    }
+
+    return () => {
+      if (animLoop) {
+        animLoop.stop();
+      }
+    };
+  }, [isHoldScanning, laserAnim]);
 
   /** Deduplicate CIDs (case-insensitive) so duplicate rows are merged into one */
   const deduplicateCids = (cids: string[]): string[] => {
@@ -366,6 +380,50 @@ export default function ScanningBoxScreen() {
               className="items-center justify-center rounded-lg bg-[#ff80ab] py-3">
               <Text className="font-jetbrains text-sm font-bold text-[#131316]">CONFIRM</Text>
             </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Confirm Add to Scanned Modal */}
+      <Modal visible={confirmCidModal !== null} transparent animationType="fade">
+        <View className="flex-1 items-center justify-center bg-black/70 px-6">
+          <View className="w-full rounded-xl border border-[#3f3f46] bg-[#1f1f22] p-5">
+            <View className="mb-3 flex-row items-center justify-between">
+              <Text className="font-hanken text-base font-bold text-[#fafafa]">Confirm Scan</Text>
+              <TouchableOpacity onPress={() => setConfirmCidModal(null)}>
+                <X color="#a1a1aa" size={20} />
+              </TouchableOpacity>
+            </View>
+
+            <Text className="mb-3 font-hanken text-xs text-[#a1a1aa]">
+              Do you want to add this CID NO. to the scanned list?
+            </Text>
+
+            <View className="mb-5 items-center justify-center rounded-lg border border-[#ff80ab]/30 bg-[#ff80ab]/10 p-3">
+              <Text className="font-jetbrains text-sm font-bold text-[#ffb2c3]">
+                CID NO. : {confirmCidModal}
+              </Text>
+            </View>
+
+            <View className="flex-row items-center gap-3">
+              <TouchableOpacity
+                onPress={() => setConfirmCidModal(null)}
+                className="flex-1 items-center justify-center rounded-lg border border-[#3f3f46] bg-[#2a2a2d] py-3">
+                <Text className="font-jetbrains text-xs font-bold text-[#a1a1aa]">CANCEL</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => {
+                  if (confirmCidModal) {
+                    const targetCid = confirmCidModal;
+                    setConfirmCidModal(null);
+                    handleScan(targetCid);
+                  }
+                }}
+                className="flex-1 items-center justify-center rounded-lg bg-[#ff80ab] py-3">
+                <Text className="font-jetbrains text-xs font-bold text-[#131316]">PROCEED</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
@@ -621,7 +679,7 @@ export default function ScanningBoxScreen() {
           displayBoxes.map((cid, index) => (
             <TouchableOpacity
               key={index}
-              onPress={() => activeTab === 'unscanned' && handleScan(cid)}
+              onPress={() => activeTab === 'unscanned' && setConfirmCidModal(cid)}
               activeOpacity={activeTab === 'unscanned' ? 0.6 : 1}
               className={`mb-3 flex-row items-center justify-between rounded-lg border p-4 ${
                 activeTab === 'scanned'

@@ -308,7 +308,6 @@ export default function TabOneScreen() {
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       className="flex-1 bg-[#131316]">
-      <StatusBar style="light" />
       {/* View Toast Notification */}
       {toast && (
         <View

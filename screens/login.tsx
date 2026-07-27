@@ -10,7 +10,7 @@ import {
   StatusBar,
   Image,
 } from 'react-native';
-import { Scan, AlertTriangle, Key } from 'lucide-react-native';
+import { AlertTriangle, Key } from 'lucide-react-native';
 import { useAuth } from '../context/auth';
 
 export default function LoginScreen() {
