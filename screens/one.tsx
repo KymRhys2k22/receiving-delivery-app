@@ -24,22 +24,24 @@ import * as DocumentPicker from 'expo-document-picker';
 import Papa from 'papaparse';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
+import {
+  MANIFEST_CIDS_KEY,
+  SCANNED_CIDS_KEY,
+  MANIFEST_ITEMS_KEY,
+  SCANNED_ITEMS_KEY,
+  SCAN_HISTORY_KEY,
+  type ItemManifestRecord,
+  saveSessionToHistory,
+} from '../utils/storage';
 
-// AsyncStorage keys shared with scanningBox.tsx & scanningItem.tsx
-export const MANIFEST_CIDS_KEY = 'manifest_cids';
-export const SCANNED_CIDS_KEY = 'scanned_cids';
-export const MANIFEST_ITEMS_KEY = 'manifest_items';
-export const SCANNED_ITEMS_KEY = 'scanned_items';
-
-export interface ItemManifestRecord {
-  id: string;
-  cid: string;
-  trf: string;
-  upc: string;
-  sku: string;
-  description: string;
-  qty: number;
-}
+export {
+  MANIFEST_CIDS_KEY,
+  SCANNED_CIDS_KEY,
+  MANIFEST_ITEMS_KEY,
+  SCANNED_ITEMS_KEY,
+  SCAN_HISTORY_KEY,
+  type ItemManifestRecord,
+};
 
 interface Item {
   sku: string;
@@ -235,6 +237,16 @@ export default function TabOneScreen() {
         await AsyncStorage.removeItem(SCANNED_CIDS_KEY);
         await AsyncStorage.setItem(MANIFEST_CIDS_KEY, JSON.stringify(cidList));
 
+        // Save session to History (for History tab grouped by date)
+        await saveSessionToHistory({
+          type: 'box',
+          fileName: asset.name,
+          totalCount: cidList.length,
+          scannedCount: 0,
+          manifestData: cidList,
+          scannedData: [],
+        });
+
         // Reset boxes to pending
         setBoxes(
           INITIAL_BOXES.map((b) => ({
@@ -331,6 +343,17 @@ export default function TabOneScreen() {
 
         await AsyncStorage.removeItem(SCANNED_ITEMS_KEY);
         await AsyncStorage.setItem(MANIFEST_ITEMS_KEY, JSON.stringify(itemsList));
+
+        // Save session to History (for History tab grouped by date)
+        const totalQty = itemsList.reduce((sum, item) => sum + (item.qty || 1), 0);
+        await saveSessionToHistory({
+          type: 'item',
+          fileName: asset.name,
+          totalCount: totalQty,
+          scannedCount: 0,
+          manifestData: itemsList,
+          scannedData: {},
+        });
 
         setIsUploading(false);
         showToast(`Item manifest uploaded: ${itemsList.length} items from ${asset.name}`, 'success');

@@ -9,14 +9,24 @@ import {
   Modal,
   ActivityIndicator,
   FlatList,
+  PanResponder,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Keyboard, CheckCircle, X, AlertTriangle, Scan } from 'lucide-react-native';
+import {
+  ArrowLeft,
+  Keyboard,
+  CheckCircle,
+  X,
+  AlertTriangle,
+  Scan,
+  ChevronUp,
+  ChevronDown,
+} from 'lucide-react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { MANIFEST_CIDS_KEY, SCANNED_CIDS_KEY } from './one';
+import { MANIFEST_CIDS_KEY, SCANNED_CIDS_KEY } from '../utils/storage';
 
 const playScanFeedback = async (type: 'success' | 'warning' | 'error') => {
   // 1. Tactile Haptic Vibration Feedback
@@ -109,6 +119,35 @@ export default function ScanningBoxScreen() {
   const [showManual, setShowManual] = useState(false);
   const [manualInput, setManualInput] = useState('');
   const [confirmCidModal, setConfirmCidModal] = useState<string | null>(null);
+
+  // Full screen tabs mode (covers camera when swiped up)
+  const [isFullScreenTabs, setIsFullScreenTabs] = useState(false);
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return (
+          Math.abs(gestureState.dy) > 15 &&
+          Math.abs(gestureState.dy) > Math.abs(gestureState.dx)
+        );
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dy < -20) {
+          // Swiped UP -> Expand tabs to full screen (cover camera)
+          setIsFullScreenTabs(true);
+          try {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          } catch {}
+        } else if (gestureState.dy > 20) {
+          // Swiped DOWN -> Uncover camera view
+          setIsFullScreenTabs(false);
+          try {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          } catch {}
+        }
+      },
+    })
+  ).current;
 
   // Hold-to-scan state: barcode scanning active only while holding the button
   const [isHoldScanning, setIsHoldScanning] = useState(false);
@@ -494,161 +533,187 @@ export default function ScanningBoxScreen() {
         </View>
       )}
 
-      {/* Camera Area */}
-      <View className="relative h-[40%] overflow-hidden bg-black">
-        {!permission ? (
-          // Permissions loading
-          <View className="flex-1 items-center justify-center gap-2">
-            <ActivityIndicator size="small" color="#ff80ab" />
-            <Text className="font-hanken text-sm text-[#a1a1aa]">Loading camera...</Text>
-          </View>
-        ) : !permission.granted ? (
-          // Permission denied UI
-          <View className="flex-1 items-center justify-center gap-3 px-6">
-            <AlertTriangle color="#eab308" size={36} />
-            <Text className="text-center font-hanken text-sm text-[#a1a1aa]">
-              Camera access is required to scan barcodes.
+      {/* Camera Area (Hidden when swiped up into full screen tabs) */}
+      {!isFullScreenTabs && (
+        <View className="relative h-[40%] overflow-hidden bg-black">
+          {!permission ? (
+            // Permissions loading
+            <View className="flex-1 items-center justify-center gap-2">
+              <ActivityIndicator size="small" color="#ff80ab" />
+              <Text className="font-hanken text-sm text-[#a1a1aa]">Loading camera...</Text>
+            </View>
+          ) : !permission.granted ? (
+            // Permission denied UI
+            <View className="flex-1 items-center justify-center gap-3 px-6">
+              <AlertTriangle color="#eab308" size={36} />
+              <Text className="text-center font-hanken text-sm text-[#a1a1aa]">
+                Camera access is required to scan barcodes.
+              </Text>
+              <TouchableOpacity
+                onPress={requestPermission}
+                className="rounded-lg bg-[#ff80ab] px-5 py-2.5">
+                <Text className="font-jetbrains text-xs font-bold text-[#131316]">GRANT ACCESS</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            // Live camera with barcode scanning
+            <CameraView
+              style={{ flex: 1 }}
+              facing="back"
+              onBarcodeScanned={onBarcodeScanned}
+              barcodeScannerSettings={{
+                barcodeTypes: [
+                  'qr',
+                  'code128',
+                  'code39',
+                  'code93',
+                  'ean13',
+                  'ean8',
+                  'upc_a',
+                  'upc_e',
+                  'pdf417',
+                  'datamatrix',
+                  'itf14',
+                ],
+              }}
+            />
+          )}
+
+          {/* Overlays — rendered in parent View (absolute) so CameraView has no children */}
+          {permission?.granted && (
+            <>
+              {/* Scanning Brackets */}
+              <View
+                className={`absolute left-8 top-10 h-12 w-12 border-l-[3px] border-t-[3px] ${
+                  isHoldScanning ? 'border-[#ff80ab]' : 'border-[#52525b]'
+                }`}
+              />
+              <View
+                className={`absolute right-8 top-10 h-12 w-12 border-r-[3px] border-t-[3px] ${
+                  isHoldScanning ? 'border-[#ff80ab]' : 'border-[#52525b]'
+                }`}
+              />
+              <View
+                className={`absolute bottom-16 left-8 h-12 w-12 border-b-[3px] border-l-[3px] ${
+                  isHoldScanning ? 'border-[#ff80ab]' : 'border-[#52525b]'
+                }`}
+              />
+              <View
+                className={`absolute bottom-16 right-8 h-12 w-12 border-b-[3px] border-r-[3px] ${
+                  isHoldScanning ? 'border-[#ff80ab]' : 'border-[#52525b]'
+                }`}
+              />
+
+              {/* Status Badge */}
+              <View className="absolute left-0 right-0 top-3 items-center justify-center">
+                <View
+                  className={`flex-row items-center gap-2 rounded-full border px-3.5 py-1 shadow-md ${
+                    isHoldScanning
+                      ? 'border-[#ff80ab] bg-[#ff80ab]/20'
+                      : 'border-[#3f3f46] bg-black/60'
+                  }`}>
+                  <View
+                    className={`h-2 w-2 rounded-full ${
+                      isHoldScanning ? 'bg-[#ff80ab]' : 'bg-[#71717a]'
+                    }`}
+                  />
+                  <Text
+                    className={`font-jetbrains text-[11px] font-bold ${
+                      isHoldScanning ? 'text-[#ff80ab]' : 'text-[#a1a1aa]'
+                    }`}>
+                    {isHoldScanning ? 'SCANNER ACTIVE' : 'HOLD BUTTON TO SCAN'}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Animated Laser Line (only visible when holding scan button) */}
+              {isHoldScanning && (
+                <Animated.View
+                  style={{
+                    position: 'absolute',
+                    left: 32,
+                    right: 32,
+                    height: 2,
+                    backgroundColor: '#ef4444',
+                    shadowColor: '#ef4444',
+                    shadowOpacity: 0.9,
+                    shadowRadius: 6,
+                    transform: [
+                      {
+                        translateY: laserAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [35, 250],
+                        }),
+                      },
+                    ],
+                  }}
+                />
+              )}
+
+              {/* Bottom Controls: Hold to Scan Trigger & Manual Entry */}
+              <View className="absolute bottom-3 left-4 right-4 flex-row items-center gap-2.5">
+                {/* Hold-to-Scan Trigger Button */}
+                <TouchableOpacity
+                  onPressIn={() => {
+                    setIsHoldScanning(true);
+                    try {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    } catch {}
+                  }}
+                  onPressOut={() => {
+                    setIsHoldScanning(false);
+                  }}
+                  activeOpacity={0.8}
+                  className={`flex-1 flex-row items-center justify-center gap-2 rounded-xl border px-3 py-3 shadow-lg ${
+                    isHoldScanning
+                      ? 'border-[#ff80ab] bg-[#ff80ab]'
+                      : 'border-[#ff80ab]/50 bg-[#ff80ab]/10'
+                  }`}>
+                  <Scan color={isHoldScanning ? '#131316' : '#ff80ab'} size={18} />
+                  <Text
+                    className={`font-jetbrains text-xs font-extrabold tracking-wider ${
+                      isHoldScanning ? 'text-[#131316]' : 'text-[#ff80ab]'
+                    }`}>
+                    {isHoldScanning ? 'SCANNING...' : 'HOLD TO SCAN'}
+                  </Text>
+                </TouchableOpacity>
+
+                {/* Manual Entry Button */}
+                <TouchableOpacity
+                  onPress={() => setShowManual(true)}
+                  className="flex-row items-center gap-1.5 rounded-xl border border-[#3f3f46] bg-[#2a2a2d]/90 px-3.5 py-3">
+                  <Keyboard color="#a1a1aa" size={16} />
+                  <Text className="font-jetbrains text-xs font-bold text-[#a1a1aa]">MANUAL</Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
+        </View>
+      )}
+
+      {/* Swipe Up/Down Handle Bar */}
+      <TouchableOpacity
+        {...panResponder.panHandlers}
+        onPress={() => setIsFullScreenTabs((prev) => !prev)}
+        activeOpacity={0.8}
+        className="flex-row items-center justify-center gap-1.5 border-b border-[#3f3f46]/60 bg-[#18181b] py-2">
+        <View className="h-1.5 w-10 rounded-full bg-[#3f3f46]" />
+        {isFullScreenTabs ? (
+          <View className="flex-row items-center gap-1">
+            <ChevronDown color="#ff80ab" size={14} />
+            <Text className="font-jetbrains text-[10px] font-bold text-[#ff80ab]">
+              SWIPE DOWN / TAP TO SHOW CAMERA
             </Text>
-            <TouchableOpacity
-              onPress={requestPermission}
-              className="rounded-lg bg-[#ff80ab] px-5 py-2.5">
-              <Text className="font-jetbrains text-xs font-bold text-[#131316]">GRANT ACCESS</Text>
-            </TouchableOpacity>
           </View>
         ) : (
-          // Live camera with barcode scanning
-          <CameraView
-            style={{ flex: 1 }}
-            facing="back"
-            onBarcodeScanned={onBarcodeScanned}
-            barcodeScannerSettings={{
-              barcodeTypes: [
-                'qr',
-                'code128',
-                'code39',
-                'code93',
-                'ean13',
-                'ean8',
-                'upc_a',
-                'upc_e',
-                'pdf417',
-                'datamatrix',
-                'itf14',
-              ],
-            }}
-          />
+          <View className="flex-row items-center gap-1">
+            <ChevronUp color="#a1a1aa" size={14} />
+            <Text className="font-jetbrains text-[10px] font-bold text-[#a1a1aa]">
+              SWIPE UP FOR FULL SCREEN TABS
+            </Text>
+          </View>
         )}
-
-        {/* Overlays — rendered in parent View (absolute) so CameraView has no children */}
-        {permission?.granted && (
-          <>
-            {/* Scanning Brackets */}
-            <View
-              className={`absolute left-8 top-10 h-12 w-12 border-l-[3px] border-t-[3px] ${
-                isHoldScanning ? 'border-[#ff80ab]' : 'border-[#52525b]'
-              }`}
-            />
-            <View
-              className={`absolute right-8 top-10 h-12 w-12 border-r-[3px] border-t-[3px] ${
-                isHoldScanning ? 'border-[#ff80ab]' : 'border-[#52525b]'
-              }`}
-            />
-            <View
-              className={`absolute bottom-16 left-8 h-12 w-12 border-b-[3px] border-l-[3px] ${
-                isHoldScanning ? 'border-[#ff80ab]' : 'border-[#52525b]'
-              }`}
-            />
-            <View
-              className={`absolute bottom-16 right-8 h-12 w-12 border-b-[3px] border-r-[3px] ${
-                isHoldScanning ? 'border-[#ff80ab]' : 'border-[#52525b]'
-              }`}
-            />
-
-            {/* Status Badge */}
-            <View className="absolute left-0 right-0 top-3 items-center justify-center">
-              <View
-                className={`flex-row items-center gap-2 rounded-full border px-3.5 py-1 shadow-md ${
-                  isHoldScanning
-                    ? 'border-[#ff80ab] bg-[#ff80ab]/20'
-                    : 'border-[#3f3f46] bg-black/60'
-                }`}>
-                <View
-                  className={`h-2 w-2 rounded-full ${
-                    isHoldScanning ? 'bg-[#ff80ab]' : 'bg-[#71717a]'
-                  }`}
-                />
-                <Text
-                  className={`font-jetbrains text-[11px] font-bold ${
-                    isHoldScanning ? 'text-[#ff80ab]' : 'text-[#a1a1aa]'
-                  }`}>
-                  {isHoldScanning ? 'SCANNER ACTIVE' : 'HOLD BUTTON TO SCAN'}
-                </Text>
-              </View>
-            </View>
-
-            {/* Animated Laser Line (only visible when holding scan button) */}
-            {isHoldScanning && (
-              <Animated.View
-                style={{
-                  position: 'absolute',
-                  left: 32,
-                  right: 32,
-                  height: 2,
-                  backgroundColor: '#ef4444',
-                  shadowColor: '#ef4444',
-                  shadowOpacity: 0.9,
-                  shadowRadius: 6,
-                  transform: [
-                    {
-                      translateY: laserAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [35, 250],
-                      }),
-                    },
-                  ],
-                }}
-              />
-            )}
-
-            {/* Bottom Controls: Hold to Scan Trigger & Manual Entry */}
-            <View className="absolute bottom-3 left-4 right-4 flex-row items-center gap-2.5">
-              {/* Hold-to-Scan Trigger Button */}
-              <TouchableOpacity
-                onPressIn={() => {
-                  setIsHoldScanning(true);
-                  try {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                  } catch {}
-                }}
-                onPressOut={() => {
-                  setIsHoldScanning(false);
-                }}
-                activeOpacity={0.8}
-                className={`flex-1 flex-row items-center justify-center gap-2 rounded-xl border px-3 py-3 shadow-lg ${
-                  isHoldScanning
-                    ? 'border-[#ff80ab] bg-[#ff80ab]'
-                    : 'border-[#ff80ab]/50 bg-[#ff80ab]/10'
-                }`}>
-                <Scan color={isHoldScanning ? '#131316' : '#ff80ab'} size={18} />
-                <Text
-                  className={`font-jetbrains text-xs font-extrabold tracking-wider ${
-                    isHoldScanning ? 'text-[#131316]' : 'text-[#ff80ab]'
-                  }`}>
-                  {isHoldScanning ? 'SCANNING...' : 'HOLD TO SCAN'}
-                </Text>
-              </TouchableOpacity>
-
-              {/* Manual Entry Button */}
-              <TouchableOpacity
-                onPress={() => setShowManual(true)}
-                className="flex-row items-center gap-1.5 rounded-xl border border-[#3f3f46] bg-[#2a2a2d]/90 px-3.5 py-3">
-                <Keyboard color="#a1a1aa" size={16} />
-                <Text className="font-jetbrains text-xs font-bold text-[#a1a1aa]">MANUAL</Text>
-              </TouchableOpacity>
-            </View>
-          </>
-        )}
-      </View>
+      </TouchableOpacity>
 
       {/* Tabs */}
       <View className="flex-row border-b border-[#3f3f46] bg-[#1f1f22]">

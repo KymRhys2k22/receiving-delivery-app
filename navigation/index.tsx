@@ -2,6 +2,7 @@ import { createStaticNavigation, StaticParamList } from '@react-navigation/nativ
 import { createStackNavigator } from '@react-navigation/stack';
 import { useAuth } from '../context/auth';
 import Login from '../screens/login';
+import OnBoardingGreet from '../screens/onBoardingGreet';
 import Modal from '../screens/modal';
 import ScanningBox from '../screens/scanningBox';
 import ScanningItem from '../screens/scanningItem';
@@ -33,6 +34,12 @@ const Stack = createStackNavigator({
     authenticated: {
       if: useIsSignedIn,
       screens: {
+        OnBoardingGreet: {
+          screen: OnBoardingGreet,
+          options: {
+            headerShown: false,
+          },
+        },
         TabNavigator: {
           screen: TabNavigator,
           options: {

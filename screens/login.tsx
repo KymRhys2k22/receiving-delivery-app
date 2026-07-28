@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { AlertTriangle, Key } from 'lucide-react-native';
 import { useAuth } from '../context/auth';
+import storeData from '../store.json';
 
 export default function LoginScreen() {
   const { signIn } = useAuth();
@@ -34,11 +35,14 @@ export default function LoginScreen() {
 
   const handleLogin = () => {
     setError(null);
-    if (!operatorId.trim()) {
-      setError('Operator ID is required.');
+    const cleanOpName = operatorId.trim().toUpperCase();
+    const cleanStoreCode = storeCode.trim();
+
+    if (!cleanOpName) {
+      setError('Operator Name is required.');
       return;
     }
-    if (!storeCode.trim()) {
+    if (!cleanStoreCode) {
       setError('Store Code is required.');
       return;
     }
@@ -46,7 +50,22 @@ export default function LoginScreen() {
       setError('Work Date is required.');
       return;
     }
-    signIn(operatorId.trim().toUpperCase(), storeCode.trim().toUpperCase(), workDate.trim());
+
+    // Validate Store Code against store.json
+    const storeNum = parseInt(cleanStoreCode, 10);
+    const matchedStore = storeData.find(
+      (s) => s.store === storeNum || String(s.store) === cleanStoreCode
+    );
+
+    if (!matchedStore) {
+      setError(
+        `INVALID STORE CODE: Store "${cleanStoreCode}" does not exist in the official store directory.`
+      );
+      return;
+    }
+
+    // Store is valid! Sign in with operator name, store code, store name, and date
+    signIn(cleanOpName, cleanStoreCode, matchedStore.name, workDate.trim());
   };
 
   return (
@@ -56,7 +75,7 @@ export default function LoginScreen() {
       <StatusBar barStyle="light-content" />
       <ScrollView
         contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}
-        className="flex-1 bg-[#131316] px-4"
+        className="flex-1 bg-[#131316] px-4 pb-40"
         keyboardShouldPersistTaps="handled">
         {/* Terminal Header */}
         <View className="mb-8 items-center">

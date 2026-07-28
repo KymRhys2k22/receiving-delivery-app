@@ -4,8 +4,9 @@ interface AuthContextType {
   isSignedIn: boolean;
   operatorId: string;
   storeCode: string;
+  storeName: string;
   loginDate: string;
-  signIn: (operatorId: string, storeCode: string, date: string) => void;
+  signIn: (operatorId: string, storeCode: string, storeName: string, date: string) => void;
   signOut: () => void;
 }
 
@@ -15,11 +16,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isSignedIn, setIsSignedIn] = useState(false);
   const [operatorId, setOperatorId] = useState('');
   const [storeCode, setStoreCode] = useState('');
+  const [storeName, setStoreName] = useState('');
   const [loginDate, setLoginDate] = useState('');
 
-  const signIn = (opId: string, store: string, dateStr: string) => {
+  const signIn = (opId: string, store: string, sName: string, dateStr: string) => {
     setOperatorId(opId);
     setStoreCode(store);
+    setStoreName(sName);
     setLoginDate(dateStr);
     setIsSignedIn(true);
   };
@@ -27,6 +30,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = () => {
     setOperatorId('');
     setStoreCode('');
+    setStoreName('');
     setLoginDate('');
     setIsSignedIn(false);
   };
@@ -37,6 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isSignedIn,
         operatorId,
         storeCode,
+        storeName,
         loginDate,
         signIn,
         signOut,
