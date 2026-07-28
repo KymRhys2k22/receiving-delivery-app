@@ -25,9 +25,21 @@ import Papa from 'papaparse';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
 
-// AsyncStorage keys shared with scanningBox.tsx
+// AsyncStorage keys shared with scanningBox.tsx & scanningItem.tsx
 export const MANIFEST_CIDS_KEY = 'manifest_cids';
 export const SCANNED_CIDS_KEY = 'scanned_cids';
+export const MANIFEST_ITEMS_KEY = 'manifest_items';
+export const SCANNED_ITEMS_KEY = 'scanned_items';
+
+export interface ItemManifestRecord {
+  id: string;
+  cid: string;
+  trf: string;
+  upc: string;
+  sku: string;
+  description: string;
+  qty: number;
+}
 
 interface Item {
   sku: string;
@@ -101,10 +113,16 @@ export default function TabOneScreen() {
     total: number;
   } | null>(null);
 
+  const [savedItemProgress, setSavedItemProgress] = useState<{
+    scanned: number;
+    total: number;
+  } | null>(null);
+
   useFocusEffect(
     useCallback(() => {
       const checkProgress = async () => {
         try {
+          // 1. Box CID Progress
           const storedManifest = await AsyncStorage.getItem(MANIFEST_CIDS_KEY);
           const storedScanned = await AsyncStorage.getItem(SCANNED_CIDS_KEY);
 
@@ -126,8 +144,33 @@ export default function TabOneScreen() {
           } else {
             setSavedProgress(null);
           }
+
+          // 2. Item Progress
+          const storedManifestItems = await AsyncStorage.getItem(MANIFEST_ITEMS_KEY);
+          const storedScannedItems = await AsyncStorage.getItem(SCANNED_ITEMS_KEY);
+
+          if (storedManifestItems) {
+            const itemsList = JSON.parse(storedManifestItems) as ItemManifestRecord[];
+            const scannedMap = storedScannedItems
+              ? (JSON.parse(storedScannedItems) as Record<string, number>)
+              : {};
+
+            const totalExpected = itemsList.reduce((sum, item) => sum + (item.qty || 1), 0);
+            const totalScanned = itemsList.reduce(
+              (sum, item) => sum + (scannedMap[item.id] || 0),
+              0
+            );
+
+            setSavedItemProgress({
+              scanned: totalScanned,
+              total: totalExpected,
+            });
+          } else {
+            setSavedItemProgress(null);
+          }
         } catch {
           setSavedProgress(null);
+          setSavedItemProgress(null);
         }
       };
       checkProgress();
@@ -215,24 +258,90 @@ export default function TabOneScreen() {
     }
   };
 
+  /**
+   * Step 2 — Upload Scanning Items CSV.
+   * Schema: CID NO, TRF NO, UPC, SKU, DESCRIPTION, QTY
+   * Persists items to AsyncStorage for scanningItem.tsx.
+   */
   const handleUploadScanningData = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: ['text/csv', 'text/comma-separated-values', 'application/csv'],
+        type: ['text/csv', 'text/comma-separated-values', 'application/csv', '*/*'],
+        copyToCacheDirectory: true,
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         setIsUploading(true);
-        setTimeout(() => {
+        const asset = result.assets[0];
+
+        const csvText = await fetch(asset.uri).then((r) => r.text());
+
+        const parsed = Papa.parse<Record<string, string>>(csvText, {
+          header: true,
+          skipEmptyLines: true,
+          delimiter: ',',
+        });
+
+        const fatalErrors = parsed.errors.filter((e) => e.type !== 'Delimiter');
+        if (fatalErrors.length > 0) {
           setIsUploading(false);
-          showToast(`Scanning data uploaded: ${result.assets[0].name}`, 'success');
-        }, 1500);
+          showToast(`CSV parse error: ${fatalErrors[0].message}`, 'error');
+          return;
+        }
+
+        const getRowVal = (row: Record<string, string>, targetHeader: string): string => {
+          const cleanTarget = targetHeader.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+          const key = Object.keys(row).find(
+            (k) => k.replace(/[^a-zA-Z0-9]/g, '').toUpperCase() === cleanTarget
+          );
+          return key && row[key] ? row[key].trim() : '';
+        };
+
+        const itemsList: ItemManifestRecord[] = [];
+        parsed.data.forEach((row, idx) => {
+          const cid = getRowVal(row, 'CID NO');
+          const trf = getRowVal(row, 'TRF NO');
+          const upc = getRowVal(row, 'UPC');
+          const sku = getRowVal(row, 'SKU');
+          const description = getRowVal(row, 'DESCRIPTION');
+          const rawQty = getRowVal(row, 'QTY');
+          const qty = parseInt(rawQty, 10) || 1;
+
+          if (cid || trf || upc || sku || description) {
+            itemsList.push({
+              id: `item_${idx}_${sku || upc || idx}`,
+              cid,
+              trf,
+              upc,
+              sku,
+              description,
+              qty: Math.max(1, qty),
+            });
+          }
+        });
+
+        if (itemsList.length === 0) {
+          setIsUploading(false);
+          showToast(
+            'No items found in CSV matching schema (CID NO, TRF NO, UPC, SKU, DESCRIPTION, QTY)',
+            'error'
+          );
+          return;
+        }
+
+        await AsyncStorage.removeItem(SCANNED_ITEMS_KEY);
+        await AsyncStorage.setItem(MANIFEST_ITEMS_KEY, JSON.stringify(itemsList));
+
+        setIsUploading(false);
+        showToast(`Item manifest uploaded: ${itemsList.length} items from ${asset.name}`, 'success');
+
+        navigation.navigate('ScanningItem' as never);
       }
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error: unknown) {
-      showToast('Error picking document', 'error');
-    } finally {
       setIsUploading(false);
+      const msg = error instanceof Error ? error.message : String(error);
+      console.error('[handleUploadScanningData]', msg);
+      showToast(`Upload failed: ${msg}`, 'error');
     }
   };
 
@@ -382,6 +491,52 @@ export default function TabOneScreen() {
                       await AsyncStorage.removeItem(SCANNED_CIDS_KEY);
                       setSavedProgress((prev) => (prev ? { ...prev, scanned: 0 } : null));
                       showToast('Scanning progress reset', 'info');
+                    }}
+                    className="rounded-lg border border-[#3f3f46] bg-[#1f1f22] px-3.5 py-2.5">
+                    <Text className="font-jetbrains text-xs font-semibold text-[#a1a1aa]">
+                      RESET
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
+            {/* Active Item Session Resume Banner (from @scanningItem.tsx) */}
+            {savedItemProgress && savedItemProgress.total > 0 && (
+              <View className="mb-6 rounded-xl border border-[#e5005c]/40 bg-[#e5005c]/10 p-4">
+                <View className="mb-2 flex-row items-center justify-between">
+                  <View className="flex-row items-center gap-2">
+                    <Scan color="#e5005c" size={20} />
+                    <Text className="font-hanken text-sm font-bold text-[#fafafa]">
+                      Active Item Session
+                    </Text>
+                  </View>
+                  <Text className="font-jetbrains text-xs font-bold text-[#e5005c]">
+                    {savedItemProgress.scanned}/{savedItemProgress.total} Scanned
+                  </Text>
+                </View>
+
+                <Text className="mb-3 font-hanken text-xs text-[#a1a1aa]">
+                  {savedItemProgress.scanned === savedItemProgress.total
+                    ? 'All items in manifest scanned! Resume or reset session anytime.'
+                    : 'Saved item scanning progress detected. Resume scanning right where you left off.'}
+                </Text>
+
+                <View className="flex-row items-center gap-2">
+                  <TouchableOpacity
+                    onPress={() => navigation.navigate('ScanningItem' as never)}
+                    className="flex-1 flex-row items-center justify-center gap-2 rounded-lg bg-[#e5005c] py-2.5">
+                    <Camera color="#ffffff" size={16} />
+                    <Text className="font-jetbrains text-xs font-bold text-[#ffffff]">
+                      {savedItemProgress.scanned > 0 ? 'RESUME SCANNING' : 'START SCANNING'}
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={async () => {
+                      await AsyncStorage.removeItem(SCANNED_ITEMS_KEY);
+                      setSavedItemProgress((prev) => (prev ? { ...prev, scanned: 0 } : null));
+                      showToast('Item scanning progress reset', 'info');
                     }}
                     className="rounded-lg border border-[#3f3f46] bg-[#1f1f22] px-3.5 py-2.5">
                     <Text className="font-jetbrains text-xs font-semibold text-[#a1a1aa]">

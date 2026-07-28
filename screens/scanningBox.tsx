@@ -3,12 +3,12 @@ import {
   View,
   Text,
   TouchableOpacity,
-  ScrollView,
   TextInput,
   Animated,
   Easing,
   Modal,
   ActivityIndicator,
+  FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Keyboard, CheckCircle, X, AlertTriangle, Scan } from 'lucide-react-native';
@@ -348,6 +348,17 @@ export default function ScanningBoxScreen() {
     }
   };
 
+  const [isTabLoading, setIsTabLoading] = useState(false);
+
+  const handleTabChange = useCallback((newTab: 'unscanned' | 'scanned') => {
+    if (newTab === activeTab) return;
+    setIsTabLoading(true);
+    setActiveTab(newTab);
+    setTimeout(() => {
+      setIsTabLoading(false);
+    }, 150);
+  }, [activeTab]);
+
   const displayBoxes = activeTab === 'unscanned' ? unscannedBoxes : scannedBoxes;
 
   return (
@@ -642,7 +653,7 @@ export default function ScanningBoxScreen() {
       {/* Tabs */}
       <View className="flex-row border-b border-[#3f3f46] bg-[#1f1f22]">
         <TouchableOpacity
-          onPress={() => setActiveTab('unscanned')}
+          onPress={() => handleTabChange('unscanned')}
           className={`flex-1 items-center justify-center py-4 ${
             activeTab === 'unscanned' ? 'border-b-2 border-[#ff80ab]' : ''
           }`}>
@@ -654,7 +665,7 @@ export default function ScanningBoxScreen() {
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          onPress={() => setActiveTab('scanned')}
+          onPress={() => handleTabChange('scanned')}
           className={`flex-1 items-center justify-center py-4 ${
             activeTab === 'scanned' ? 'border-b-2 border-[#ff80ab]' : ''
           }`}>
@@ -668,17 +679,31 @@ export default function ScanningBoxScreen() {
       </View>
 
       {/* List Area */}
-      <ScrollView className="flex-1 bg-[#131316] px-4 py-4" showsVerticalScrollIndicator={false}>
-        {displayBoxes.length === 0 ? (
-          <View className="flex-1 items-center justify-center py-16">
-            <Text className="font-hanken text-sm text-[#a1a1aa]">
-              {activeTab === 'unscanned' ? 'All boxes scanned!' : 'No boxes scanned yet.'}
-            </Text>
-          </View>
-        ) : (
-          displayBoxes.map((cid, index) => (
+      {isTabLoading ? (
+        <View className="flex-1 items-center justify-center bg-[#131316] py-16 gap-3">
+          <ActivityIndicator size="small" color="#ff80ab" />
+          <Text className="font-jetbrains text-xs font-semibold text-[#a1a1aa]">
+            Loading {activeTab} boxes...
+          </Text>
+        </View>
+      ) : (
+        <FlatList
+          data={displayBoxes}
+          keyExtractor={(item, index) => `${item}_${index}`}
+          className="flex-1 bg-[#131316] px-4 py-4"
+          showsVerticalScrollIndicator={false}
+          initialNumToRender={20}
+          maxToRenderPerBatch={20}
+          windowSize={10}
+          ListEmptyComponent={
+            <View className="flex-1 items-center justify-center py-16">
+              <Text className="font-hanken text-sm text-[#a1a1aa]">
+                {activeTab === 'unscanned' ? 'All boxes scanned!' : 'No boxes scanned yet.'}
+              </Text>
+            </View>
+          }
+          renderItem={({ item: cid }) => (
             <TouchableOpacity
-              key={index}
               onPress={() => activeTab === 'unscanned' && setConfirmCidModal(cid)}
               activeOpacity={activeTab === 'unscanned' ? 0.6 : 1}
               className={`mb-3 flex-row items-center justify-between rounded-lg border p-4 ${
@@ -696,9 +721,9 @@ export default function ScanningBoxScreen() {
                 </View>
               )}
             </TouchableOpacity>
-          ))
-        )}
-      </ScrollView>
+          )}
+        />
+      )}
 
       {/* Progress Footer */}
       <View className="border-t border-[#3f3f46] bg-[#131316] px-4 py-4 pb-6">

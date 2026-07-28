@@ -4,6 +4,7 @@ import { useAuth } from '../context/auth';
 import Login from '../screens/login';
 import Modal from '../screens/modal';
 import ScanningBox from '../screens/scanningBox';
+import ScanningItem from '../screens/scanningItem';
 import TabNavigator from './tab-navigator';
 
 const useIsSignedIn = () => {
@@ -47,6 +48,12 @@ const Stack = createStackNavigator({
         },
         ScanningBox: {
           screen: ScanningBox,
+          options: {
+            headerShown: false,
+          },
+        },
+        ScanningItem: {
+          screen: ScanningItem,
           options: {
             headerShown: false,
           },
