@@ -19,10 +19,12 @@ import {
   X,
   Camera,
   Box as BoxIcon,
+  Store,
 } from 'lucide-react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import Papa from 'papaparse';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from '../context/auth';
 import { StatusBar } from 'expo-status-bar';
 import {
   MANIFEST_CIDS_KEY,
@@ -79,6 +81,7 @@ const INITIAL_BOXES: Box[] = [
 
 export default function TabOneScreen() {
   const navigation = useNavigation();
+  const { storeCode, storeName } = useAuth();
   const [currentMode, setCurrentMode] = useState<'dashboard' | 'verify_items'>('dashboard');
 
   // Track boxes
@@ -356,7 +359,10 @@ export default function TabOneScreen() {
         });
 
         setIsUploading(false);
-        showToast(`Item manifest uploaded: ${itemsList.length} items from ${asset.name}`, 'success');
+        showToast(
+          `Item manifest uploaded: ${itemsList.length} items from ${asset.name}`,
+          'success'
+        );
 
         navigation.navigate('ScanningItem' as never);
       }
@@ -468,13 +474,16 @@ export default function TabOneScreen() {
           {/* Custom Header */}
           <View className="flex-row items-center justify-between border-b border-[#3f3f46] bg-[#131316] px-4 py-4">
             <View className="flex-row items-center gap-3">
-              <Text className="font-hanken text-xl font-bold text-[#fafafa]">
+              <Text className="font-hanken text-lg font-bold text-[#fafafa]">
                 Receiving Dashboard
               </Text>
             </View>
-            <TouchableOpacity className="h-9 w-9 items-center justify-center rounded-lg border border-[#3f3f46] bg-[#1f1f22]">
-              <User color="#fafafa" size={18} />
-            </TouchableOpacity>
+            <View className="max-w-[200px] flex-row items-center gap-1.5 rounded-lg border border-[#3f3f46] bg-[#1f1f22] px-2.5 py-1.5">
+              <Store color="#e5005c" size={14} />
+              <Text className="font-jetbrains text-xs font-bold text-[#fafafa]" numberOfLines={1}>
+                {storeName ? `${storeName} (${storeCode})` : storeCode || 'N/A'}
+              </Text>
+            </View>
           </View>
 
           <ScrollView className="flex-1 px-4 py-4" showsVerticalScrollIndicator={false}>
