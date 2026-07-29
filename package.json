@@ -8,6 +8,7 @@
     "prebuild": "expo prebuild",
     "lint": "eslint \"**/*.{js,jsx,ts,tsx}\" && prettier -c \"**/*.{js,jsx,ts,tsx,json}\"",
     "format": "eslint \"**/*.{js,jsx,ts,tsx}\" --fix && prettier \"**/*.{js,jsx,ts,tsx,json}\" --write",
+    "eas-build-pre-install": "npm install --package-lock-only",
     "web": "expo start --web"
   },
   "dependencies": {
