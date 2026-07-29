@@ -123,31 +123,32 @@ export default function ScanningBoxScreen() {
   // Full screen tabs mode (covers camera when swiped up)
   const [isFullScreenTabs, setIsFullScreenTabs] = useState(false);
 
-  const panResponder = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gestureState) => {
-        return (
-          Math.abs(gestureState.dy) > 15 &&
-          Math.abs(gestureState.dy) > Math.abs(gestureState.dx)
-        );
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dy < -20) {
-          // Swiped UP -> Expand tabs to full screen (cover camera)
-          setIsFullScreenTabs(true);
-          try {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-          } catch {}
-        } else if (gestureState.dy > 20) {
-          // Swiped DOWN -> Uncover camera view
-          setIsFullScreenTabs(false);
-          try {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-          } catch {}
-        }
-      },
-    })
-  ).current;
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (_, gestureState) => {
+          return (
+            Math.abs(gestureState.dy) > 15 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx)
+          );
+        },
+        onPanResponderRelease: (_, gestureState) => {
+          if (gestureState.dy < -20) {
+            // Swiped UP -> Expand tabs to full screen (cover camera)
+            setIsFullScreenTabs(true);
+            try {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            } catch {}
+          } else if (gestureState.dy > 20) {
+            // Swiped DOWN -> Uncover camera view
+            setIsFullScreenTabs(false);
+            try {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            } catch {}
+          }
+        },
+      }),
+    []
+  );
 
   // Hold-to-scan state: barcode scanning active only while holding the button
   const [isHoldScanning, setIsHoldScanning] = useState(false);
@@ -389,14 +390,17 @@ export default function ScanningBoxScreen() {
 
   const [isTabLoading, setIsTabLoading] = useState(false);
 
-  const handleTabChange = useCallback((newTab: 'unscanned' | 'scanned') => {
-    if (newTab === activeTab) return;
-    setIsTabLoading(true);
-    setActiveTab(newTab);
-    setTimeout(() => {
-      setIsTabLoading(false);
-    }, 150);
-  }, [activeTab]);
+  const handleTabChange = useCallback(
+    (newTab: 'unscanned' | 'scanned') => {
+      if (newTab === activeTab) return;
+      setIsTabLoading(true);
+      setActiveTab(newTab);
+      setTimeout(() => {
+        setIsTabLoading(false);
+      }, 150);
+    },
+    [activeTab]
+  );
 
   const displayBoxes = activeTab === 'unscanned' ? unscannedBoxes : scannedBoxes;
 
@@ -552,7 +556,9 @@ export default function ScanningBoxScreen() {
               <TouchableOpacity
                 onPress={requestPermission}
                 className="rounded-lg bg-[#ff80ab] px-5 py-2.5">
-                <Text className="font-jetbrains text-xs font-bold text-[#131316]">GRANT ACCESS</Text>
+                <Text className="font-jetbrains text-xs font-bold text-[#131316]">
+                  GRANT ACCESS
+                </Text>
               </TouchableOpacity>
             </View>
           ) : (
@@ -745,7 +751,7 @@ export default function ScanningBoxScreen() {
 
       {/* List Area */}
       {isTabLoading ? (
-        <View className="flex-1 items-center justify-center bg-[#131316] py-16 gap-3">
+        <View className="flex-1 items-center justify-center gap-3 bg-[#131316] py-16">
           <ActivityIndicator size="small" color="#ff80ab" />
           <Text className="font-jetbrains text-xs font-semibold text-[#a1a1aa]">
             Loading {activeTab} boxes...

@@ -1,12 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  ActivityIndicator,
-  Alert,
-} from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import {
@@ -192,12 +185,12 @@ export default function HistoryScreen() {
       {/* Main Content */}
       <ScrollView className="flex-1 px-4 py-4" showsVerticalScrollIndicator={false}>
         {isLoading ? (
-          <View className="items-center justify-center py-20 gap-2">
+          <View className="items-center justify-center gap-2 py-20">
             <ActivityIndicator color="#ff80ab" size="small" />
             <Text className="font-jetbrains text-xs text-[#a1a1aa]">Loading history...</Text>
           </View>
         ) : history.length === 0 ? (
-          <View className="items-center justify-center py-16 px-6">
+          <View className="items-center justify-center px-6 py-16">
             <View className="mb-4 rounded-2xl border border-[#3f3f46] bg-[#1f1f22] p-6">
               <FileText color="#71717a" size={40} className="self-center" />
             </View>
@@ -205,7 +198,8 @@ export default function HistoryScreen() {
               No History Records Yet
             </Text>
             <Text className="mb-6 text-center font-jetbrains text-xs text-[#a1a1aa]">
-              When you upload CSV manifests in the Upload screen, your sessions will automatically be stored here by date for quick resuming.
+              When you upload CSV manifests in the Upload screen, your sessions will automatically
+              be stored here by date for quick resuming.
             </Text>
           </View>
         ) : (
@@ -275,7 +269,9 @@ export default function HistoryScreen() {
                       </View>
 
                       {/* File Name */}
-                      <Text className="mb-3 font-hanken text-sm font-bold text-[#fafafa]" numberOfLines={1}>
+                      <Text
+                        className="mb-3 font-hanken text-sm font-bold text-[#fafafa]"
+                        numberOfLines={1}>
                         📄 {record.fileName || 'Manifest Data'}
                       </Text>
 
@@ -283,7 +279,11 @@ export default function HistoryScreen() {
                       <View className="mb-3.5 rounded-lg border border-[#2a2a2d] bg-[#131316] p-3">
                         <View className="mb-1.5 flex-row items-center justify-between">
                           <Text className="font-jetbrains text-xs text-[#a1a1aa]">
-                            Progress: <Text className="font-bold text-[#fafafa]">{scanned} / {total}</Text> {isBox ? 'Boxes' : 'Qty'}
+                            Progress:{' '}
+                            <Text className="font-bold text-[#fafafa]">
+                              {scanned} / {total}
+                            </Text>{' '}
+                            {isBox ? 'Boxes' : 'Qty'}
                           </Text>
                           <Text
                             className={`font-jetbrains text-xs font-bold ${
@@ -300,11 +300,7 @@ export default function HistoryScreen() {
                         <View className="h-1.5 w-full overflow-hidden rounded-full bg-[#2a2a2d]">
                           <View
                             className={`h-full rounded-full ${
-                              pct === 100
-                                ? 'bg-[#22c55e]'
-                                : isBox
-                                  ? 'bg-[#ff80ab]'
-                                  : 'bg-[#e5005c]'
+                              pct === 100 ? 'bg-[#22c55e]' : isBox ? 'bg-[#ff80ab]' : 'bg-[#e5005c]'
                             }`}
                             style={{ width: `${pct}%` }}
                           />
@@ -318,7 +314,11 @@ export default function HistoryScreen() {
                         className={`flex-row items-center justify-center gap-2 rounded-lg py-2.5 shadow ${
                           isBox ? 'bg-[#ff80ab]' : 'bg-[#e5005c]'
                         }`}>
-                        <Play color={isBox ? '#131316' : '#ffffff'} size={15} fill={isBox ? '#131316' : '#ffffff'} />
+                        <Play
+                          color={isBox ? '#131316' : '#ffffff'}
+                          size={15}
+                          fill={isBox ? '#131316' : '#ffffff'}
+                        />
                         <Text
                           className={`font-jetbrains text-xs font-extrabold tracking-wider ${
                             isBox ? 'text-[#131316]' : 'text-[#ffffff]'

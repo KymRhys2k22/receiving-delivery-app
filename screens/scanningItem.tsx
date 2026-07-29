@@ -143,30 +143,32 @@ export default function ScanningItemScreen() {
   // Full screen tabs mode (covers camera when swiped up)
   const [isFullScreenTabs, setIsFullScreenTabs] = useState(false);
 
-  const panResponder = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gestureState) => {
-        return (
-          Math.abs(gestureState.dy) > 15 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx)
-        );
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dy < -20) {
-          // Swiped UP -> Expand tabs to full screen (cover camera)
-          setIsFullScreenTabs(true);
-          try {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-          } catch {}
-        } else if (gestureState.dy > 20) {
-          // Swiped DOWN -> Uncover camera view
-          setIsFullScreenTabs(false);
-          try {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-          } catch {}
-        }
-      },
-    })
-  ).current;
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (_, gestureState) => {
+          return (
+            Math.abs(gestureState.dy) > 15 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx)
+          );
+        },
+        onPanResponderRelease: (_, gestureState) => {
+          if (gestureState.dy < -20) {
+            // Swiped UP -> Expand tabs to full screen (cover camera)
+            setIsFullScreenTabs(true);
+            try {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            } catch {}
+          } else if (gestureState.dy > 20) {
+            // Swiped DOWN -> Uncover camera view
+            setIsFullScreenTabs(false);
+            try {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            } catch {}
+          }
+        },
+      }),
+    []
+  );
 
   // Hold-to-scan state: barcode scanning active only while holding the button
   const [isHoldScanning, setIsHoldScanning] = useState(false);
