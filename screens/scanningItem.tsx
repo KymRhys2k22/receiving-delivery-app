@@ -288,36 +288,71 @@ export default function ScanningItemScreen() {
     input: string,
     list: ItemManifestRecord[]
   ): ItemManifestRecord | null => {
-    const raw = input.trim();
+    let raw = input.trim();
     if (!raw) return null;
+
+    // Remove 3 leading zeros if present (e.g. "000309179" -> "309179")
+    if (raw.startsWith('000')) {
+      raw = raw.slice(3);
+    }
     const cleanUpper = raw.toUpperCase();
 
-    // 1. Match by UPC (Exact / Case-insensitive)
-    const matchByUpc = list.find((i) => i.upc.trim().toUpperCase() === cleanUpper);
+    // 1. Match by UPC (Exact / Case-insensitive, or stripped 3 leading zeros)
+    const matchByUpc = list.find((i) => {
+      const u = i.upc.trim().toUpperCase();
+      return u === cleanUpper || (u.startsWith('000') && u.slice(3) === cleanUpper);
+    });
     if (matchByUpc) return matchByUpc;
 
-    // 2. Match by SKU (Exact / Case-insensitive)
-    const matchBySku = list.find((i) => i.sku.trim().toUpperCase() === cleanUpper);
+    // 2. Match by SKU (Exact / Case-insensitive, or stripped 3 leading zeros)
+    const matchBySku = list.find((i) => {
+      const s = i.sku.trim().toUpperCase();
+      return s === cleanUpper || (s.startsWith('000') && s.slice(3) === cleanUpper);
+    });
     if (matchBySku) return matchBySku;
 
     // 3. Match by CID NO
-    const matchByCid = list.find((i) => i.cid.trim().toUpperCase() === cleanUpper);
+    const matchByCid = list.find((i) => {
+      const c = i.cid.trim().toUpperCase();
+      return c === cleanUpper || (c.startsWith('000') && c.slice(3) === cleanUpper);
+    });
     if (matchByCid) return matchByCid;
 
     // 4. Match by TRF NO
-    const matchByTrf = list.find((i) => i.trf.trim().toUpperCase() === cleanUpper);
+    const matchByTrf = list.find((i) => {
+      const t = i.trf.trim().toUpperCase();
+      return t === cleanUpper || (t.startsWith('000') && t.slice(3) === cleanUpper);
+    });
     if (matchByTrf) return matchByTrf;
 
     // 5. Token extraction match for formatted barcodes (e.g. "SKU:123" or "UPC=456")
     if (raw.includes(':') || raw.includes('=') || raw.includes('/')) {
-      const tokens = raw.split(/[:=/?#&]+/).map((t) => t.trim().toUpperCase());
-      const tokenMatch = list.find(
-        (i) =>
-          tokens.includes(i.upc.trim().toUpperCase()) ||
-          tokens.includes(i.sku.trim().toUpperCase()) ||
-          tokens.includes(i.cid.trim().toUpperCase()) ||
-          tokens.includes(i.trf.trim().toUpperCase())
-      );
+      const tokens = raw.split(/[:=/?#&]+/).map((t) => {
+        let tok = t.trim().toUpperCase();
+        if (tok.startsWith('000')) tok = tok.slice(3);
+        return tok;
+      });
+      const tokenMatch = list.find((i) => {
+        const u = i.upc.trim().toUpperCase();
+        const s = i.sku.trim().toUpperCase();
+        const c = i.cid.trim().toUpperCase();
+        const t = i.trf.trim().toUpperCase();
+        const uClean = u.startsWith('000') ? u.slice(3) : u;
+        const sClean = s.startsWith('000') ? s.slice(3) : s;
+        const cClean = c.startsWith('000') ? c.slice(3) : c;
+        const tClean = t.startsWith('000') ? t.slice(3) : t;
+
+        return (
+          tokens.includes(u) ||
+          tokens.includes(uClean) ||
+          tokens.includes(s) ||
+          tokens.includes(sClean) ||
+          tokens.includes(c) ||
+          tokens.includes(cClean) ||
+          tokens.includes(t) ||
+          tokens.includes(tClean)
+        );
+      });
       if (tokenMatch) return tokenMatch;
     }
 
@@ -327,14 +362,25 @@ export default function ScanningItemScreen() {
   /** Process scanned barcode or manual input */
   const handleScan = useCallback(
     (scannedCode: string) => {
-      const raw = scannedCode.trim();
+      let raw = scannedCode.trim();
+      if (!raw) return;
+
+      // Remove 3 leading zeros if present (e.g. "000309179" -> "309179")
+      if (raw.startsWith('000')) {
+        raw = raw.slice(3);
+      }
       if (!raw) return;
 
       const currentItems = itemsRef.current;
       const cleanUpper = raw.toUpperCase();
 
       // 1. Check if scanned string matches a Box CID barcode directly
-      const matchedCidRecord = currentItems.find((i) => i.cid.trim().toUpperCase() === cleanUpper);
+      const matchedCidRecord = currentItems.find(
+        (i) =>
+          i.cid.trim().toUpperCase() === cleanUpper ||
+          (i.cid.trim().toUpperCase().startsWith('000') &&
+            i.cid.trim().toUpperCase().slice(3) === cleanUpper)
+      );
 
       if (matchedCidRecord && !findMatchingItem(raw, currentItems)) {
         const targetCid = matchedCidRecord.cid;

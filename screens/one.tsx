@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Text,
   View,
@@ -443,9 +444,7 @@ export default function TabOneScreen() {
   const isBoxComplete = totalExpected > 0 && totalScanned === totalExpected;
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      className="flex-1 bg-[#131316]">
+    <SafeAreaView className="flex-1 bg-[#131316]">
       {/* View Toast Notification */}
       {toast && (
         <View
@@ -816,6 +815,6 @@ export default function TabOneScreen() {
           </ScrollView>
         </View>
       )}
-    </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }

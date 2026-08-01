@@ -43,9 +43,9 @@
         "backgroundColor": "#ffffff"
       },
       "splash": {
-        "image": "./assets/splash.png",
-        "resizeMode": "cover",
-        "backgroundColor": "#ffffff"
+        "image": "./assets/daizo-splash.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#FFFFFF"
       },
       "package": "com.kymrhys.receivingscannerapp",
       "permissions": ["android.permission.CAMERA", "android.permission.VIBRATE"]
