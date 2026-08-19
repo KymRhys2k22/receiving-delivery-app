@@ -12,10 +12,12 @@ import {
 } from 'react-native';
 import { AlertTriangle, Key } from 'lucide-react-native';
 import { useAuth } from '../context/auth';
+import { useTheme } from '../context/theme';
 import storeData from '../store.json';
 
 export default function LoginScreen() {
   const { signIn } = useAuth();
+  const { isDark } = useTheme();
 
   // Timezone-safe date string format YYYY-MM-DD
   const getTodayDateString = () => {
@@ -68,52 +70,65 @@ export default function LoginScreen() {
     signIn(cleanOpName, cleanStoreCode, matchedStore.name, workDate.trim());
   };
 
+  const bgClass = isDark ? 'bg-[#131316]' : 'bg-[#f4f4f5]';
+  const cardBgClass = isDark ? 'bg-[#1b1b1e] border-[#3f3f46]' : 'bg-[#ffffff] border-[#e4e4e7]';
+  const inputBgClass = isDark ? 'bg-[#131316] text-[#fafafa]' : 'bg-[#fafafa] text-[#18181b]';
+  const textPrimaryClass = isDark ? 'text-[#fafafa]' : 'text-[#18181b]';
+  const textSecondaryClass = isDark ? 'text-[#a1a1aa]' : 'text-[#71717a]';
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      className="flex-1 bg-[#131316]">
-      <StatusBar barStyle="light-content" />
+      className={`flex-1 ${bgClass}`}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <ScrollView
         contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}
-        className="flex-1 bg-[#131316] px-4 pb-40"
+        className={`flex-1 ${bgClass} px-4 pb-40`}
         keyboardShouldPersistTaps="handled">
         {/* Terminal Header */}
         <View className="mb-8 items-center">
           <View className="mb-4 items-center justify-center">
             <Image source={require('../assets/daisologo.png')} className="h-60 w-60" />
           </View>
-          <Text className="font-hanken text-2xl font-bold tracking-tight text-[#fafafa]">
+          <Text className={`font-hanken text-2xl font-bold tracking-tight ${textPrimaryClass}`}>
             Scanner Terminal
           </Text>
-          <Text className="mt-1.5 max-w-[280px] text-center font-hanken text-sm text-[#a1a1aa]">
+          <Text
+            className={`mt-1.5 max-w-[280px] text-center font-hanken text-sm ${textSecondaryClass}`}>
             Log in with your Operator ID and Store Code to begin verifying deliveries.
           </Text>
         </View>
 
         {/* Form Container */}
-        <View className="rounded-lg border border-[#3f3f46] bg-[#1b1b1e] p-5 shadow-lg">
+        <View className={`rounded-lg border p-5 shadow-lg ${cardBgClass}`}>
           {/* Operator ID Field */}
           <View className="mb-4">
-            <Text className="mb-2 font-jetbrains text-[10px] font-bold uppercase tracking-wider text-[#a1a1aa]">
+            <Text
+              className={`mb-2 font-jetbrains text-[10px] font-bold uppercase tracking-wider ${textSecondaryClass}`}>
               OPERATOR NAME
             </Text>
             <TextInput
               value={operatorId}
               onChangeText={setOperatorId}
               placeholder="JUAN DELA CRUZ"
-              placeholderTextColor="#71717a"
+              placeholderTextColor={isDark ? '#71717a' : '#a1a1aa'}
               autoCapitalize="characters"
               onFocus={() => setFocusedField('operator')}
               onBlur={() => setFocusedField(null)}
-              className={`h-11 rounded-lg border bg-[#131316] px-3 font-jetbrains text-sm text-[#fafafa] ${
-                focusedField === 'operator' ? 'border-[#e5005c]' : 'border-[#3f3f46]'
+              className={`h-11 rounded-lg border px-3 font-jetbrains text-sm ${inputBgClass} ${
+                focusedField === 'operator'
+                  ? 'border-[#e5005c]'
+                  : isDark
+                    ? 'border-[#3f3f46]'
+                    : 'border-[#d4d4d8]'
               }`}
             />
           </View>
 
           {/* Store Code Field */}
           <View className="mb-4 mt-2">
-            <Text className="mb-2 font-jetbrains text-[10px] font-bold uppercase tracking-wider text-[#a1a1aa]">
+            <Text
+              className={`mb-2 font-jetbrains text-[10px] font-bold uppercase tracking-wider ${textSecondaryClass}`}>
               Store Code
             </Text>
             <TextInput
@@ -122,18 +137,23 @@ export default function LoginScreen() {
               value={storeCode}
               onChangeText={setStoreCode}
               placeholder="e.g. 202"
-              placeholderTextColor="#71717a"
+              placeholderTextColor={isDark ? '#71717a' : '#a1a1aa'}
               onFocus={() => setFocusedField('store')}
               onBlur={() => setFocusedField(null)}
-              className={`h-11 rounded-lg border bg-[#131316] px-3 font-jetbrains text-sm text-[#fafafa] ${
-                focusedField === 'store' ? 'border-[#e5005c]' : 'border-[#3f3f46]'
+              className={`h-11 rounded-lg border px-3 font-jetbrains text-sm ${inputBgClass} ${
+                focusedField === 'store'
+                  ? 'border-[#e5005c]'
+                  : isDark
+                    ? 'border-[#3f3f46]'
+                    : 'border-[#d4d4d8]'
               }`}
             />
           </View>
 
           {/* Work Date Field */}
           <View className="mb-5">
-            <Text className="mb-2 font-jetbrains text-[10px] font-bold uppercase tracking-wider text-[#a1a1aa]">
+            <Text
+              className={`mb-2 font-jetbrains text-[10px] font-bold uppercase tracking-wider ${textSecondaryClass}`}>
               Work Date
             </Text>
             <TextInput
@@ -141,11 +161,15 @@ export default function LoginScreen() {
               selectTextOnFocus={false}
               value={workDate}
               placeholder="YYYY-MM-DD"
-              placeholderTextColor="#71717a"
+              placeholderTextColor={isDark ? '#71717a' : '#a1a1aa'}
               onFocus={() => setFocusedField('date')}
               onBlur={() => setFocusedField(null)}
-              className={`h-11 rounded-lg border bg-[#131316] px-3 font-jetbrains text-sm text-[#fafafa] ${
-                focusedField === 'date' ? 'border-[#e5005c]' : 'border-[#3f3f46]'
+              className={`h-11 rounded-lg border px-3 font-jetbrains text-sm ${inputBgClass} ${
+                focusedField === 'date'
+                  ? 'border-[#e5005c]'
+                  : isDark
+                    ? 'border-[#3f3f46]'
+                    : 'border-[#d4d4d8]'
               }`}
             />
           </View>
@@ -174,8 +198,9 @@ export default function LoginScreen() {
 
         {/* Footer/System Info */}
         <View className="mt-8 items-center">
-          <Text className="font-jetbrains text-[9px] uppercase tracking-wider text-[#71717a]">
-            System v1.0.0 • Connected to Manifest Server
+          <Text
+            className={`font-jetbrains text-[9px] uppercase tracking-wider ${textSecondaryClass}`}>
+            System v3.0.0 • Connected to Manifest Server
           </Text>
         </View>
       </ScrollView>

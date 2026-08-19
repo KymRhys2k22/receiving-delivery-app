@@ -8,6 +8,7 @@ import { useMemo } from 'react';
 
 import Navigation from './navigation';
 import { AuthProvider } from './context/auth';
+import { ThemeProvider } from './context/theme';
 
 // Ignore the deprecated InteractionManager warning from React Native 0.85+ internals
 LogBox.ignoreLogs(['InteractionManager has been deprecated']);
@@ -18,9 +19,11 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <AuthProvider>
-        <Navigation theme={theme} />
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <Navigation theme={theme} />
+        </AuthProvider>
+      </ThemeProvider>
     </SafeAreaProvider>
   );
 }

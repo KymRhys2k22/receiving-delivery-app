@@ -26,6 +26,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTheme } from '../context/theme';
 import { MANIFEST_CIDS_KEY, SCANNED_CIDS_KEY } from '../utils/storage';
 
 const playScanFeedback = async (type: 'success' | 'warning' | 'error') => {
@@ -111,6 +112,15 @@ const playScanFeedback = async (type: 'success' | 'warning' | 'error') => {
 
 export default function ScanningBoxScreen() {
   const navigation = useNavigation();
+  const { isDark } = useTheme();
+
+  const bgClass = isDark ? 'bg-[#131316]' : 'bg-[#f4f4f5]';
+  const headerBgClass = isDark ? 'bg-[#131316] border-[#3f3f46]' : 'bg-[#ffffff] border-[#e4e4e7]';
+  const cardBgClass = isDark ? 'bg-[#1f1f22] border-[#3f3f46]' : 'bg-[#ffffff] border-[#e4e4e7]';
+  const tabBgClass = isDark ? 'bg-[#1f1f22] border-[#3f3f46]' : 'bg-[#ffffff] border-[#e4e4e7]';
+  const textPrimaryClass = isDark ? 'text-[#fafafa]' : 'text-[#18181b]';
+  const textSecondaryClass = isDark ? 'text-[#a1a1aa]' : 'text-[#71717a]';
+  const footerBgClass = isDark ? 'bg-[#131316] border-[#3f3f46]' : 'bg-[#ffffff] border-[#e4e4e7]';
   const [permission, requestPermission] = useCameraPermissions();
   const [activeTab, setActiveTab] = useState<'unscanned' | 'scanned'>('unscanned');
   const [unscannedBoxes, setUnscannedBoxes] = useState<string[]>([]);
@@ -483,12 +493,12 @@ export default function ScanningBoxScreen() {
       </Modal>
 
       {/* Header */}
-      <View className="flex-row items-center gap-3 border-b border-[#3f3f46] bg-[#131316] px-4 py-4">
+      <View className={`flex-row items-center gap-3 border-b px-4 py-4 ${headerBgClass}`}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <ArrowLeft color="#fafafa" size={22} />
+          <ArrowLeft color={isDark ? '#fafafa' : '#18181b'} size={22} />
         </TouchableOpacity>
         <View className="flex-1">
-          <Text className="font-hanken text-xl font-bold text-[#fafafa]">Scanning</Text>
+          <Text className={`font-hanken text-xl font-bold ${textPrimaryClass}`}>Scanning</Text>
         </View>
         {lastScanned && (
           <View className="flex-row items-center gap-1.5 rounded-lg border border-[#22c55e]/40 bg-[#22c55e]/10 px-3 py-1.5">
@@ -544,13 +554,13 @@ export default function ScanningBoxScreen() {
             // Permissions loading
             <View className="flex-1 items-center justify-center gap-2">
               <ActivityIndicator size="small" color="#ff80ab" />
-              <Text className="font-hanken text-sm text-[#a1a1aa]">Loading camera...</Text>
+              <Text className={`font-hanken text-sm ${textSecondaryClass}`}>Loading camera...</Text>
             </View>
           ) : !permission.granted ? (
             // Permission denied UI
             <View className="flex-1 items-center justify-center gap-3 px-6">
               <AlertTriangle color="#eab308" size={36} />
-              <Text className="text-center font-hanken text-sm text-[#a1a1aa]">
+              <Text className={`text-center font-hanken text-sm ${textSecondaryClass}`}>
                 Camera access is required to scan barcodes.
               </Text>
               <TouchableOpacity
@@ -687,7 +697,7 @@ export default function ScanningBoxScreen() {
                 {/* Manual Entry Button */}
                 <TouchableOpacity
                   onPress={() => setShowManual(true)}
-                  className="flex-row items-center gap-1.5 rounded-xl border border-[#3f3f46] bg-[#2a2a2d]/90 px-3.5 py-3">
+                  className={`flex-row items-center gap-1.5 rounded-xl border px-3.5 py-3 ${isDark ? 'border-[#3f3f46] bg-[#2a2a2d]/90' : 'border-[#d4d4d8] bg-white'}`}>
                   <Keyboard color="#a1a1aa" size={16} />
                   <Text className="font-jetbrains text-xs font-bold text-[#a1a1aa]">MANUAL</Text>
                 </TouchableOpacity>
@@ -702,8 +712,10 @@ export default function ScanningBoxScreen() {
         {...panResponder.panHandlers}
         onPress={() => setIsFullScreenTabs((prev) => !prev)}
         activeOpacity={0.8}
-        className="flex-row items-center justify-center gap-1.5 border-b border-[#3f3f46]/60 bg-[#18181b] py-2">
-        <View className="h-1.5 w-10 rounded-full bg-[#3f3f46]" />
+        className={`flex-row items-center justify-center gap-1.5 border-b py-2 ${
+          isDark ? 'border-[#3f3f46]/60 bg-[#18181b]' : 'border-[#e4e4e7] bg-[#f4f4f5]'
+        }`}>
+        <View className={`h-1.5 w-10 rounded-full ${isDark ? 'bg-[#3f3f46]' : 'bg-[#d4d4d8]'}`} />
         {isFullScreenTabs ? (
           <View className="flex-row items-center gap-1">
             <ChevronDown color="#ff80ab" size={14} />
@@ -713,8 +725,8 @@ export default function ScanningBoxScreen() {
           </View>
         ) : (
           <View className="flex-row items-center gap-1">
-            <ChevronUp color="#a1a1aa" size={14} />
-            <Text className="font-jetbrains text-[10px] font-bold text-[#a1a1aa]">
+            <ChevronUp color={isDark ? '#a1a1aa' : '#71717a'} size={14} />
+            <Text className={`font-jetbrains text-[10px] font-bold ${textSecondaryClass}`}>
               SWIPE UP FOR FULL SCREEN TABS
             </Text>
           </View>
@@ -722,7 +734,7 @@ export default function ScanningBoxScreen() {
       </TouchableOpacity>
 
       {/* Tabs */}
-      <View className="flex-row border-b border-[#3f3f46] bg-[#1f1f22]">
+      <View className={`flex-row border-b ${tabBgClass}`}>
         <TouchableOpacity
           onPress={() => handleTabChange('unscanned')}
           className={`flex-1 items-center justify-center py-4 ${
@@ -730,7 +742,7 @@ export default function ScanningBoxScreen() {
           }`}>
           <Text
             className={`font-jetbrains text-sm font-bold ${
-              activeTab === 'unscanned' ? 'text-[#ff80ab]' : 'text-[#a1a1aa]'
+              activeTab === 'unscanned' ? 'text-[#ff80ab]' : textSecondaryClass
             }`}>
             UNSCANNED ({unscannedBoxes.length})
           </Text>
@@ -742,7 +754,7 @@ export default function ScanningBoxScreen() {
           }`}>
           <Text
             className={`font-jetbrains text-sm font-bold ${
-              activeTab === 'scanned' ? 'text-[#ff80ab]' : 'text-[#a1a1aa]'
+              activeTab === 'scanned' ? 'text-[#ff80ab]' : textSecondaryClass
             }`}>
             SCANNED ({scannedBoxes.length})
           </Text>
@@ -751,9 +763,9 @@ export default function ScanningBoxScreen() {
 
       {/* List Area */}
       {isTabLoading ? (
-        <View className="flex-1 items-center justify-center gap-3 bg-[#131316] py-16">
+        <View className={`flex-1 items-center justify-center gap-3 py-16 ${bgClass}`}>
           <ActivityIndicator size="small" color="#ff80ab" />
-          <Text className="font-jetbrains text-xs font-semibold text-[#a1a1aa]">
+          <Text className={`font-jetbrains text-xs font-semibold ${textSecondaryClass}`}>
             Loading {activeTab} boxes...
           </Text>
         </View>
@@ -761,14 +773,14 @@ export default function ScanningBoxScreen() {
         <FlatList
           data={displayBoxes}
           keyExtractor={(item, index) => `${item}_${index}`}
-          className="flex-1 bg-[#131316] px-4 py-4"
+          className={`flex-1 px-4 py-4 ${bgClass}`}
           showsVerticalScrollIndicator={false}
           initialNumToRender={20}
           maxToRenderPerBatch={20}
           windowSize={10}
           ListEmptyComponent={
             <View className="flex-1 items-center justify-center py-16">
-              <Text className="font-hanken text-sm text-[#a1a1aa]">
+              <Text className={`font-hanken text-sm ${textSecondaryClass}`}>
                 {activeTab === 'unscanned' ? 'All boxes scanned!' : 'No boxes scanned yet.'}
               </Text>
             </View>
@@ -778,11 +790,9 @@ export default function ScanningBoxScreen() {
               onPress={() => activeTab === 'unscanned' && setConfirmCidModal(cid)}
               activeOpacity={activeTab === 'unscanned' ? 0.6 : 1}
               className={`mb-3 flex-row items-center justify-between rounded-lg border p-4 ${
-                activeTab === 'scanned'
-                  ? 'border-[#22c55e]/40 bg-[#22c55e]/5'
-                  : 'border-[#3f3f46] bg-[#1f1f22]'
+                activeTab === 'scanned' ? 'border-[#22c55e]/40 bg-[#22c55e]/5' : cardBgClass
               }`}>
-              <Text className="font-jetbrains text-sm font-semibold text-[#ffb2c3]">
+              <Text className="font-jetbrains text-sm font-semibold text-[#ff80ab]">
                 CID NO. : {cid}
               </Text>
               {activeTab === 'scanned' && <CheckCircle color="#22c55e" size={18} />}
@@ -797,20 +807,23 @@ export default function ScanningBoxScreen() {
       )}
 
       {/* Progress Footer */}
-      <View className="border-t border-[#3f3f46] bg-[#131316] px-4 py-4 pb-6">
+      <View className={`border-t px-4 py-4 pb-6 ${footerBgClass}`}>
         <View className="mb-2 flex-row items-end justify-between">
           <View className="flex-row items-baseline gap-2">
-            <Text className="font-jetbrains text-xs font-bold text-[#a1a1aa]">TOTAL PROGRESS</Text>
+            <Text className={`font-jetbrains text-xs font-bold ${textSecondaryClass}`}>
+              TOTAL PROGRESS
+            </Text>
             <Text className="font-jetbrains text-sm font-bold text-[#ff80ab]">{progressPct}%</Text>
           </View>
-          <Text className="font-hanken text-sm text-[#a1a1aa]">
-            <Text className="font-bold text-[#fafafa]">
+          <Text className={`font-hanken text-sm ${textSecondaryClass}`}>
+            <Text className={`font-bold ${textPrimaryClass}`}>
               {scannedBoxes.length}/{totalBoxes}
             </Text>{' '}
             Boxes
           </Text>
         </View>
-        <View className="h-1 w-full overflow-hidden rounded-full bg-[#2a2a2d]">
+        <View
+          className={`h-1 w-full overflow-hidden rounded-full ${isDark ? 'bg-[#2a2a2d]' : 'bg-[#e4e4e7]'}`}>
           <View className="h-full rounded-full bg-[#ff80ab]" style={{ width: `${progressPct}%` }} />
         </View>
       </View>

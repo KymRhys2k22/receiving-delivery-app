@@ -13,6 +13,7 @@ import {
   FileText,
 } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTheme } from '../context/theme';
 import {
   MANIFEST_CIDS_KEY,
   SCANNED_CIDS_KEY,
@@ -28,9 +29,19 @@ export { SCAN_HISTORY_KEY, type HistorySessionRecord, saveSessionToHistory };
 
 export default function HistoryScreen() {
   const navigation = useNavigation();
+  const { isDark } = useTheme();
   const [history, setHistory] = useState<HistorySessionRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const bgClass = isDark ? 'bg-[#131316]' : 'bg-[#f4f4f5]';
+  const headerBgClass = isDark ? 'bg-[#131316] border-[#3f3f46]' : 'bg-[#ffffff] border-[#e4e4e7]';
+  const cardBgClass = isDark ? 'bg-[#1f1f22] border-[#3f3f46]' : 'bg-[#ffffff] border-[#e4e4e7]';
+  const innerCardBgClass = isDark
+    ? 'bg-[#131316] border-[#2a2a2d]'
+    : 'bg-[#fafafa] border-[#e4e4e7]';
+  const textPrimaryClass = isDark ? 'text-[#fafafa]' : 'text-[#18181b]';
+  const textSecondaryClass = isDark ? 'text-[#a1a1aa]' : 'text-[#71717a]';
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -150,7 +161,7 @@ export default function HistoryScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-[#131316]">
+    <SafeAreaView className={`flex-1 ${bgClass}`}>
       {/* Toast Banner */}
       {toastMessage && (
         <View className="absolute left-4 right-4 top-14 z-50 flex-row items-center gap-2 rounded-xl border border-[#22c55e] bg-[#163e26] p-3 shadow-xl">
@@ -162,12 +173,12 @@ export default function HistoryScreen() {
       )}
 
       {/* Screen Header */}
-      <View className="flex-row items-center justify-between border-b border-[#3f3f46] bg-[#131316] px-5 py-4">
+      <View className={`flex-row items-center justify-between border-b px-5 py-4 ${headerBgClass}`}>
         <View>
-          <Text className="font-hanken text-2xl font-extrabold text-[#fafafa]">
+          <Text className={`font-hanken text-2xl font-extrabold ${textPrimaryClass}`}>
             Scanning History
           </Text>
-          <Text className="font-jetbrains text-xs text-[#a1a1aa]">
+          <Text className={`font-jetbrains text-xs ${textSecondaryClass}`}>
             Archived CSV Sessions by Date
           </Text>
         </View>
@@ -187,17 +198,19 @@ export default function HistoryScreen() {
         {isLoading ? (
           <View className="items-center justify-center gap-2 py-20">
             <ActivityIndicator color="#ff80ab" size="small" />
-            <Text className="font-jetbrains text-xs text-[#a1a1aa]">Loading history...</Text>
+            <Text className={`font-jetbrains text-xs ${textSecondaryClass}`}>
+              Loading history...
+            </Text>
           </View>
         ) : history.length === 0 ? (
           <View className="items-center justify-center px-6 py-16">
-            <View className="mb-4 rounded-2xl border border-[#3f3f46] bg-[#1f1f22] p-6">
-              <FileText color="#71717a" size={40} className="self-center" />
+            <View className={`mb-4 rounded-2xl border p-6 ${cardBgClass}`}>
+              <FileText color={isDark ? '#71717a' : '#a1a1aa'} size={40} className="self-center" />
             </View>
-            <Text className="mb-1 text-center font-hanken text-lg font-bold text-[#fafafa]">
+            <Text className={`mb-1 text-center font-hanken text-lg font-bold ${textPrimaryClass}`}>
               No History Records Yet
             </Text>
-            <Text className="mb-6 text-center font-jetbrains text-xs text-[#a1a1aa]">
+            <Text className={`mb-6 text-center font-jetbrains text-xs ${textSecondaryClass}`}>
               When you upload CSV manifests in the Upload screen, your sessions will automatically
               be stored here by date for quick resuming.
             </Text>
@@ -209,14 +222,14 @@ export default function HistoryScreen() {
             return (
               <View key={dateKey} className="mb-6">
                 {/* Date Header */}
-                <View className="mb-3 flex-row items-center gap-2 border-b border-[#2a2a2d] pb-2">
+                <View className="mb-3 flex-row items-center gap-2 border-b border-[#3f3f46]/30 pb-2">
                   <Calendar color="#ff80ab" size={16} />
                   <Text className="font-jetbrains text-xs font-extrabold uppercase tracking-wider text-[#ff80ab]">
                     {formatDateHeader(dateKey)}
                   </Text>
 
-                  <View className="ml-auto rounded bg-[#2a2a2d] px-2 py-0.5">
-                    <Text className="font-jetbrains text-[10px] text-[#a1a1aa]">
+                  <View className={`ml-auto rounded px-2 py-0.5 ${innerCardBgClass}`}>
+                    <Text className={`font-jetbrains text-[10px] ${textSecondaryClass}`}>
                       {records.length} {records.length === 1 ? 'Session' : 'Sessions'}
                     </Text>
                   </View>
@@ -232,7 +245,7 @@ export default function HistoryScreen() {
                   return (
                     <View
                       key={record.id}
-                      className="mb-3.5 rounded-xl border border-[#3f3f46] bg-[#1f1f22] p-4 shadow-md">
+                      className={`mb-3.5 rounded-xl border p-4 shadow-md ${cardBgClass}`}>
                       {/* Top Header: Badge, Timestamp, & Delete */}
                       <View className="mb-2 flex-row items-center justify-between">
                         <View className="flex-row items-center gap-2">
@@ -254,8 +267,8 @@ export default function HistoryScreen() {
                           </View>
 
                           <View className="flex-row items-center gap-1">
-                            <Clock color="#71717a" size={11} />
-                            <Text className="font-jetbrains text-[10px] text-[#a1a1aa]">
+                            <Clock color={isDark ? '#71717a' : '#a1a1aa'} size={11} />
+                            <Text className={`font-jetbrains text-[10px] ${textSecondaryClass}`}>
                               {record.timestamp}
                             </Text>
                           </View>
@@ -264,23 +277,23 @@ export default function HistoryScreen() {
                         <TouchableOpacity
                           onPress={() => handleDeleteSession(record.id)}
                           className="p-1">
-                          <Trash2 color="#71717a" size={15} />
+                          <Trash2 color={isDark ? '#71717a' : '#a1a1aa'} size={15} />
                         </TouchableOpacity>
                       </View>
 
                       {/* File Name */}
                       <Text
-                        className="mb-3 font-hanken text-sm font-bold text-[#fafafa]"
+                        className={`mb-3 font-hanken text-sm font-bold ${textPrimaryClass}`}
                         numberOfLines={1}>
                         📄 {record.fileName || 'Manifest Data'}
                       </Text>
 
                       {/* Progress Metrics */}
-                      <View className="mb-3.5 rounded-lg border border-[#2a2a2d] bg-[#131316] p-3">
+                      <View className={`mb-3.5 rounded-lg border p-3 ${innerCardBgClass}`}>
                         <View className="mb-1.5 flex-row items-center justify-between">
-                          <Text className="font-jetbrains text-xs text-[#a1a1aa]">
+                          <Text className={`font-jetbrains text-xs ${textSecondaryClass}`}>
                             Progress:{' '}
-                            <Text className="font-bold text-[#fafafa]">
+                            <Text className={`font-bold ${textPrimaryClass}`}>
                               {scanned} / {total}
                             </Text>{' '}
                             {isBox ? 'Boxes' : 'Qty'}
@@ -297,7 +310,7 @@ export default function HistoryScreen() {
                           </Text>
                         </View>
 
-                        <View className="h-1.5 w-full overflow-hidden rounded-full bg-[#2a2a2d]">
+                        <View className="h-1.5 w-full overflow-hidden rounded-full bg-[#353438]">
                           <View
                             className={`h-full rounded-full ${
                               pct === 100 ? 'bg-[#22c55e]' : isBox ? 'bg-[#ff80ab]' : 'bg-[#e5005c]'

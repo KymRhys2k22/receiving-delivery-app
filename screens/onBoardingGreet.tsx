@@ -4,10 +4,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { CheckCircle2, Store, User, Calendar, ArrowRight } from 'lucide-react-native';
 import { useAuth } from '../context/auth';
+import { useTheme } from '../context/theme';
 
 export default function OnBoardingGreetScreen() {
   const navigation = useNavigation();
   const { operatorId, storeCode, storeName, loginDate } = useAuth();
+  const { isDark } = useTheme();
   const [secondsLeft, setSecondsLeft] = useState(3);
 
   const goToDashboard = () => {
@@ -43,9 +45,17 @@ export default function OnBoardingGreetScreen() {
     goToDashboard();
   };
 
+  const bgClass = isDark ? 'bg-[#131316]' : 'bg-[#f4f4f5]';
+  const cardBgClass = isDark ? 'bg-[#1b1b1e] border-[#3f3f46]' : 'bg-[#ffffff] border-[#e4e4e7]';
+  const innerCardBgClass = isDark
+    ? 'bg-[#131316] border-[#3f3f46]/60'
+    : 'bg-[#fafafa] border-[#e4e4e7]';
+  const textPrimaryClass = isDark ? 'text-[#fafafa]' : 'text-[#18181b]';
+  const textSecondaryClass = isDark ? 'text-[#a1a1aa]' : 'text-[#71717a]';
+
   return (
-    <SafeAreaView className="flex-1 bg-[#131316]">
-      <StatusBar barStyle="light-content" />
+    <SafeAreaView className={`flex-1 ${bgClass}`}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <View className="flex-1 justify-between px-6 py-8">
         {/* Top Header / Logo */}
         <View className="mt-4 items-center">
@@ -61,34 +71,37 @@ export default function OnBoardingGreetScreen() {
         </View>
 
         {/* Main Greeting Card */}
-        <View className="rounded-2xl border border-[#3f3f46] bg-[#1b1b1e] p-6 shadow-2xl">
+        <View className={`rounded-2xl border p-6 shadow-2xl ${cardBgClass}`}>
           {/* Welcome Headline */}
           <View className="mb-6 items-center">
             <Text className="font-jetbrains text-xs font-bold uppercase tracking-widest text-[#e5005c]">
               WELCOME OPERATOR
             </Text>
-            <Text className="mt-1 text-center font-hanken text-2xl font-extrabold text-[#fafafa]">
+            <Text
+              className={`mt-1 text-center font-hanken text-2xl font-extrabold ${textPrimaryClass}`}>
               {operatorId || 'OPERATOR'}
             </Text>
           </View>
 
           {/* Store & Session Details Box */}
-          <View className="gap-3 rounded-xl border border-[#3f3f46]/60 bg-[#131316] p-4">
+          <View className={`gap-3 rounded-xl border p-4 ${innerCardBgClass}`}>
             {/* Store Name & Code */}
-            <View className="flex-row items-start gap-3 border-b border-[#2a2a2d] pb-3">
+            <View className="flex-row items-start gap-3 border-b border-[#3f3f46]/30 pb-3">
               <View className="rounded-lg bg-[#e5005c]/10 p-2.5">
                 <Store color="#e5005c" size={20} />
               </View>
               <View className="flex-1">
-                <Text className="font-jetbrains text-[10px] font-bold uppercase tracking-wider text-[#a1a1aa]">
+                <Text
+                  className={`font-jetbrains text-[10px] font-bold uppercase tracking-wider ${textSecondaryClass}`}>
                   ASSIGNED STORE
                 </Text>
                 <Text
-                  className="mt-0.5 font-hanken text-base font-bold text-[#fafafa]"
+                  className={`mt-0.5 font-hanken text-base font-bold ${textPrimaryClass}`}
                   numberOfLines={2}>
                   {storeName || 'Daiso Japan Store'}
                 </Text>
-                <View className="mt-1 self-start rounded bg-[#2a2a2d] px-2 py-0.5">
+                <View
+                  className={`mt-1 self-start rounded px-2 py-0.5 ${isDark ? 'bg-[#2a2a2d]' : 'bg-[#e4e4e7]'}`}>
                   <Text className="font-jetbrains text-[10px] font-bold text-[#e5005c]">
                     CODE: {storeCode || 'N/A'}
                   </Text>
@@ -99,13 +112,13 @@ export default function OnBoardingGreetScreen() {
             {/* Operator & Work Date Details */}
             <View className="flex-row items-center justify-between pt-1">
               <View className="flex-row items-center gap-2">
-                <User color="#a1a1aa" size={14} />
-                <Text className="font-jetbrains text-xs text-[#fafafa]">{operatorId}</Text>
+                <User color={isDark ? '#a1a1aa' : '#71717a'} size={14} />
+                <Text className={`font-jetbrains text-xs ${textPrimaryClass}`}>{operatorId}</Text>
               </View>
 
               <View className="flex-row items-center gap-2">
-                <Calendar color="#a1a1aa" size={14} />
-                <Text className="font-jetbrains text-xs text-[#a1a1aa]">{loginDate}</Text>
+                <Calendar color={isDark ? '#a1a1aa' : '#71717a'} size={14} />
+                <Text className={`font-jetbrains text-xs ${textSecondaryClass}`}>{loginDate}</Text>
               </View>
             </View>
           </View>
@@ -117,9 +130,9 @@ export default function OnBoardingGreetScreen() {
                 {secondsLeft}
               </Text>
             </View>
-            <Text className="font-jetbrains text-xs text-[#a1a1aa]">
+            <Text className={`font-jetbrains text-xs ${textSecondaryClass}`}>
               Redirecting to Receiving Dashboard in{' '}
-              <Text className="font-bold text-[#fafafa]">{secondsLeft}s</Text>...
+              <Text className={`font-bold ${textPrimaryClass}`}>{secondsLeft}s</Text>...
             </Text>
           </View>
         </View>

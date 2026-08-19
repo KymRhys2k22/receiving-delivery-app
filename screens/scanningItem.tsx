@@ -10,6 +10,9 @@ import {
   ActivityIndicator,
   FlatList,
   PanResponder,
+  ScrollView,
+  Platform,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -26,13 +29,20 @@ import {
   Lock,
   ChevronUp,
   ChevronDown,
-  Maximize2,
-  Minimize2,
+  Search,
+  RotateCcw,
+  Download,
+  ArrowUpDown,
 } from 'lucide-react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
+import * as XLSX from 'xlsx';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from '../context/auth';
+import { useTheme } from '../context/theme';
 import { MANIFEST_ITEMS_KEY, SCANNED_ITEMS_KEY, type ItemManifestRecord } from '../utils/storage';
 
 const playScanFeedback = async (type: 'success' | 'warning' | 'error') => {
@@ -116,10 +126,71 @@ const playScanFeedback = async (type: 'success' | 'warning' | 'error') => {
   } catch {}
 };
 
+function GhostItemImage({ upc }: { upc?: string }) {
+  const [triedBackupUpc, setTriedBackupUpc] = useState<string | null>(null);
+  const [failedUpc, setFailedUpc] = useState<string | null>(null);
+  const [loadedUri, setLoadedUri] = useState<string | null>(null);
+
+  if (!upc || failedUpc === upc) return null;
+
+  const isUsingBackup = triedBackupUpc === upc;
+  const imageUrl = isUsingBackup
+    ? `https://res.cloudinary.com/dqtldfxeh/image/upload/c_fill,w_200,h_200/products/${upc}`
+    : `https://jpbulk.daisonet.com/cdn/shop/files/${upc}_10_200x.jpg`;
+
+  const isLoaded = loadedUri === imageUrl;
+
+  const handleImageError = () => {
+    if (!isUsingBackup) {
+      // Primary Daiso CDN failed -> Try backup Cloudinary URL
+      setTriedBackupUpc(upc);
+    } else {
+      // Backup also failed -> Hide gracefully with zero UI indication
+      setFailedUpc(upc);
+    }
+  };
+
+  return (
+    <View
+      pointerEvents="none"
+      className="absolute bottom-0 right-0 top-0 w-32 items-end justify-center overflow-hidden pr-2"
+      style={{ zIndex: 0 }}>
+      <Image
+        key={imageUrl}
+        source={{ uri: imageUrl }}
+        resizeMode="contain"
+        onError={handleImageError}
+        onLoad={() => setLoadedUri(imageUrl)}
+        className="h-32 w-32 rounded-lg"
+        style={{ opacity: isLoaded ? 1 : 0 }}
+      />
+    </View>
+  );
+}
+
 export default function ScanningItemScreen() {
   const navigation = useNavigation();
+  const { operatorId, storeCode, storeName, loginDate } = useAuth();
+  const { isDark } = useTheme();
+
+  const bgClass = isDark ? 'bg-[#131316]' : 'bg-[#f4f4f5]';
+  const headerBgClass = isDark ? 'bg-[#131316] border-[#3f3f46]' : 'bg-[#ffffff] border-[#e4e4e7]';
+  const cardBgClass = isDark ? 'bg-[#1f1f22] border-[#3f3f46]' : 'bg-[#ffffff] border-[#e4e4e7]';
+  const itemRowBgClass = isDark ? 'bg-[#1b1b1e] border-[#3f3f46]' : 'bg-[#ffffff] border-[#e4e4e7]';
+  const tabBgClass = isDark ? 'bg-[#1f1f22] border-[#3f3f46]' : 'bg-[#ffffff] border-[#e4e4e7]';
+  const innerCardBgClass = isDark
+    ? 'bg-[#131316] border-[#3f3f46]'
+    : 'bg-[#fafafa] border-[#e4e4e7]';
+  const textPrimaryClass = isDark ? 'text-[#fafafa]' : 'text-[#18181b]';
+  const textSecondaryClass = isDark ? 'text-[#a1a1aa]' : 'text-[#71717a]';
+  const footerBgClass = isDark ? 'bg-[#131316] border-[#3f3f46]' : 'bg-[#ffffff] border-[#e4e4e7]';
   const [permission, requestPermission] = useCameraPermissions();
-  const [activeTab, setActiveTab] = useState<'unscanned' | 'scanned'>('unscanned');
+  type TabType = 'unscanned' | 'fulfilled' | 'short' | 'over';
+  type SortOption = 'default' | 'qty_desc' | 'qty_asc' | 'alpha_asc' | 'alpha_desc' | 'cid_asc';
+  const [activeTab, setActiveTab] = useState<TabType>('unscanned');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<SortOption>('default');
+  const [showSortModal, setShowSortModal] = useState(false);
   const [items, setItems] = useState<ItemManifestRecord[]>([]);
   const [scannedMap, setScannedMap] = useState<Record<string, number>>({});
   const [lastScanned, setLastScanned] = useState<string | null>(null);
@@ -456,7 +527,7 @@ export default function ScanningItemScreen() {
   const [isTabLoading, setIsTabLoading] = useState(false);
 
   const handleTabChange = useCallback(
-    (newTab: 'unscanned' | 'scanned') => {
+    (newTab: TabType) => {
       if (newTab === activeTab) return;
       setIsTabLoading(true);
       setActiveTab(newTab);
@@ -475,11 +546,68 @@ export default function ScanningItemScreen() {
     ? items.filter((i) => i.cid.trim().toUpperCase() === selectedCidFilter.trim().toUpperCase())
     : items;
 
-  // Filter items for tabs
+  // Filter items for tabs based on receiving status
   const unscannedList = filteredByCid.filter((i) => (scannedMap[i.id] || 0) === 0);
-  const scannedList = filteredByCid.filter((i) => (scannedMap[i.id] || 0) > 0);
+  const fulfilledList = filteredByCid.filter((i) => (scannedMap[i.id] || 0) === i.qty);
+  const shortList = filteredByCid.filter(
+    (i) => (scannedMap[i.id] || 0) > 0 && (scannedMap[i.id] || 0) < i.qty
+  );
+  const overList = filteredByCid.filter((i) => (scannedMap[i.id] || 0) > i.qty);
 
-  const displayItems = activeTab === 'unscanned' ? unscannedList : scannedList;
+  const activeList =
+    activeTab === 'unscanned'
+      ? unscannedList
+      : activeTab === 'fulfilled'
+        ? fulfilledList
+        : activeTab === 'short'
+          ? shortList
+          : overList;
+
+  // Apply search query filter
+  const displayItems = activeList.filter((i) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.trim().toLowerCase();
+    return (
+      (i.sku && i.sku.toLowerCase().includes(q)) ||
+      (i.upc && i.upc.toLowerCase().includes(q)) ||
+      (i.cid && i.cid.toLowerCase().includes(q)) ||
+      (i.trf && i.trf.toLowerCase().includes(q)) ||
+      (i.description && i.description.toLowerCase().includes(q))
+    );
+  });
+
+  // Sort items based on active sort selection (Quantity, Alphabetically, CID, or Default)
+  const sortedDisplayItems = useMemo(() => {
+    const list = [...displayItems];
+    if (sortBy === 'qty_desc') {
+      return list.sort((a, b) => (b.qty || 0) - (a.qty || 0));
+    }
+    if (sortBy === 'qty_asc') {
+      return list.sort((a, b) => (a.qty || 0) - (b.qty || 0));
+    }
+    if (sortBy === 'alpha_asc') {
+      return list.sort((a, b) => {
+        const nameA = (a.sku || a.description || '').toUpperCase();
+        const nameB = (b.sku || b.description || '').toUpperCase();
+        return nameA.localeCompare(nameB);
+      });
+    }
+    if (sortBy === 'alpha_desc') {
+      return list.sort((a, b) => {
+        const nameA = (a.sku || a.description || '').toUpperCase();
+        const nameB = (b.sku || b.description || '').toUpperCase();
+        return nameB.localeCompare(nameA);
+      });
+    }
+    if (sortBy === 'cid_asc') {
+      return list.sort((a, b) => {
+        const cidA = (a.cid || '').toUpperCase();
+        const cidB = (b.cid || '').toUpperCase();
+        return cidA.localeCompare(cidB);
+      });
+    }
+    return list;
+  }, [displayItems, sortBy]);
 
   // Calculate overall quantity progress for active CID filter
   const totalExpectedQty = filteredByCid.reduce((sum, i) => sum + (i.qty || 1), 0);
@@ -488,6 +616,193 @@ export default function ScanningItemScreen() {
     totalExpectedQty > 0
       ? Math.min(100, Math.round((totalScannedQty / totalExpectedQty) * 100))
       : 0;
+
+  /** Export all categorized receiving item data (UNSCANNED, FULFILLED, SHORT, OVER) to native Excel (.xlsx) format */
+  const exportToExcelXlsx = useCallback(async () => {
+    try {
+      const now = new Date();
+      const formattedDate = loginDate
+        ? `${loginDate} (${now.toLocaleTimeString()})`
+        : now.toLocaleString();
+      const currentUser = operatorId || 'Operator';
+      const currentStoreCode = storeCode || 'N/A';
+      const currentStoreName = storeName || 'N/A';
+      const currentCid = selectedCidFilter || 'ALL CIDS';
+
+      // Summary statistics
+      const totalItems = filteredByCid.length;
+      const fulfilledCount = fulfilledList.length;
+      const shortCount = shortList.length;
+      const overCount = overList.length;
+      const unscannedCount = unscannedList.length;
+
+      // Build 2D Sheet Rows Array
+      const sheetRows: (string | number)[][] = [
+        ['RECEIVING AUDIT REPORT (ITEM DISCREPANCY AUDIT)'],
+        ['DATE / TIME', formattedDate],
+        ['OPERATOR / USERNAME', currentUser],
+        ['STORE CODE', currentStoreCode],
+        ['STORE NAME', currentStoreName],
+        ['BOX CID FILTER', currentCid],
+        ['TOTAL MANIFEST ITEMS', totalItems],
+        ['TOTAL EXPECTED QTY', totalExpectedQty],
+        ['TOTAL SCANNED QTY', totalScannedQty],
+        ['FULFILLED ITEMS COUNT', fulfilledCount],
+        ['SHORT ITEMS COUNT', shortCount],
+        ['OVER ITEMS COUNT', overCount],
+        ['UNSCANNED ITEMS COUNT', unscannedCount],
+        [], // Blank row separator
+        [
+          'RECEIVING STATUS',
+          'SKU',
+          'UPC',
+          'BOX CID',
+          'TRF NO',
+          'DESCRIPTION',
+          'MANIFEST QTY (EXPECTED)',
+          'SCANNED QTY (RECEIVED)',
+          'VARIANCE QTY',
+          'SHORTAGE QTY',
+          'OVERAGE QTY',
+        ],
+      ];
+
+      // Sort items logically: OVER -> SHORT -> FULFILLED -> UNSCANNED
+      const sortedItems = [...filteredByCid].sort((a, b) => {
+        const getRank = (item: ItemManifestRecord) => {
+          const qty = scannedMap[item.id] || 0;
+          if (qty > item.qty) return 1; // OVER
+          if (qty > 0 && qty < item.qty) return 2; // SHORT
+          if (qty === item.qty) return 3; // FULFILLED
+          return 4; // UNSCANNED
+        };
+        return getRank(a) - getRank(b);
+      });
+
+      // Append data rows
+      sortedItems.forEach((item) => {
+        const scannedQty = scannedMap[item.id] || 0;
+        const expectedQty = item.qty || 0;
+        let status = 'UNSCANNED';
+        const variance = scannedQty - expectedQty;
+        let shortage = 0;
+        let overage = 0;
+
+        if (scannedQty === 0) {
+          status = 'UNSCANNED';
+          shortage = expectedQty;
+        } else if (scannedQty === expectedQty) {
+          status = 'FULFILLED';
+        } else if (scannedQty < expectedQty) {
+          status = 'SHORT';
+          shortage = expectedQty - scannedQty;
+        } else {
+          status = 'OVER';
+          overage = scannedQty - expectedQty;
+        }
+
+        const varianceStr = variance > 0 ? `+${variance}` : String(variance);
+
+        sheetRows.push([
+          status,
+          item.sku || '',
+          item.upc || '',
+          item.cid || '',
+          item.trf || '',
+          item.description || '',
+          expectedQty,
+          scannedQty,
+          varianceStr,
+          shortage,
+          overage,
+        ]);
+      });
+
+      // Create Workbook & Worksheet
+      const ws = XLSX.utils.aoa_to_sheet(sheetRows);
+
+      // Set column widths for clean Excel layout
+      ws['!cols'] = [
+        { wch: 18 }, // Status
+        { wch: 16 }, // SKU
+        { wch: 16 }, // UPC
+        { wch: 14 }, // CID
+        { wch: 14 }, // TRF
+        { wch: 32 }, // Description
+        { wch: 24 }, // Expected Qty
+        { wch: 24 }, // Received Qty
+        { wch: 16 }, // Variance
+        { wch: 14 }, // Shortage
+        { wch: 14 }, // Overage
+      ];
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Receiving Report');
+
+      const dateClean = now.toISOString().slice(0, 10);
+      const storeClean = (currentStoreCode || 'STORE').replace(/[^a-zA-Z0-9]/g, '');
+      const fileName = `Receiving_Report_${storeClean}_${dateClean}.xlsx`;
+
+      if (Platform.OS === 'web') {
+        const wbout = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
+        const blob = new Blob([wbout], {
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', fileName);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        showNotification(
+          'success',
+          '📥 EXCEL (.XLSX) DOWNLOADED',
+          `Exported report to ${fileName}`
+        );
+        playScanFeedback('success');
+      } else {
+        const base64out = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
+        const filePath = `${FileSystem.documentDirectory}${fileName}`;
+        await FileSystem.writeAsStringAsync(filePath, base64out, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(filePath, {
+            mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            dialogTitle: 'Export Receiving Report (.xlsx)',
+            UTI: 'com.microsoft.excel.xlsx',
+          });
+          showNotification(
+            'success',
+            '✓ EXCEL (.XLSX) EXPORTED',
+            `Share sheet opened for ${fileName}`
+          );
+        } else {
+          showNotification('info', 'EXCEL SAVED', `File saved to ${filePath}`);
+        }
+        playScanFeedback('success');
+      }
+    } catch (err: any) {
+      showNotification('error', 'EXPORT FAILED', err?.message || 'Failed to export Excel file');
+      playScanFeedback('error');
+    }
+  }, [
+    filteredByCid,
+    fulfilledList.length,
+    loginDate,
+    operatorId,
+    overList.length,
+    scannedMap,
+    selectedCidFilter,
+    shortList.length,
+    showNotification,
+    storeCode,
+    storeName,
+    totalExpectedQty,
+    totalScannedQty,
+    unscannedList.length,
+  ]);
 
   return (
     <SafeAreaView className="flex-1 bg-[#131316]">
@@ -657,46 +972,113 @@ export default function ScanningItemScreen() {
             {scannedItemModal && (
               <>
                 <Text className="mb-3 font-hanken text-xs text-[#a1a1aa]">
-                  Verify or input the QTY of the item scanned to record to the Scanned tab:
+                  Verify or input the QTY of the item scanned to record to the receiving tabs:
                 </Text>
 
-                <View className="mb-4 gap-1.5 rounded-lg border border-[#e5005c]/30 bg-[#e5005c]/10 p-3.5">
-                  {scannedItemModal.sku ? (
-                    <Text className="font-jetbrains text-xs font-bold text-[#fafafa]">
-                      SKU: {scannedItemModal.sku}
-                    </Text>
-                  ) : null}
-                  {scannedItemModal.upc ? (
-                    <Text className="font-jetbrains text-xs text-[#e5005c]">
-                      UPC: {scannedItemModal.upc}
-                    </Text>
-                  ) : null}
-                  {scannedItemModal.cid ? (
-                    <Text className="font-jetbrains text-[11px] text-[#a1a1aa]">
-                      CID: {scannedItemModal.cid} | TRF: {scannedItemModal.trf}
-                    </Text>
-                  ) : null}
-                  {scannedItemModal.description ? (
-                    <Text className="font-hanken text-xs text-[#a1a1aa]" numberOfLines={2}>
-                      {scannedItemModal.description}
-                    </Text>
-                  ) : null}
-                  <View className="mt-1 flex-row items-center justify-between border-t border-[#e5005c]/20 pt-2">
-                    <Text className="font-jetbrains text-xs text-[#a1a1aa]">MANIFEST QTY:</Text>
-                    <Text className="font-jetbrains text-xs font-bold text-[#22c55e]">
-                      {scannedItemModal.qty}
-                    </Text>
+                <View className="relative mb-3 overflow-hidden rounded-lg border border-[#e5005c]/30 bg-[#e5005c]/10 p-3.5">
+                  <GhostItemImage upc={scannedItemModal.upc} />
+                  <View className="relative z-10 gap-1.5">
+                    {scannedItemModal.sku ? (
+                      <Text className="font-jetbrains text-xs font-bold text-[#fafafa]">
+                        SKU: {scannedItemModal.sku}
+                      </Text>
+                    ) : null}
+                    {scannedItemModal.upc ? (
+                      <Text className="font-jetbrains text-xs text-[#e5005c]">
+                        UPC: {scannedItemModal.upc}
+                      </Text>
+                    ) : null}
+                    {scannedItemModal.cid ? (
+                      <Text className="font-jetbrains text-[11px] text-[#a1a1aa]">
+                        CID: {scannedItemModal.cid} | TRF: {scannedItemModal.trf}
+                      </Text>
+                    ) : null}
+                    {scannedItemModal.description ? (
+                      <Text className="font-hanken text-xs text-[#a1a1aa]" numberOfLines={2}>
+                        {scannedItemModal.description}
+                      </Text>
+                    ) : null}
+                    <View className="mt-1 flex-row items-center justify-between border-t border-[#e5005c]/20 pt-2">
+                      <Text className="font-jetbrains text-xs text-[#a1a1aa]">MANIFEST QTY:</Text>
+                      <Text className="font-jetbrains text-xs font-bold text-[#22c55e]">
+                        {scannedItemModal.qty}
+                      </Text>
+                    </View>
                   </View>
                 </View>
 
+                {/* Standard Pack QTY Presets: [6, 8, 10, 12, 18, 24, 48] */}
+                <Text className="mb-1.5 font-jetbrains text-[11px] font-bold uppercase tracking-wider text-[#a1a1aa]">
+                  Quick Pack Presets (Tap to Set):
+                </Text>
+                <View className="mb-3 flex-row flex-wrap gap-1.5">
+                  {[6, 8, 10, 12, 18, 24, 48].map((preset) => {
+                    const isSelected = qtyInputModalValue === String(preset);
+                    return (
+                      <TouchableOpacity
+                        key={preset}
+                        onPress={() => {
+                          setQtyInputModalValue(String(preset));
+                          try {
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                          } catch {}
+                        }}
+                        className={`rounded-lg border px-3 py-1.5 ${
+                          isSelected
+                            ? 'border-[#e5005c] bg-[#e5005c]'
+                            : 'border-[#3f3f46] bg-[#2a2a2d]'
+                        }`}>
+                        <Text
+                          className={`font-jetbrains text-xs font-bold ${
+                            isSelected ? 'text-[#ffffff]' : 'text-[#fafafa]'
+                          }`}>
+                          {preset}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+
+                {/* Quick Actions: FULFILL ALL (Full Manifest Qty) & RESET (0) */}
+                <View className="mb-3 flex-row items-center gap-2">
+                  <TouchableOpacity
+                    onPress={() => {
+                      setQtyInputModalValue(String(scannedItemModal.qty));
+                      try {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                      } catch {}
+                    }}
+                    className="flex-1 flex-row items-center justify-center gap-1.5 rounded-lg border border-[#22c55e]/40 bg-[#22c55e]/15 py-2">
+                    <CheckCircle color="#22c55e" size={14} />
+                    <Text className="font-jetbrains text-xs font-bold text-[#22c55e]">
+                      FULFILL ALL ({scannedItemModal.qty})
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={() => {
+                      setQtyInputModalValue('0');
+                      try {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      } catch {}
+                    }}
+                    className="flex-row items-center justify-center gap-1.5 rounded-lg border border-[#ef4444]/40 bg-[#ef4444]/15 px-3 py-2">
+                    <RotateCcw color="#ef4444" size={14} />
+                    <Text className="font-jetbrains text-xs font-bold text-[#ef4444]">
+                      RESET (0)
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Manual Input Row */}
                 <Text className="mb-1.5 font-jetbrains text-xs font-semibold text-[#fafafa]">
-                  INPUT SCANNED QTY:
+                  MANUAL INPUT QUANTITY:
                 </Text>
                 <View className="mb-4 flex-row items-center gap-2">
                   <TouchableOpacity
                     onPress={() => {
-                      const current = parseInt(qtyInputModalValue, 10) || 1;
-                      setQtyInputModalValue(String(Math.max(1, current - 1)));
+                      const current = parseInt(qtyInputModalValue, 10) || 0;
+                      setQtyInputModalValue(String(Math.max(0, current - 1)));
                     }}
                     className="h-11 w-11 items-center justify-center rounded-lg border border-[#3f3f46] bg-[#2a2a2d]">
                     <Minus color="#fafafa" size={18} />
@@ -730,15 +1112,24 @@ export default function ScanningItemScreen() {
                     onPress={() => {
                       const item = scannedItemModal;
                       const enteredQty = parseInt(qtyInputModalValue, 10);
-                      if (isNaN(enteredQty) || enteredQty <= 0) {
-                        showNotification('error', 'INVALID QTY', 'Please enter a valid number');
+                      if (isNaN(enteredQty) || enteredQty < 0) {
+                        showNotification(
+                          'error',
+                          'INVALID QTY',
+                          'Please enter a valid non-negative number'
+                        );
                         return;
                       }
 
                       setScannedItemModal(null);
 
                       // Save updated QTY to scannedMap
-                      const updatedMap = { ...scannedMapRef.current, [item.id]: enteredQty };
+                      const updatedMap = { ...scannedMapRef.current };
+                      if (enteredQty === 0) {
+                        delete updatedMap[item.id];
+                      } else {
+                        updatedMap[item.id] = enteredQty;
+                      }
                       setScannedMap(updatedMap);
                       AsyncStorage.setItem(SCANNED_ITEMS_KEY, JSON.stringify(updatedMap)).catch(
                         () => {}
@@ -746,18 +1137,43 @@ export default function ScanningItemScreen() {
 
                       const itemLabel = item.sku || item.upc || item.description || 'Item';
                       setLastScanned(itemLabel);
-                      setActiveTab('scanned');
 
-                      showNotification(
-                        'success',
-                        '✓ ADDED TO SCANNED',
-                        `${itemLabel} recorded in Scanned tab with QTY: ${enteredQty}`
-                      );
-                      playScanFeedback('success');
+                      if (enteredQty === item.qty) {
+                        setActiveTab('fulfilled');
+                        showNotification(
+                          'success',
+                          '✓ ITEM FULFILLED',
+                          `${itemLabel} marked as FULFILLED (QTY: ${enteredQty}/${item.qty})`
+                        );
+                        playScanFeedback('success');
+                      } else if (enteredQty > item.qty) {
+                        setActiveTab('over');
+                        showNotification(
+                          'error',
+                          '⚠️ OVER-SCANNED ITEM',
+                          `${itemLabel} OVER-SCANNED by +${enteredQty - item.qty} (Scanned: ${enteredQty}, Manifest: ${item.qty})`
+                        );
+                        playScanFeedback('warning');
+                      } else if (enteredQty > 0) {
+                        setActiveTab('short');
+                        showNotification(
+                          'warning',
+                          '⚡ SHORTAGE RECORDED',
+                          `${itemLabel} SHORT by -${item.qty - enteredQty} (Scanned: ${enteredQty}, Manifest: ${item.qty})`
+                        );
+                        playScanFeedback('warning');
+                      } else {
+                        setActiveTab('unscanned');
+                        showNotification(
+                          'info',
+                          'RESET TO UNSCANNED',
+                          `${itemLabel} quantity reset to 0 (Unscanned)`
+                        );
+                      }
                     }}
                     className="flex-1 items-center justify-center rounded-lg bg-[#e5005c] py-3">
                     <Text className="font-jetbrains text-xs font-bold text-[#ffffff]">
-                      SAVE TO SCANNED
+                      SAVE RECORD
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -767,37 +1183,107 @@ export default function ScanningItemScreen() {
         </View>
       </Modal>
 
-      {/* Header */}
-      <View className="flex-row items-center gap-3 border-b border-[#3f3f46] bg-[#131316] px-4 py-4">
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <ArrowLeft color="#fafafa" size={22} />
-        </TouchableOpacity>
-        <View className="flex-1">
-          <Text className="font-hanken text-xl font-bold text-[#fafafa]">Item Scanning</Text>
-        </View>
-        {lastScanned && (
-          <View className="flex-row items-center gap-1.5 rounded-lg border border-[#22c55e]/40 bg-[#22c55e]/10 px-3 py-1.5">
-            <CheckCircle color="#22c55e" size={14} />
-            <Text className="font-jetbrains text-[10px] font-bold text-[#22c55e]" numberOfLines={1}>
-              {lastScanned}
+      {/* Sort Options Modal */}
+      <Modal visible={showSortModal} transparent animationType="fade">
+        <View className="flex-1 items-center justify-center bg-black/70 px-6">
+          <View className="w-full rounded-xl border border-[#3f3f46] bg-[#1f1f22] p-5">
+            <View className="mb-3 flex-row items-center justify-between">
+              <View className="flex-row items-center gap-2">
+                <ArrowUpDown color="#e5005c" size={20} />
+                <Text className="font-hanken text-base font-bold text-[#fafafa]">
+                  Sort Items in Tab
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowSortModal(false)}>
+                <X color="#a1a1aa" size={20} />
+              </TouchableOpacity>
+            </View>
+
+            <Text className="mb-3 font-hanken text-xs text-[#a1a1aa]">
+              Choose how items in the active tab should be ordered:
             </Text>
+
+            {[
+              { id: 'default', label: 'Default (Manifest Order)' },
+              { id: 'qty_desc', label: 'Quantity (Highest First)' },
+              { id: 'qty_asc', label: 'Quantity (Lowest First)' },
+              { id: 'alpha_asc', label: 'Alphabetical (A → Z by SKU/Desc)' },
+              { id: 'alpha_desc', label: 'Alphabetical (Z → A by SKU/Desc)' },
+              { id: 'cid_asc', label: 'Box CID (A → Z)' },
+            ].map((option) => {
+              const isSelected = sortBy === option.id;
+              return (
+                <TouchableOpacity
+                  key={option.id}
+                  onPress={() => {
+                    setSortBy(option.id as SortOption);
+                    setShowSortModal(false);
+                    try {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    } catch {}
+                  }}
+                  className={`mb-2 flex-row items-center justify-between rounded-lg border p-3 ${
+                    isSelected
+                      ? 'border-[#e5005c] bg-[#e5005c]/15'
+                      : 'border-[#3f3f46] bg-[#131316]'
+                  }`}>
+                  <Text
+                    className={`font-jetbrains text-xs font-semibold ${
+                      isSelected ? 'text-[#e5005c]' : 'text-[#fafafa]'
+                    }`}>
+                    {option.label}
+                  </Text>
+                  {isSelected && <CheckCircle color="#e5005c" size={16} />}
+                </TouchableOpacity>
+              );
+            })}
           </View>
-        )}
+        </View>
+      </Modal>
+
+      {/* Header */}
+      <View className={`flex-row items-center gap-3 border-b px-4 py-4 ${headerBgClass}`}>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <ArrowLeft color={isDark ? '#fafafa' : '#18181b'} size={22} />
+        </TouchableOpacity>
+        <View className="flex-1 flex-row items-center gap-2">
+          <Text className={`font-hanken text-xl font-bold ${textPrimaryClass}`}>Item Scanning</Text>
+          {lastScanned && (
+            <View className="flex-row items-center gap-1 rounded-lg border border-[#22c55e]/40 bg-[#22c55e]/10 px-2 py-1">
+              <CheckCircle color="#22c55e" size={12} />
+              <Text
+                className="max-w-[100px] font-jetbrains text-[9px] font-bold text-[#22c55e]"
+                numberOfLines={1}>
+                {lastScanned}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        <TouchableOpacity
+          onPress={exportToExcelXlsx}
+          className="flex-row items-center gap-1.5 rounded-lg border border-[#22c55e]/50 bg-[#22c55e]/15 px-3 py-1.5">
+          <Download color="#22c55e" size={14} />
+          <Text className="font-jetbrains text-xs font-bold text-[#22c55e]">EXPORT EXCEL</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Active Box CID Filter Bar */}
-      <View className="flex-row items-center justify-between border-b border-[#3f3f46] bg-[#1f1f22] px-4 py-2.5">
+      <View className={`flex-row items-center justify-between border-b px-4 py-2.5 ${cardBgClass}`}>
         <View className="flex-1 flex-row items-center gap-2">
           {selectedCidFilter ? (
             <Lock color="#e5005c" size={16} />
           ) : (
-            <BoxIcon color="#71717a" size={16} />
+            <BoxIcon color={isDark ? '#71717a' : '#a1a1aa'} size={16} />
           )}
           <View className="flex-1">
-            <Text className="font-jetbrains text-[9px] font-bold tracking-wider text-[#a1a1aa]">
+            <Text
+              className={`font-jetbrains text-[9px] font-bold tracking-wider ${textSecondaryClass}`}>
               {selectedCidFilter ? 'BOX CID FILTER (LOCKED)' : 'BOX CID FILTER'}
             </Text>
-            <Text className="font-jetbrains text-xs font-bold text-[#fafafa]" numberOfLines={1}>
+            <Text
+              className={`font-jetbrains text-xs font-bold ${textPrimaryClass}`}
+              numberOfLines={1}>
               {selectedCidFilter ? `CID NO: ${selectedCidFilter}` : 'ALL CIDS (UNFILTERED)'}
             </Text>
           </View>
@@ -809,11 +1295,13 @@ export default function ScanningItemScreen() {
             className={`rounded-lg border px-3 py-1.5 ${
               selectedCidFilter
                 ? 'border-[#e5005c] bg-[#e5005c]/10'
-                : 'border-[#3f3f46] bg-[#2a2a2d]'
+                : isDark
+                  ? 'border-[#3f3f46] bg-[#2a2a2d]'
+                  : 'border-[#d4d4d8] bg-[#f4f4f5]'
             }`}>
             <Text
               className={`font-jetbrains text-xs font-bold ${
-                selectedCidFilter ? 'text-[#e5005c]' : 'text-[#fafafa]'
+                selectedCidFilter ? 'text-[#e5005c]' : textPrimaryClass
               }`}>
               {selectedCidFilter ? 'CHANGE CID' : 'FILTER CID'}
             </Text>
@@ -825,8 +1313,12 @@ export default function ScanningItemScreen() {
                 setSelectedCidFilter(null);
                 showNotification('info', 'CID UNLOCKED', 'Showing items from all CIDs');
               }}
-              className="rounded-lg border border-[#3f3f46] bg-[#2a2a2d] px-2.5 py-1.5">
-              <Text className="font-jetbrains text-xs font-semibold text-[#a1a1aa]">CLEAR</Text>
+              className={`rounded-lg border px-2.5 py-1.5 ${
+                isDark ? 'border-[#3f3f46] bg-[#2a2a2d]' : 'border-[#d4d4d8] bg-[#f4f4f5]'
+              }`}>
+              <Text className={`font-jetbrains text-xs font-semibold ${textSecondaryClass}`}>
+                CLEAR
+              </Text>
             </TouchableOpacity>
           )}
         </View>
@@ -871,16 +1363,16 @@ export default function ScanningItemScreen() {
 
       {/* Camera Area (Hidden when swiped up into full screen tabs) */}
       {!isFullScreenTabs && (
-        <View className="relative h-[40%] overflow-hidden bg-black">
+        <View className="relative h-[32%] overflow-hidden bg-black">
           {!permission ? (
             <View className="flex-1 items-center justify-center gap-2">
               <ActivityIndicator size="small" color="#e5005c" />
-              <Text className="font-hanken text-sm text-[#a1a1aa]">Loading camera...</Text>
+              <Text className={`font-hanken text-sm ${textSecondaryClass}`}>Loading camera...</Text>
             </View>
           ) : !permission.granted ? (
             <View className="flex-1 items-center justify-center gap-3 px-6">
               <AlertTriangle color="#eab308" size={36} />
-              <Text className="text-center font-hanken text-sm text-[#a1a1aa]">
+              <Text className={`text-center font-hanken text-sm ${textSecondaryClass}`}>
                 Camera access is required to scan barcodes.
               </Text>
               <TouchableOpacity
@@ -977,7 +1469,7 @@ export default function ScanningItemScreen() {
                       {
                         translateY: laserAnim.interpolate({
                           inputRange: [0, 1],
-                          outputRange: [35, 250],
+                          outputRange: [35, 170],
                         }),
                       },
                     ],
@@ -1014,9 +1506,13 @@ export default function ScanningItemScreen() {
 
                 <TouchableOpacity
                   onPress={() => setShowManual(true)}
-                  className="flex-row items-center gap-1.5 rounded-xl border border-[#3f3f46] bg-[#2a2a2d]/90 px-3.5 py-3">
-                  <Keyboard color="#a1a1aa" size={16} />
-                  <Text className="font-jetbrains text-xs font-bold text-[#a1a1aa]">MANUAL</Text>
+                  className={`flex-row items-center gap-1.5 rounded-xl border px-3.5 py-3 ${
+                    isDark ? 'border-[#3f3f46] bg-[#2a2a2d]/90' : 'border-[#d4d4d8] bg-white'
+                  }`}>
+                  <Keyboard color={isDark ? '#a1a1aa' : '#71717a'} size={16} />
+                  <Text className={`font-jetbrains text-xs font-bold ${textSecondaryClass}`}>
+                    MANUAL
+                  </Text>
                 </TouchableOpacity>
               </View>
             </>
@@ -1029,8 +1525,10 @@ export default function ScanningItemScreen() {
         {...panResponder.panHandlers}
         onPress={() => setIsFullScreenTabs((prev) => !prev)}
         activeOpacity={0.8}
-        className="flex-row items-center justify-center gap-1.5 border-b border-[#3f3f46]/60 bg-[#18181b] py-2">
-        <View className="h-1.5 w-10 rounded-full bg-[#3f3f46]" />
+        className={`flex-row items-center justify-center gap-1.5 border-b py-2 ${
+          isDark ? 'border-[#3f3f46]/60 bg-[#18181b]' : 'border-[#e4e4e7] bg-[#f4f4f5]'
+        }`}>
+        <View className={`h-1.5 w-10 rounded-full ${isDark ? 'bg-[#3f3f46]' : 'bg-[#d4d4d8]'}`} />
         {isFullScreenTabs ? (
           <View className="flex-row items-center gap-1">
             <ChevronDown color="#e5005c" size={14} />
@@ -1040,68 +1538,249 @@ export default function ScanningItemScreen() {
           </View>
         ) : (
           <View className="flex-row items-center gap-1">
-            <ChevronUp color="#a1a1aa" size={14} />
-            <Text className="font-jetbrains text-[10px] font-bold text-[#a1a1aa]">
+            <ChevronUp color={isDark ? '#a1a1aa' : '#71717a'} size={14} />
+            <Text className={`font-jetbrains text-[10px] font-bold ${textSecondaryClass}`}>
               SWIPE UP FOR FULL SCREEN TABS
             </Text>
           </View>
         )}
       </TouchableOpacity>
 
-      {/* Tabs */}
-      <View className="flex-row border-b border-[#3f3f46] bg-[#1f1f22]">
-        <TouchableOpacity
-          onPress={() => handleTabChange('unscanned')}
-          className={`flex-1 items-center justify-center py-4 ${
-            activeTab === 'unscanned' ? 'border-b-2 border-[#e5005c]' : ''
-          }`}>
-          <Text
-            className={`font-jetbrains text-sm font-bold ${
-              activeTab === 'unscanned' ? 'text-[#e5005c]' : 'text-[#a1a1aa]'
+      {/* 4 Tabs Navigation Bar */}
+      <View className={`border-b ${tabBgClass}`}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
+          <TouchableOpacity
+            onPress={() => handleTabChange('unscanned')}
+            className={`flex-row items-center gap-1.5 px-4 py-3.5 ${
+              activeTab === 'unscanned'
+                ? `border-b-2 border-[#e5005c] ${isDark ? 'bg-[#131316]' : 'bg-[#f4f4f5]'}`
+                : ''
             }`}>
-            UNSCANNED ({unscannedList.length})
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => handleTabChange('scanned')}
-          className={`flex-1 items-center justify-center py-4 ${
-            activeTab === 'scanned' ? 'border-b-2 border-[#e5005c]' : ''
-          }`}>
-          <Text
-            className={`font-jetbrains text-sm font-bold ${
-              activeTab === 'scanned' ? 'text-[#e5005c]' : 'text-[#a1a1aa]'
+            <Text
+              className={`font-jetbrains text-xs font-bold ${
+                activeTab === 'unscanned' ? 'text-[#e5005c]' : textSecondaryClass
+              }`}>
+              UNSCANNED
+            </Text>
+            <View
+              className={`rounded-full px-2 py-0.5 ${
+                activeTab === 'unscanned'
+                  ? 'bg-[#e5005c]/20'
+                  : isDark
+                    ? 'bg-[#2a2a2d]'
+                    : 'bg-[#e4e4e7]'
+              }`}>
+              <Text
+                className={`font-jetbrains text-[10px] font-bold ${
+                  activeTab === 'unscanned' ? 'text-[#e5005c]' : textSecondaryClass
+                }`}>
+                {unscannedList.length}
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => handleTabChange('fulfilled')}
+            className={`flex-row items-center gap-1.5 px-4 py-3.5 ${
+              activeTab === 'fulfilled'
+                ? `border-b-2 border-[#22c55e] ${isDark ? 'bg-[#131316]' : 'bg-[#f4f4f5]'}`
+                : ''
             }`}>
-            SCANNED ({scannedList.length})
-          </Text>
-        </TouchableOpacity>
+            <Text
+              className={`font-jetbrains text-xs font-bold ${
+                activeTab === 'fulfilled' ? 'text-[#22c55e]' : textSecondaryClass
+              }`}>
+              FULFILLED
+            </Text>
+            <View
+              className={`rounded-full px-2 py-0.5 ${
+                activeTab === 'fulfilled'
+                  ? 'bg-[#22c55e]/20'
+                  : isDark
+                    ? 'bg-[#2a2a2d]'
+                    : 'bg-[#e4e4e7]'
+              }`}>
+              <Text
+                className={`font-jetbrains text-[10px] font-bold ${
+                  activeTab === 'fulfilled' ? 'text-[#22c55e]' : textSecondaryClass
+                }`}>
+                {fulfilledList.length}
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => handleTabChange('short')}
+            className={`flex-row items-center gap-1.5 px-4 py-3.5 ${
+              activeTab === 'short'
+                ? `border-b-2 border-[#f59e0b] ${isDark ? 'bg-[#131316]' : 'bg-[#f4f4f5]'}`
+                : ''
+            }`}>
+            <Text
+              className={`font-jetbrains text-xs font-bold ${
+                activeTab === 'short' ? 'text-[#f59e0b]' : textSecondaryClass
+              }`}>
+              SHORT
+            </Text>
+            <View
+              className={`rounded-full px-2 py-0.5 ${
+                activeTab === 'short' ? 'bg-[#f59e0b]/20' : isDark ? 'bg-[#2a2a2d]' : 'bg-[#e4e4e7]'
+              }`}>
+              <Text
+                className={`font-jetbrains text-[10px] font-bold ${
+                  activeTab === 'short' ? 'text-[#f59e0b]' : textSecondaryClass
+                }`}>
+                {shortList.length}
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => handleTabChange('over')}
+            className={`flex-row items-center gap-1.5 px-4 py-3.5 ${
+              activeTab === 'over'
+                ? `border-b-2 border-[#ef4444] ${isDark ? 'bg-[#131316]' : 'bg-[#f4f4f5]'}`
+                : ''
+            }`}>
+            <Text
+              className={`font-jetbrains text-xs font-bold ${
+                activeTab === 'over' ? 'text-[#ef4444]' : textSecondaryClass
+              }`}>
+              OVER
+            </Text>
+            <View
+              className={`rounded-full px-2 py-0.5 ${
+                activeTab === 'over' ? 'bg-[#ef4444]/20' : isDark ? 'bg-[#2a2a2d]' : 'bg-[#e4e4e7]'
+              }`}>
+              <Text
+                className={`font-jetbrains text-[10px] font-bold ${
+                  activeTab === 'over' ? 'text-[#ef4444]' : textSecondaryClass
+                }`}>
+                {overList.length}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+
+      {/* Discrepancy Breakdown & Search Filter Bar */}
+      <View className={`border-b px-4 py-2.5 ${cardBgClass}`}>
+        <View className="mb-2 flex-row items-center justify-between gap-2">
+          <View
+            className={`flex-1 flex-row items-center gap-2 rounded-lg border px-3 py-1.5 ${innerCardBgClass}`}>
+            <Search color={isDark ? '#71717a' : '#a1a1aa'} size={15} />
+            <TextInput
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholder="Search SKU, UPC, CID, or Desc..."
+              placeholderTextColor={isDark ? '#71717a' : '#a1a1aa'}
+              className={`flex-1 p-0 font-jetbrains text-xs ${textPrimaryClass}`}
+            />
+            {searchQuery ? (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <X color={isDark ? '#a1a1aa' : '#71717a'} size={14} />
+              </TouchableOpacity>
+            ) : null}
+          </View>
+
+          {/* Sort Button (Filters current tab data by Quantity, Alphabetically, CID, or Default) */}
+          <TouchableOpacity
+            onPress={() => setShowSortModal(true)}
+            className={`flex-row items-center gap-1.5 rounded-lg border px-3 py-1.5 ${
+              sortBy !== 'default'
+                ? 'border-[#e5005c] bg-[#e5005c]/15'
+                : isDark
+                  ? 'border-[#3f3f46] bg-[#2a2a2d]'
+                  : 'border-[#d4d4d8] bg-[#f4f4f5]'
+            }`}>
+            <ArrowUpDown
+              color={sortBy !== 'default' ? '#e5005c' : isDark ? '#a1a1aa' : '#71717a'}
+              size={14}
+            />
+            <Text
+              className={`font-jetbrains text-xs font-bold ${
+                sortBy !== 'default' ? 'text-[#e5005c]' : textPrimaryClass
+              }`}>
+              {sortBy === 'qty_desc'
+                ? 'QTY 🠗'
+                : sortBy === 'qty_asc'
+                  ? 'QTY 🠕'
+                  : sortBy === 'alpha_asc'
+                    ? 'A-Z'
+                    : sortBy === 'alpha_desc'
+                      ? 'Z-A'
+                      : sortBy === 'cid_asc'
+                        ? 'CID'
+                        : 'SORT'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Status Pill Badges */}
+        <View className="flex-row items-center gap-1.5">
+          <View className="flex-row items-center gap-1 rounded border border-[#22c55e]/30 bg-[#22c55e]/15 px-2 py-0.5">
+            <View className="h-1.5 w-1.5 rounded-full bg-[#22c55e]" />
+            <Text className="font-jetbrains text-[10px] font-bold text-[#22c55e]">
+              Fulfilled: {fulfilledList.length}
+            </Text>
+          </View>
+
+          <View className="flex-row items-center gap-1 rounded border border-[#f59e0b]/30 bg-[#f59e0b]/15 px-2 py-0.5">
+            <View className="h-1.5 w-1.5 rounded-full bg-[#f59e0b]" />
+            <Text className="font-jetbrains text-[10px] font-bold text-[#f59e0b]">
+              Short: {shortList.length}
+            </Text>
+          </View>
+
+          <View className="flex-row items-center gap-1 rounded border border-[#ef4444]/30 bg-[#ef4444]/15 px-2 py-0.5">
+            <View className="h-1.5 w-1.5 rounded-full bg-[#ef4444]" />
+            <Text className="font-jetbrains text-[10px] font-bold text-[#ef4444]">
+              Over: {overList.length}
+            </Text>
+          </View>
+
+          <View
+            className={`flex-row items-center gap-1 rounded px-2 py-0.5 ${isDark ? 'bg-[#2a2a2d]' : 'bg-[#e4e4e7]'}`}>
+            <View
+              className={`h-1.5 w-1.5 rounded-full ${isDark ? 'bg-[#a1a1aa]' : 'bg-[#71717a]'}`}
+            />
+            <Text className={`font-jetbrains text-[10px] font-bold ${textSecondaryClass}`}>
+              Unscanned: {unscannedList.length}
+            </Text>
+          </View>
+        </View>
       </View>
 
       {/* List Area */}
       {isTabLoading ? (
-        <View className="flex-1 items-center justify-center gap-3 bg-[#131316] py-16">
+        <View className={`flex-1 items-center justify-center gap-3 py-16 ${bgClass}`}>
           <ActivityIndicator size="small" color="#e5005c" />
-          <Text className="font-jetbrains text-xs font-semibold text-[#a1a1aa]">
+          <Text className={`font-jetbrains text-xs font-semibold ${textSecondaryClass}`}>
             Loading {activeTab} items...
           </Text>
         </View>
       ) : (
         <FlatList
-          data={displayItems}
+          data={sortedDisplayItems}
           keyExtractor={(item) => item.id}
-          className="flex-1 bg-[#131316] px-4 py-4"
+          className={`flex-1 px-4 py-4 ${bgClass}`}
           showsVerticalScrollIndicator={false}
           initialNumToRender={20}
           maxToRenderPerBatch={20}
           windowSize={10}
           ListEmptyComponent={
             <View className="flex-1 items-center justify-center py-16">
-              <Package color="#71717a" size={32} className="mb-2" />
-              <Text className="font-hanken text-sm text-[#a1a1aa]">
+              <Package color={isDark ? '#71717a' : '#a1a1aa'} size={32} className="mb-2" />
+              <Text className={`font-hanken text-sm ${textSecondaryClass}`}>
                 {activeTab === 'unscanned'
                   ? selectedCidFilter
                     ? `All items under CID ${selectedCidFilter} fully scanned!`
                     : 'All items fully scanned!'
-                  : 'No items scanned yet.'}
+                  : activeTab === 'fulfilled'
+                    ? 'No items completely fulfilled yet.'
+                    : activeTab === 'short'
+                      ? 'No items with quantity shortages.'
+                      : 'No over-scanned items recorded.'}
               </Text>
             </View>
           }
@@ -1119,115 +1798,128 @@ export default function ScanningItemScreen() {
                   setQtyInputModalValue(String(currentQty > 0 ? currentQty : item.qty));
                 }}
                 activeOpacity={0.7}
-                className={`mb-3 rounded-lg border p-4 ${
+                className={`relative mb-3 overflow-hidden rounded-lg border p-4 ${
                   isOverScanned
                     ? 'border-[#ef4444]/60 bg-[#ef4444]/10'
                     : isCompleted
                       ? 'border-[#22c55e]/40 bg-[#22c55e]/5'
                       : currentQty > 0
                         ? 'border-[#e5005c]/40 bg-[#e5005c]/5'
-                        : 'border-[#3f3f46] bg-[#1f1f22]'
+                        : itemRowBgClass
                 }`}>
-                {/* Headers: CID & TRF */}
-                <View className="mb-1.5 flex-row items-center justify-between">
-                  <View className="flex-row items-center gap-2">
-                    {item.cid ? (
-                      <View className="rounded bg-[#2a2a2d] px-2 py-0.5">
-                        <Text className="font-jetbrains text-[10px] text-[#a1a1aa]">
-                          CID: {item.cid}
+                {/* Ghost Background Item Image */}
+                <GhostItemImage upc={item.upc} />
+
+                {/* Card Content Layer */}
+                <View className="relative z-10">
+                  {/* Headers: CID & TRF */}
+                  <View className="mb-1.5 flex-row items-center justify-between">
+                    <View className="flex-row items-center gap-2">
+                      {item.cid ? (
+                        <View
+                          className={`rounded px-2 py-0.5 ${isDark ? 'bg-[#2a2a2d]' : 'bg-[#e4e4e7]'}`}>
+                          <Text className={`font-jetbrains text-[10px] ${textSecondaryClass}`}>
+                            CID: {item.cid}
+                          </Text>
+                        </View>
+                      ) : null}
+                      {item.trf ? (
+                        <View
+                          className={`rounded px-2 py-0.5 ${isDark ? 'bg-[#2a2a2d]' : 'bg-[#e4e4e7]'}`}>
+                          <Text className={`font-jetbrains text-[10px] ${textSecondaryClass}`}>
+                            TRF: {item.trf}
+                          </Text>
+                        </View>
+                      ) : null}
+                    </View>
+
+                    {isOverScanned ? (
+                      <View className="flex-row items-center gap-1 rounded border border-[#ef4444]/40 bg-[#ef4444]/20 px-2 py-0.5">
+                        <AlertTriangle color="#ef4444" size={12} />
+                        <Text className="font-jetbrains text-[9px] font-extrabold text-[#ef4444]">
+                          OVER-SCANNED (+{overageAmount})
                         </Text>
                       </View>
-                    ) : null}
-                    {item.trf ? (
-                      <View className="rounded bg-[#2a2a2d] px-2 py-0.5">
-                        <Text className="font-jetbrains text-[10px] text-[#a1a1aa]">
-                          TRF: {item.trf}
+                    ) : isCompleted ? (
+                      <View className="flex-row items-center gap-1 rounded bg-[#22c55e]/20 px-2 py-0.5">
+                        <CheckCircle color="#22c55e" size={12} />
+                        <Text className="font-jetbrains text-[9px] font-bold text-[#22c55e]">
+                          FULFILLED
                         </Text>
                       </View>
                     ) : null}
                   </View>
 
-                  {isOverScanned ? (
-                    <View className="flex-row items-center gap-1 rounded border border-[#ef4444]/40 bg-[#ef4444]/20 px-2 py-0.5">
-                      <AlertTriangle color="#ef4444" size={12} />
-                      <Text className="font-jetbrains text-[9px] font-extrabold text-[#ef4444]">
-                        OVER-SCANNED (+{overageAmount})
+                  {/* Identifiers: SKU & UPC */}
+                  <View className="mb-1">
+                    {item.sku ? (
+                      <Text className={`font-jetbrains text-sm font-bold ${textPrimaryClass}`}>
+                        SKU: {item.sku}
                       </Text>
-                    </View>
-                  ) : isCompleted ? (
-                    <View className="flex-row items-center gap-1 rounded bg-[#22c55e]/20 px-2 py-0.5">
-                      <CheckCircle color="#22c55e" size={12} />
-                      <Text className="font-jetbrains text-[9px] font-bold text-[#22c55e]">
-                        FULFILLED
+                    ) : null}
+                    {item.upc ? (
+                      <Text className={`font-jetbrains text-xs ${textSecondaryClass}`}>
+                        UPC: {item.upc}
                       </Text>
-                    </View>
-                  ) : null}
-                </View>
+                    ) : null}
+                  </View>
 
-                {/* Identifiers: SKU & UPC */}
-                <View className="mb-1">
-                  {item.sku ? (
-                    <Text className="font-jetbrains text-sm font-bold text-[#fafafa]">
-                      SKU: {item.sku}
+                  {/* Description */}
+                  {item.description ? (
+                    <Text
+                      className={`mb-3 font-hanken text-xs ${textSecondaryClass}`}
+                      numberOfLines={2}>
+                      {item.description}
                     </Text>
                   ) : null}
-                  {item.upc ? (
-                    <Text className="font-jetbrains text-xs text-[#a1a1aa]">UPC: {item.upc}</Text>
-                  ) : null}
-                </View>
 
-                {/* Description */}
-                {item.description ? (
-                  <Text className="mb-3 font-hanken text-xs text-[#71717a]" numberOfLines={2}>
-                    {item.description}
-                  </Text>
-                ) : null}
+                  {/* QTY of the items & Remaining to Fulfill */}
+                  <View className="mt-1 flex-row flex-wrap items-center justify-between gap-2 border-t border-[#3f3f46]/30 pt-2.5">
+                    <View className="flex-row items-center gap-1.5">
+                      <View
+                        className={`rounded px-2 py-0.5 ${isDark ? 'bg-[#2a2a2d]' : 'bg-[#e4e4e7]'}`}>
+                        <Text className={`font-jetbrains text-[9px] font-bold ${textPrimaryClass}`}>
+                          MANIFEST QTY: {item.qty}
+                        </Text>
+                      </View>
 
-                {/* QTY of the items & Remaining to Fulfill */}
-                <View className="mt-1 flex-row flex-wrap items-center justify-between gap-2 border-t border-[#2a2a2d] pt-2.5">
-                  <View className="flex-row items-center gap-1.5">
-                    <View className="rounded bg-[#2a2a2d] px-2 py-0.5">
-                      <Text className="font-jetbrains text-[9px] font-bold text-[#fafafa]">
-                        MANIFEST QTY: {item.qty}
-                      </Text>
+                      {currentQty > 0 && (
+                        <View
+                          className={`rounded px-2 py-0.5 ${
+                            isOverScanned ? 'bg-[#ef4444]/20' : 'bg-[#e5005c]/20'
+                          }`}>
+                          <Text
+                            className={`font-jetbrains text-[9px] font-bold ${
+                              isOverScanned ? 'text-[#ef4444]' : 'text-[#e5005c]'
+                            }`}>
+                            SCANNED QTY: {currentQty}
+                          </Text>
+                        </View>
+                      )}
                     </View>
 
-                    {currentQty > 0 && (
-                      <View
-                        className={`rounded px-2 py-0.5 ${
-                          isOverScanned ? 'bg-[#ef4444]/20' : 'bg-[#e5005c]/20'
-                        }`}>
-                        <Text
-                          className={`font-jetbrains text-[9px] font-bold ${
-                            isOverScanned ? 'text-[#ef4444]' : 'text-[#e5005c]'
-                          }`}>
-                          SCANNED QTY: {currentQty}
+                    {/* Status / Remaining / Overage Badge */}
+                    {isOverScanned ? (
+                      <View className="flex-row items-center gap-1 rounded border border-[#ef4444]/40 bg-[#ef4444]/20 px-2 py-0.5">
+                        <AlertTriangle color="#ef4444" size={10} />
+                        <Text className="font-jetbrains text-[9px] font-extrabold text-[#ef4444]">
+                          EXCEEDED BY +{overageAmount}
+                        </Text>
+                      </View>
+                    ) : remainingQty > 0 ? (
+                      <View className="rounded border border-[#eab308]/30 bg-[#eab308]/10 px-2 py-0.5">
+                        <Text className="font-jetbrains text-[9px] font-bold text-[#eab308]">
+                          REMAINING: {remainingQty}
+                        </Text>
+                      </View>
+                    ) : (
+                      <View className="rounded border border-[#22c55e]/30 bg-[#22c55e]/10 px-2 py-0.5">
+                        <Text className="font-jetbrains text-[9px] font-bold text-[#22c55e]">
+                          FULFILLED
                         </Text>
                       </View>
                     )}
                   </View>
-
-                  {/* Status / Remaining / Overage Badge */}
-                  {isOverScanned ? (
-                    <View className="flex-row items-center gap-1 rounded border border-[#ef4444]/40 bg-[#ef4444]/20 px-2 py-0.5">
-                      <AlertTriangle color="#ef4444" size={10} />
-                      <Text className="font-jetbrains text-[9px] font-extrabold text-[#ef4444]">
-                        EXCEEDED BY +{overageAmount}
-                      </Text>
-                    </View>
-                  ) : remainingQty > 0 ? (
-                    <View className="rounded border border-[#eab308]/30 bg-[#eab308]/10 px-2 py-0.5">
-                      <Text className="font-jetbrains text-[9px] font-bold text-[#eab308]">
-                        REMAINING: {remainingQty}
-                      </Text>
-                    </View>
-                  ) : (
-                    <View className="rounded border border-[#22c55e]/30 bg-[#22c55e]/10 px-2 py-0.5">
-                      <Text className="font-jetbrains text-[9px] font-bold text-[#22c55e]">
-                        FULFILLED
-                      </Text>
-                    </View>
-                  )}
                 </View>
               </TouchableOpacity>
             );
@@ -1236,22 +1928,23 @@ export default function ScanningItemScreen() {
       )}
 
       {/* Progress Footer */}
-      <View className="border-t border-[#3f3f46] bg-[#131316] px-4 py-4 pb-6">
+      <View className={`border-t px-4 py-4 pb-6 ${footerBgClass}`}>
         <View className="mb-2 flex-row items-end justify-between">
           <View className="flex-row items-baseline gap-2">
-            <Text className="font-jetbrains text-xs font-bold text-[#a1a1aa]">
+            <Text className={`font-jetbrains text-xs font-bold ${textSecondaryClass}`}>
               {selectedCidFilter ? `PROGRESS (${selectedCidFilter})` : 'TOTAL ITEM PROGRESS'}
             </Text>
             <Text className="font-jetbrains text-sm font-bold text-[#e5005c]">{progressPct}%</Text>
           </View>
-          <Text className="font-hanken text-sm text-[#a1a1aa]">
-            <Text className="font-bold text-[#fafafa]">
+          <Text className={`font-hanken text-sm ${textSecondaryClass}`}>
+            <Text className={`font-bold ${textPrimaryClass}`}>
               {totalScannedQty}/{totalExpectedQty}
             </Text>{' '}
             Qty
           </Text>
         </View>
-        <View className="h-1 w-full overflow-hidden rounded-full bg-[#2a2a2d]">
+        <View
+          className={`h-1 w-full overflow-hidden rounded-full ${isDark ? 'bg-[#2a2a2d]' : 'bg-[#e4e4e7]'}`}>
           <View className="h-full rounded-full bg-[#e5005c]" style={{ width: `${progressPct}%` }} />
         </View>
       </View>

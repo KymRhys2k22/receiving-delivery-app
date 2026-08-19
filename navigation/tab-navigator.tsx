@@ -4,15 +4,53 @@ import { View, Text } from 'react-native';
 import One from '../screens/one';
 import Three from '../screens/three';
 import Two from '../screens/two';
+import { useTheme } from '../context/theme';
+
+function TabBarIcon({
+  focused,
+  icon: Icon,
+  label,
+}: {
+  focused: boolean;
+  icon: any;
+  label: string;
+}) {
+  const { isDark } = useTheme();
+  const activeBg = '#e5005c';
+  const inactiveTextColor = isDark ? '#a1a1aa' : '#71717a';
+
+  return (
+    <View
+      style={{
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: focused ? activeBg : 'transparent',
+        borderRadius: 12,
+        width: 80,
+        height: 52,
+      }}>
+      <Icon color={focused ? '#ffffff' : inactiveTextColor} size={20} />
+      <Text
+        style={{
+          fontSize: 10,
+          fontWeight: '600',
+          color: focused ? '#ffffff' : inactiveTextColor,
+          marginTop: 2,
+        }}>
+        {label}
+      </Text>
+    </View>
+  );
+}
 
 const Tab = createBottomTabNavigator({
   screenOptions: function ScreenOptions() {
+    const { isDark } = useTheme();
     return {
       tabBarShowLabel: false,
-
       tabBarStyle: {
-        backgroundColor: '#131316',
-        borderTopColor: '#2a2a2d',
+        backgroundColor: isDark ? '#131316' : '#ffffff',
+        borderTopColor: isDark ? '#2a2a2d' : '#e4e4e7',
         height: 80,
         paddingBottom: 15,
         paddingTop: 15,
@@ -25,26 +63,7 @@ const Tab = createBottomTabNavigator({
       options: {
         headerShown: false,
         tabBarIcon: ({ focused }) => (
-          <View
-            style={{
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: focused ? '#e5005c' : 'transparent',
-              borderRadius: 12,
-              width: 80,
-              height: 52,
-            }}>
-            <LogIn color={focused ? '#ffffff' : '#a1a1aa'} size={20} />
-            <Text
-              style={{
-                fontSize: 10,
-                fontWeight: '600',
-                color: focused ? '#ffffff' : '#a1a1aa',
-                marginTop: 2,
-              }}>
-              Receiving
-            </Text>
-          </View>
+          <TabBarIcon focused={focused} icon={LogIn} label="Receiving" />
         ),
       },
     },
@@ -54,26 +73,7 @@ const Tab = createBottomTabNavigator({
         title: 'History',
         headerShown: false,
         tabBarIcon: ({ focused }) => (
-          <View
-            style={{
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: focused ? '#e5005c' : 'transparent',
-              borderRadius: 12,
-              width: 80,
-              height: 52,
-            }}>
-            <History color={focused ? '#ffffff' : '#a1a1aa'} size={20} />
-            <Text
-              style={{
-                fontSize: 10,
-                fontWeight: '600',
-                color: focused ? '#ffffff' : '#a1a1aa',
-                marginTop: 2,
-              }}>
-              History
-            </Text>
-          </View>
+          <TabBarIcon focused={focused} icon={History} label="History" />
         ),
       },
     },
@@ -83,26 +83,7 @@ const Tab = createBottomTabNavigator({
         title: 'Settings',
         headerShown: false,
         tabBarIcon: ({ focused }) => (
-          <View
-            style={{
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: focused ? '#e5005c' : 'transparent',
-              borderRadius: 12,
-              width: 80,
-              height: 52,
-            }}>
-            <Settings color={focused ? '#ffffff' : '#a1a1aa'} size={20} />
-            <Text
-              style={{
-                fontSize: 10,
-                fontWeight: '600',
-                color: focused ? '#ffffff' : '#a1a1aa',
-                marginTop: 2,
-              }}>
-              Settings
-            </Text>
-          </View>
+          <TabBarIcon focused={focused} icon={Settings} label="Settings" />
         ),
       },
     },

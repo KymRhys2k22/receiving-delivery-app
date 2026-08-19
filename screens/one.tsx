@@ -26,6 +26,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import Papa from 'papaparse';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../context/auth';
+import { useTheme } from '../context/theme';
 import { StatusBar } from 'expo-status-bar';
 import {
   MANIFEST_CIDS_KEY,
@@ -83,7 +84,17 @@ const INITIAL_BOXES: Box[] = [
 export default function TabOneScreen() {
   const navigation = useNavigation();
   const { storeCode, storeName } = useAuth();
+  const { isDark } = useTheme();
   const [currentMode, setCurrentMode] = useState<'dashboard' | 'verify_items'>('dashboard');
+
+  const bgClass = isDark ? 'bg-[#131316]' : 'bg-[#f4f4f5]';
+  const headerBgClass = isDark ? 'bg-[#131316] border-[#3f3f46]' : 'bg-[#ffffff] border-[#e4e4e7]';
+  const cardBgClass = isDark ? 'bg-[#1b1b1e] border-[#3f3f46]' : 'bg-[#ffffff] border-[#e4e4e7]';
+  const innerCardBgClass = isDark
+    ? 'bg-[#1f1f22] border-[#3f3f46]'
+    : 'bg-[#fafafa] border-[#e4e4e7]';
+  const textPrimaryClass = isDark ? 'text-[#fafafa]' : 'text-[#18181b]';
+  const textSecondaryClass = isDark ? 'text-[#a1a1aa]' : 'text-[#71717a]';
 
   // Track boxes
   const [boxes, setBoxes] = useState<Box[]>(INITIAL_BOXES);
@@ -152,24 +163,24 @@ export default function TabOneScreen() {
           }
 
           // 2. Item Progress
-          const storedManifestItems = await AsyncStorage.getItem(MANIFEST_ITEMS_KEY);
+          const storedItemManifest = await AsyncStorage.getItem(MANIFEST_ITEMS_KEY);
           const storedScannedItems = await AsyncStorage.getItem(SCANNED_ITEMS_KEY);
 
-          if (storedManifestItems) {
-            const itemsList = JSON.parse(storedManifestItems) as ItemManifestRecord[];
+          if (storedItemManifest) {
+            const manifestItems = JSON.parse(storedItemManifest) as ItemManifestRecord[];
             const scannedMap = storedScannedItems
               ? (JSON.parse(storedScannedItems) as Record<string, number>)
               : {};
 
-            const totalExpected = itemsList.reduce((sum, item) => sum + (item.qty || 1), 0);
-            const totalScanned = itemsList.reduce(
+            const totalQty = manifestItems.reduce((sum, item) => sum + (item.qty || 1), 0);
+            const scannedQty = manifestItems.reduce(
               (sum, item) => sum + (scannedMap[item.id] || 0),
               0
             );
 
             setSavedItemProgress({
-              scanned: totalScanned,
-              total: totalExpected,
+              scanned: scannedQty,
+              total: totalQty,
             });
           } else {
             setSavedItemProgress(null);
@@ -261,7 +272,7 @@ export default function TabOneScreen() {
         );
 
         setIsUploading(false);
-        showToast(`Manifest uploaded: ${cidList.length} CIDs from ${asset.name}`, 'success');
+        showToast(`Box manifest uploaded: ${cidList.length} CIDs from ${asset.name}`, 'success');
 
         // Navigate to ScanningBox so the user can start scanning immediately
         navigation.navigate('ScanningBox' as never);
@@ -305,18 +316,18 @@ export default function TabOneScreen() {
           return;
         }
 
-        const getRowVal = (row: Record<string, string>, targetHeader: string): string => {
-          const cleanTarget = targetHeader.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-          const key = Object.keys(row).find(
-            (k) => k.replace(/[^a-zA-Z0-9]/g, '').toUpperCase() === cleanTarget
-          );
-          return key && row[key] ? row[key].trim() : '';
-        };
-
         const itemsList: ItemManifestRecord[] = [];
+
         parsed.data.forEach((row, idx) => {
-          const cid = getRowVal(row, 'CID NO');
-          const trf = getRowVal(row, 'TRF NO');
+          const getRowVal = (r: Record<string, string>, target: string) => {
+            const k = Object.keys(r).find(
+              (key) => key.trim().toUpperCase() === target.toUpperCase()
+            );
+            return k ? r[k].trim() : '';
+          };
+
+          const cid = getRowVal(row, 'CID NO') || getRowVal(row, 'CID');
+          const trf = getRowVal(row, 'TRF NO') || getRowVal(row, 'TRF');
           const upc = getRowVal(row, 'UPC');
           const sku = getRowVal(row, 'SKU');
           const description = getRowVal(row, 'DESCRIPTION');
@@ -381,37 +392,28 @@ export default function TabOneScreen() {
     const box = boxes.find((b) => b.id === selectedBoxId);
     if (!box) return;
 
-    const itemIndex = box.items.findIndex((i) => i.sku.toUpperCase() === cleanSku);
+    const itemIndex = box.items.findIndex((i) => i.sku === cleanSku);
 
-    if (itemIndex === -1) {
-      showToast(`Discrepancy: SKU ${cleanSku} not expected in ${selectedBoxId}!`, 'error');
-      return;
+    if (itemIndex >= 0) {
+      setBoxes((prev) =>
+        prev.map((b) => {
+          if (b.id === selectedBoxId) {
+            const updatedItems = [...b.items];
+            const currentItem = updatedItems[itemIndex];
+            updatedItems[itemIndex] = {
+              ...currentItem,
+              scanned: currentItem.scanned + 1,
+            };
+            return { ...b, items: updatedItems };
+          }
+          return b;
+        })
+      );
+      showToast(`Scanned ${cleanSku} (+1 Qty)`, 'success');
+      setManualItemId('');
+    } else {
+      showToast(`DISCREPANCY: ${cleanSku} not in Box ${selectedBoxId}!`, 'error');
     }
-
-    const item = box.items[itemIndex];
-    if (item.scanned >= item.expected) {
-      showToast(`Overage: ${cleanSku} already verified.`, 'info');
-      return;
-    }
-
-    // Update scanned count
-    setBoxes((prevBoxes) => {
-      return prevBoxes.map((b) => {
-        if (b.id !== selectedBoxId) return b;
-        const updatedItems = [...b.items];
-        updatedItems[itemIndex] = {
-          ...item,
-          scanned: item.scanned + 1,
-        };
-        return {
-          ...b,
-          items: updatedItems,
-        };
-      });
-    });
-
-    showToast(`Scanned ${item.desc} (${cleanSku})`, 'success');
-    setManualItemId('');
   };
 
   const handleCompleteBox = () => {
@@ -444,7 +446,7 @@ export default function TabOneScreen() {
   const isBoxComplete = totalExpected > 0 && totalScanned === totalExpected;
 
   return (
-    <SafeAreaView className="flex-1 bg-[#131316]">
+    <SafeAreaView className={`flex-1 ${bgClass}`}>
       {/* View Toast Notification */}
       {toast && (
         <View
@@ -454,11 +456,11 @@ export default function TabOneScreen() {
               ? 'border-[#22c55e] bg-[#22c55e]/10'
               : toast.type === 'error'
                 ? 'border-[#ef4444] bg-[#ef4444]/10'
-                : 'border-[#3f3f46] bg-[#1f1f22]'
+                : innerCardBgClass
           }`}>
           {toast.type === 'success' && <Check color="#22c55e" size={18} />}
           {toast.type === 'error' && <AlertTriangle color="#ef4444" size={18} />}
-          <Text className="flex-1 font-hanken text-xs font-semibold text-[#fafafa]">
+          <Text className={`flex-1 font-hanken text-xs font-semibold ${textPrimaryClass}`}>
             {toast.text}
           </Text>
           <TouchableOpacity onPress={() => setToast(null)}>
@@ -471,15 +473,19 @@ export default function TabOneScreen() {
       {currentMode === 'dashboard' && (
         <View className="flex-1">
           {/* Custom Header */}
-          <View className="flex-row items-center justify-between border-b border-[#3f3f46] bg-[#131316] px-4 py-4">
+          <View
+            className={`flex-row items-center justify-between border-b px-4 py-4 ${headerBgClass}`}>
             <View className="flex-row items-center gap-3">
-              <Text className="font-hanken text-lg font-bold text-[#fafafa]">
+              <Text className={`font-hanken text-lg font-bold ${textPrimaryClass}`}>
                 Receiving Dashboard
               </Text>
             </View>
-            <View className="max-w-[200px] flex-row items-center gap-1.5 rounded-lg border border-[#3f3f46] bg-[#1f1f22] px-2.5 py-1.5">
+            <View
+              className={`max-w-[200px] flex-row items-center gap-1.5 rounded-lg border px-2.5 py-1.5 ${innerCardBgClass}`}>
               <Store color="#e5005c" size={14} />
-              <Text className="font-jetbrains text-xs font-bold text-[#fafafa]" numberOfLines={1}>
+              <Text
+                className={`font-jetbrains text-xs font-bold ${textPrimaryClass}`}
+                numberOfLines={1}>
                 {storeName ? `${storeName} (${storeCode})` : storeCode || 'N/A'}
               </Text>
             </View>
@@ -492,7 +498,7 @@ export default function TabOneScreen() {
                 <View className="mb-2 flex-row items-center justify-between">
                   <View className="flex-row items-center gap-2">
                     <BoxIcon color="#ff80ab" size={20} />
-                    <Text className="font-hanken text-sm font-bold text-[#fafafa]">
+                    <Text className={`font-hanken text-sm font-bold ${textPrimaryClass}`}>
                       Active Box (CID) Session
                     </Text>
                   </View>
@@ -501,7 +507,7 @@ export default function TabOneScreen() {
                   </Text>
                 </View>
 
-                <Text className="mb-3 font-hanken text-xs text-[#a1a1aa]">
+                <Text className={`mb-3 font-hanken text-xs ${textSecondaryClass}`}>
                   {savedProgress.scanned === savedProgress.total
                     ? 'All boxes in manifest scanned! Resume or reset session anytime.'
                     : 'Saved scanning progress detected. Resume scanning right where you left off.'}
@@ -523,8 +529,8 @@ export default function TabOneScreen() {
                       setSavedProgress((prev) => (prev ? { ...prev, scanned: 0 } : null));
                       showToast('Scanning progress reset', 'info');
                     }}
-                    className="rounded-lg border border-[#3f3f46] bg-[#1f1f22] px-3.5 py-2.5">
-                    <Text className="font-jetbrains text-xs font-semibold text-[#a1a1aa]">
+                    className={`rounded-lg border px-3.5 py-2.5 ${innerCardBgClass}`}>
+                    <Text className={`font-jetbrains text-xs font-semibold ${textSecondaryClass}`}>
                       RESET
                     </Text>
                   </TouchableOpacity>
@@ -538,7 +544,7 @@ export default function TabOneScreen() {
                 <View className="mb-2 flex-row items-center justify-between">
                   <View className="flex-row items-center gap-2">
                     <Scan color="#e5005c" size={20} />
-                    <Text className="font-hanken text-sm font-bold text-[#fafafa]">
+                    <Text className={`font-hanken text-sm font-bold ${textPrimaryClass}`}>
                       Active Item Session
                     </Text>
                   </View>
@@ -547,7 +553,7 @@ export default function TabOneScreen() {
                   </Text>
                 </View>
 
-                <Text className="mb-3 font-hanken text-xs text-[#a1a1aa]">
+                <Text className={`mb-3 font-hanken text-xs ${textSecondaryClass}`}>
                   {savedItemProgress.scanned === savedItemProgress.total
                     ? 'All items in manifest scanned! Resume or reset session anytime.'
                     : 'Saved item scanning progress detected. Resume scanning right where you left off.'}
@@ -569,8 +575,8 @@ export default function TabOneScreen() {
                       setSavedItemProgress((prev) => (prev ? { ...prev, scanned: 0 } : null));
                       showToast('Item scanning progress reset', 'info');
                     }}
-                    className="rounded-lg border border-[#3f3f46] bg-[#1f1f22] px-3.5 py-2.5">
-                    <Text className="font-jetbrains text-xs font-semibold text-[#a1a1aa]">
+                    className={`rounded-lg border px-3.5 py-2.5 ${innerCardBgClass}`}>
+                    <Text className={`font-jetbrains text-xs font-semibold ${textSecondaryClass}`}>
                       RESET
                     </Text>
                   </TouchableOpacity>
@@ -582,24 +588,27 @@ export default function TabOneScreen() {
             <TouchableOpacity
               onPress={handleUpload}
               disabled={isUploading}
-              className="mb-4 items-center justify-center rounded-lg border border-dashed border-[#3f3f46] bg-[#1f1f22]/20 p-8">
+              className={`mb-4 items-center justify-center rounded-lg border border-dashed p-8 ${innerCardBgClass}`}>
               {isUploading ? (
-                <View className="mb-4 h-14 w-14 items-center justify-center rounded-lg border border-[#3f3f46] bg-[#2a2a2d]/50">
+                <View
+                  className={`mb-4 h-14 w-14 items-center justify-center rounded-lg border ${innerCardBgClass}`}>
                   <ActivityIndicator color="#e5005c" size="small" />
                 </View>
               ) : (
-                <View className="mb-4 h-14 w-14 items-center justify-center rounded-lg border border-[#3f3f46] bg-[#2a2a2d]/50">
+                <View
+                  className={`mb-4 h-14 w-14 items-center justify-center rounded-lg border ${innerCardBgClass}`}>
                   <BoxIcon color="#e5005c" size={24} />
                 </View>
               )}
-              <Text className="mb-1 font-hanken text-base font-bold text-[#fafafa]">
+              <Text className={`mb-1 font-hanken text-base font-bold ${textPrimaryClass}`}>
                 Step 1: Upload Box Manifest
               </Text>
-              <Text className="mb-5 max-w-[250px] text-center font-hanken text-xs text-[#a1a1aa]">
+              <Text
+                className={`mb-5 max-w-[250px] text-center font-hanken text-xs ${textSecondaryClass}`}>
                 Upload CSV containing box-level data
               </Text>
-              <View className="rounded border border-[#3f3f46] bg-[#2a2a2d] px-3 py-1.5">
-                <Text className="font-mono text-[10px] text-[#a1a1aa]">.CSV</Text>
+              <View className={`rounded border px-3 py-1.5 ${innerCardBgClass}`}>
+                <Text className={`font-mono text-[10px] ${textSecondaryClass}`}>.CSV</Text>
               </View>
             </TouchableOpacity>
 
@@ -607,24 +616,27 @@ export default function TabOneScreen() {
             <TouchableOpacity
               onPress={handleUploadScanningData}
               disabled={isUploading}
-              className="mb-8 items-center justify-center rounded-lg border border-dashed border-[#3f3f46] bg-[#1f1f22]/20 p-8">
+              className={`mb-8 items-center justify-center rounded-lg border border-dashed p-8 ${innerCardBgClass}`}>
               {isUploading ? (
-                <View className="mb-4 h-14 w-14 items-center justify-center rounded-lg border border-[#3f3f46] bg-[#2a2a2d]/50">
+                <View
+                  className={`mb-4 h-14 w-14 items-center justify-center rounded-lg border ${innerCardBgClass}`}>
                   <ActivityIndicator color="#e5005c" size="small" />
                 </View>
               ) : (
-                <View className="mb-4 h-14 w-14 items-center justify-center rounded-lg border border-[#3f3f46] bg-[#2a2a2d]/50">
+                <View
+                  className={`mb-4 h-14 w-14 items-center justify-center rounded-lg border ${innerCardBgClass}`}>
                   <Scan color="#e5005c" size={24} />
                 </View>
               )}
-              <Text className="mb-1 font-hanken text-base font-bold text-[#fafafa]">
+              <Text className={`mb-1 font-hanken text-base font-bold ${textPrimaryClass}`}>
                 Step 2: Upload Scanning Items
               </Text>
-              <Text className="mb-5 max-w-[250px] text-center font-hanken text-xs text-[#a1a1aa]">
+              <Text
+                className={`mb-5 max-w-[250px] text-center font-hanken text-xs ${textSecondaryClass}`}>
                 Upload CSV containing item-level scan logs
               </Text>
-              <View className="rounded border border-[#3f3f46] bg-[#2a2a2d] px-3 py-1.5">
-                <Text className="font-mono text-[10px] text-[#a1a1aa]">.CSV</Text>
+              <View className={`rounded border px-3 py-1.5 ${innerCardBgClass}`}>
+                <Text className={`font-mono text-[10px] ${textSecondaryClass}`}>.CSV</Text>
               </View>
             </TouchableOpacity>
           </ScrollView>
@@ -635,21 +647,26 @@ export default function TabOneScreen() {
       {currentMode === 'verify_items' && activeBox && (
         <View className="flex-1">
           {/* Header */}
-          <View className="flex-row items-center gap-3 border-b border-[#3f3f46] bg-[#131316] px-4 py-4">
+          <View className={`flex-row items-center gap-3 border-b px-4 py-4 ${headerBgClass}`}>
             <TouchableOpacity onPress={() => setCurrentMode('dashboard')}>
-              <ArrowLeft color="#fafafa" size={22} />
+              <ArrowLeft color={isDark ? '#fafafa' : '#18181b'} size={22} />
             </TouchableOpacity>
             <View>
-              <Text className="font-hanken text-lg font-bold text-[#fafafa]">Verify Box Items</Text>
-              <Text className="font-jetbrains text-[10px] text-[#a1a1aa]">{selectedBoxId}</Text>
+              <Text className={`font-hanken text-lg font-bold ${textPrimaryClass}`}>
+                Verify Box Items
+              </Text>
+              <Text className={`font-jetbrains text-[10px] ${textSecondaryClass}`}>
+                {selectedBoxId}
+              </Text>
             </View>
           </View>
 
           <ScrollView className="flex-1 px-4 py-4" showsVerticalScrollIndicator={false}>
             {/* Box Progress Status Card */}
-            <View className="mb-4 rounded-lg border border-[#3f3f46] bg-[#1f1f22] p-4">
+            <View className={`mb-4 rounded-lg border p-4 ${cardBgClass}`}>
               <View className="flex-row items-center justify-between">
-                <Text className="font-jetbrains text-[10px] font-bold uppercase tracking-wider text-[#a1a1aa]">
+                <Text
+                  className={`font-jetbrains text-[10px] font-bold uppercase tracking-wider ${textSecondaryClass}`}>
                   Box Verification Status
                 </Text>
                 <View
@@ -674,7 +691,7 @@ export default function TabOneScreen() {
               </View>
 
               <View className="mt-3 flex-row items-center justify-between">
-                <Text className="font-hanken text-xs text-[#a1a1aa]">Items Scanned</Text>
+                <Text className={`font-hanken text-xs ${textSecondaryClass}`}>Items Scanned</Text>
                 <Text className="font-jetbrains text-xs font-bold text-[#e5005c]">
                   {totalScanned} / {totalExpected}
                 </Text>
@@ -690,7 +707,8 @@ export default function TabOneScreen() {
             </View>
 
             {/* Expected Items List */}
-            <Text className="mb-2 font-jetbrains text-[10px] font-bold uppercase tracking-wider text-[#a1a1aa]">
+            <Text
+              className={`mb-2 font-jetbrains text-[10px] font-bold uppercase tracking-wider ${textSecondaryClass}`}>
               Expected Items Manifest
             </Text>
 
@@ -699,27 +717,26 @@ export default function TabOneScreen() {
               return (
                 <View
                   key={idx}
-                  className={`mb-2 flex-row items-center justify-between rounded-lg border bg-[#1b1b1e] p-3.5 ${
-                    isItemComplete ? 'border-[#22c55e]/50' : 'border-[#3f3f46]'
+                  className={`mb-2 flex-row items-center justify-between rounded-lg border p-3.5 ${cardBgClass} ${
+                    isItemComplete ? 'border-[#22c55e]/50' : ''
                   }`}>
                   <View className="mr-2 flex-1">
-                    <Text className="font-mono text-xs font-bold tracking-wider text-[#fafafa]">
+                    <Text
+                      className={`font-mono text-xs font-bold tracking-wider ${textPrimaryClass}`}>
                       {item.sku}
                     </Text>
-                    <Text className="mt-0.5 font-hanken text-[10px] text-[#a1a1aa]">
+                    <Text className={`mt-0.5 font-hanken text-[10px] ${textSecondaryClass}`}>
                       {item.desc}
                     </Text>
                   </View>
                   <View
                     className={`flex-row items-center gap-2 rounded border px-3 py-1 ${
-                      isItemComplete
-                        ? 'border-[#22c55e] bg-[#22c55e]/15'
-                        : 'border-[#3f3f46] bg-[#2a2a2d]'
+                      isItemComplete ? 'border-[#22c55e] bg-[#22c55e]/15' : innerCardBgClass
                     }`}>
                     {isItemComplete && <Check color="#22c55e" size={12} />}
                     <Text
                       className={`font-jetbrains text-[10px] font-bold ${
-                        isItemComplete ? 'text-[#22c55e]' : 'text-[#fafafa]'
+                        isItemComplete ? 'text-[#22c55e]' : textPrimaryClass
                       }`}>
                       {item.scanned} / {item.expected}
                     </Text>
@@ -734,9 +751,9 @@ export default function TabOneScreen() {
                 value={manualItemId}
                 onChangeText={setManualItemId}
                 placeholder="Scan item barcode SKU..."
-                placeholderTextColor="#a1a1aa"
+                placeholderTextColor={isDark ? '#71717a' : '#a1a1aa'}
                 autoCapitalize="characters"
-                className="h-11 flex-1 rounded-lg border border-[#3f3f46] bg-[#1f1f22] px-3 py-2 font-jetbrains text-sm text-[#fafafa]"
+                className={`h-11 flex-1 rounded-lg border px-3 py-2 font-jetbrains text-sm ${innerCardBgClass} ${textPrimaryClass}`}
               />
               <TouchableOpacity
                 onPress={() => handleScanItem(manualItemId)}
@@ -747,7 +764,8 @@ export default function TabOneScreen() {
 
             {/* Simulation triggers for items */}
             <View className="mb-8 mt-6">
-              <Text className="mb-2 font-jetbrains text-[10px] font-bold uppercase tracking-wider text-[#a1a1aa]">
+              <Text
+                className={`mb-2 font-jetbrains text-[10px] font-bold uppercase tracking-wider ${textSecondaryClass}`}>
                 Simulated Barcode Scanner
               </Text>
 
@@ -755,14 +773,14 @@ export default function TabOneScreen() {
                 <TouchableOpacity
                   key={idx}
                   onPress={() => handleScanItem(item.sku)}
-                  className="mb-2 flex-row items-center justify-between rounded-lg border border-[#3f3f46] bg-[#1f1f22] p-3">
+                  className={`mb-2 flex-row items-center justify-between rounded-lg border p-3 ${innerCardBgClass}`}>
                   <View className="flex-row items-center gap-3">
                     <Scan color="#e5005c" size={16} />
                     <View>
-                      <Text className="font-hanken text-xs font-semibold text-[#fafafa]">
+                      <Text className={`font-hanken text-xs font-semibold ${textPrimaryClass}`}>
                         Scan Barcode: {item.sku}
                       </Text>
-                      <Text className="font-hanken text-[9px] text-[#a1a1aa]">
+                      <Text className={`font-hanken text-[9px] ${textSecondaryClass}`}>
                         Increment scan count for {item.desc}
                       </Text>
                     </View>
@@ -777,14 +795,14 @@ export default function TabOneScreen() {
 
               <TouchableOpacity
                 onPress={() => handleScanItem('SKU-ERR-99')}
-                className="flex-row items-center justify-between rounded-lg border border-[#3f3f46] bg-[#1f1f22] p-3">
+                className={`flex-row items-center justify-between rounded-lg border p-3 ${innerCardBgClass}`}>
                 <View className="flex-row items-center gap-3">
                   <Scan color="#ef4444" size={16} />
                   <View>
-                    <Text className="font-hanken text-xs font-semibold text-[#fafafa]">
+                    <Text className={`font-hanken text-xs font-semibold ${textPrimaryClass}`}>
                       Scan Unexpected Barcode
                     </Text>
-                    <Text className="font-hanken text-[9px] text-[#a1a1aa]">
+                    <Text className={`font-hanken text-[9px] ${textSecondaryClass}`}>
                       Simulate scanning a wrong item SKU
                     </Text>
                   </View>
