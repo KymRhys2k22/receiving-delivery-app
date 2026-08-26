@@ -10,6 +10,11 @@ npm-debug.*
 *.orig.*
 web-build/
 
+# Environment variables (secrets / config)
+.env
+.env.local
+.env.*.local
+
 
 
 ios

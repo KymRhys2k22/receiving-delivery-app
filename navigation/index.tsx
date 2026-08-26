@@ -6,6 +6,7 @@ import OnBoardingGreet from '../screens/onBoardingGreet';
 import Modal from '../screens/modal';
 import ScanningBox from '../screens/scanningBox';
 import ScanningItem from '../screens/scanningItem';
+import DamageLostRecord from '../screens/damageLostRecord';
 import TabNavigator from './tab-navigator';
 
 const useIsSignedIn = () => {
@@ -61,6 +62,12 @@ const Stack = createStackNavigator({
         },
         ScanningItem: {
           screen: ScanningItem,
+          options: {
+            headerShown: false,
+          },
+        },
+        DamageLostRecord: {
+          screen: DamageLostRecord,
           options: {
             headerShown: false,
           },

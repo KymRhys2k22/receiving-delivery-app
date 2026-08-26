@@ -14,12 +14,16 @@ import {
   Database,
   RefreshCw,
   Sparkles,
+  FileWarning,
+  ChevronRight,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
+import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../context/auth';
 import { useTheme, type ThemeMode } from '../context/theme';
 
 export default function SettingsScreen() {
+  const navigation = useNavigation();
   const { operatorId, storeCode, storeName, loginDate, signOut } = useAuth();
   const { themeMode, setThemeMode, isDark } = useTheme();
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -260,11 +264,42 @@ export default function SettingsScreen() {
               <Database color="#a1a1aa" size={16} />
               <Text className={`font-jetbrains text-xs ${textSecondaryClass}`}>
                 Scanner Engine:{' '}
-                <Text className="font-bold text-[#e5005c]">v3.0.0 (Expo SDK 56)</Text>
+                <Text className="font-bold text-[#e5005c]">v4.0.0 (Expo SDK 56)</Text>
               </Text>
             </View>
           </View>
         </View>
+
+        {/* Damage Lost Record (DLR) Intake */}
+        <Text
+          className={`mb-2.5 font-jetbrains text-[10px] font-bold uppercase tracking-wider ${textSecondaryClass}`}>
+          DAMAGE & LOSS TOOLS
+        </Text>
+
+        <TouchableOpacity
+          onPress={() => {
+            try {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            } catch {}
+            navigation.navigate('DamageLostRecord' as never);
+          }}
+          activeOpacity={0.8}
+          className={`mb-6 flex-row items-center justify-between rounded-xl border p-4 ${cardBgClass}`}>
+          <View className="flex-row items-center gap-2.5">
+            <View className="h-10 w-10 items-center justify-center rounded-xl bg-[#e5005c]/15">
+              <FileWarning color="#e5005c" size={20} />
+            </View>
+            <View>
+              <Text className={`font-hanken text-xs font-bold ${textPrimaryClass}`}>
+                Damage Lost Record
+              </Text>
+              <Text className="font-jetbrains text-[10px] text-[#e5005c]">
+                SCAN · REASON · 3 PHOTOS · SYNC
+              </Text>
+            </View>
+          </View>
+          <ChevronRight color="#a1a1aa" size={18} />
+        </TouchableOpacity>
 
         {/* Terminate Session (Log Out) Button */}
         <TouchableOpacity

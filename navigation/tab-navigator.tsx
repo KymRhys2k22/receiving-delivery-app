@@ -1,10 +1,15 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { LogIn, History, Settings } from 'lucide-react-native';
+import { LogIn, History, Settings, FileWarning } from 'lucide-react-native';
 import { View, Text } from 'react-native';
 import One from '../screens/one';
 import Three from '../screens/three';
 import Two from '../screens/two';
+import DamageLostRecordScreen from '../screens/damageLostRecord';
 import { useTheme } from '../context/theme';
+
+function DamageLostRecordTab() {
+  return <DamageLostRecordScreen embedded />;
+}
 
 function TabBarIcon({
   focused,
@@ -74,6 +79,16 @@ const Tab = createBottomTabNavigator({
         headerShown: false,
         tabBarIcon: ({ focused }) => (
           <TabBarIcon focused={focused} icon={History} label="History" />
+        ),
+      },
+    },
+    DamageLostRecord: {
+      screen: DamageLostRecordTab,
+      options: {
+        title: 'DLR',
+        headerShown: false,
+        tabBarIcon: ({ focused }) => (
+          <TabBarIcon focused={focused} icon={FileWarning} label="DLR" />
         ),
       },
     },
