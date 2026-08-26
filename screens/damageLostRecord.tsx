@@ -451,6 +451,7 @@ export default function DamageLostRecordScreen({ embedded = false }: { embedded?
           createdAt: now,
           updatedAt: now,
           storeCode: storeCode || '',
+          storeName: storeName || '',
           scannedCode: code,
           product,
           reason: null,
@@ -474,7 +475,7 @@ export default function DamageLostRecordScreen({ embedded = false }: { embedded?
         setIsLookingUp(false);
       }
     },
-    [showNotification, storeCode]
+    [showNotification, storeCode, storeName]
   );
 
   const onBarcodeScanned = useCallback(
@@ -764,26 +765,23 @@ export default function DamageLostRecordScreen({ embedded = false }: { embedded?
     );
   }, [allRecords, refreshPendingCount, showNotification]);
 
-  const handleResumeRecord = useCallback(
-    (record: DLRLocalRecord) => {
-      const firstMissing = PHOTO_STEPS.findIndex((s) => !record.photos[s.key]);
-      const hasAllPhotos = firstMissing < 0;
-      draftRef.current = record;
-      setDraft(record);
-      setPhotoIndex(hasAllPhotos ? PHOTO_STEPS.length - 1 : firstMissing);
-      setPreviewUri(null);
-      setRetakeKey(null);
-      setTorchEnabled(false);
-      setSubmitted(false);
-      setOfflineError(null);
-      setProgressText('');
-      setSubmitting(false);
-      setStep(!record.reason ? 'DETAILS' : hasAllPhotos ? 'SUBMIT' : 'PHOTOS');
-      setRecordsModalVisible(false);
-      feedback('success');
-    },
-    []
-  );
+  const handleResumeRecord = useCallback((record: DLRLocalRecord) => {
+    const firstMissing = PHOTO_STEPS.findIndex((s) => !record.photos[s.key]);
+    const hasAllPhotos = firstMissing < 0;
+    draftRef.current = record;
+    setDraft(record);
+    setPhotoIndex(hasAllPhotos ? PHOTO_STEPS.length - 1 : firstMissing);
+    setPreviewUri(null);
+    setRetakeKey(null);
+    setTorchEnabled(false);
+    setSubmitted(false);
+    setOfflineError(null);
+    setProgressText('');
+    setSubmitting(false);
+    setStep(!record.reason ? 'DETAILS' : hasAllPhotos ? 'SUBMIT' : 'PHOTOS');
+    setRecordsModalVisible(false);
+    feedback('success');
+  }, []);
 
   const cameraRef = useRef<CameraView | null>(null);
 
@@ -1386,7 +1384,9 @@ export default function DamageLostRecordScreen({ embedded = false }: { embedded?
         <TouchableOpacity
           onPress={openRecordsModal}
           className={`flex-row items-center gap-1.5 rounded-lg border px-2.5 py-1.5 ${
-            draftCount > 0 ? 'border-[#e5005c]/50 bg-[#e5005c]/10' : 'border-[#3f3f46] bg-transparent'
+            draftCount > 0
+              ? 'border-[#e5005c]/50 bg-[#e5005c]/10'
+              : 'border-[#3f3f46] bg-transparent'
           }`}>
           <ClipboardList color={draftCount > 0 ? '#e5005c' : '#a1a1aa'} size={13} />
           {draftCount > 0 ? (
@@ -1558,8 +1558,7 @@ export default function DamageLostRecordScreen({ embedded = false }: { embedded?
                 <Text className={`mt-3 font-hanken text-sm font-bold ${textPrimaryClass}`}>
                   No saved records
                 </Text>
-                <Text
-                  className={`mt-1 text-center font-hanken text-xs ${textSecondaryClass}`}>
+                <Text className={`mt-1 text-center font-hanken text-xs ${textSecondaryClass}`}>
                   Scanned drafts and offline queue items will appear here.
                 </Text>
               </View>
@@ -1568,7 +1567,9 @@ export default function DamageLostRecordScreen({ embedded = false }: { embedded?
                 {allRecords.map((record) => {
                   const captured = PHOTO_STEPS.filter((s) => record.photos[s.key]).length;
                   return (
-                    <View key={record.id} className={`mb-2.5 rounded-xl border p-3 ${inputBgClass}`}>
+                    <View
+                      key={record.id}
+                      className={`mb-2.5 rounded-xl border p-3 ${inputBgClass}`}>
                       <View className="flex-row items-center justify-between">
                         <View className="flex-1 flex-row items-center gap-2">
                           <StatusBadge status={record.status} />
@@ -1600,7 +1601,9 @@ export default function DamageLostRecordScreen({ embedded = false }: { embedded?
                         {formatRecordTime(record.createdAt)}
                       </Text>
                       {record.lastError ? (
-                        <Text className="mt-0.5 font-jetbrains text-[9px] text-[#ef4444]" numberOfLines={2}>
+                        <Text
+                          className="mt-0.5 font-jetbrains text-[9px] text-[#ef4444]"
+                          numberOfLines={2}>
                           ⚠ {record.lastError}
                         </Text>
                       ) : null}
@@ -1612,9 +1615,7 @@ export default function DamageLostRecordScreen({ embedded = false }: { embedded?
                             <View
                               key={s.key}
                               className={`h-11 w-11 items-center justify-center overflow-hidden rounded-md border ${
-                                uri
-                                  ? 'border-[#22c55e]/50'
-                                  : 'border-dashed border-[#3f3f46]'
+                                uri ? 'border-[#22c55e]/50' : 'border-dashed border-[#3f3f46]'
                               } ${isDark ? 'bg-[#131316]' : 'bg-[#fafafa]'}`}>
                               {uri ? (
                                 <Image
@@ -1632,9 +1633,11 @@ export default function DamageLostRecordScreen({ embedded = false }: { embedded?
                           <Text className={`font-jetbrains text-[9px] ${textSecondaryClass}`}>
                             {captured}/3 photos
                           </Text>
-                          {record.storeCode ? (
-                            <Text className={`font-jetbrains text-[9px] ${textSecondaryClass}`}>
-                              Store {record.storeCode}
+                          {record.storeName || record.storeCode ? (
+                            <Text
+                              className={`max-w-[140px] text-right font-jetbrains text-[9px] ${textSecondaryClass}`}
+                              numberOfLines={1}>
+                              {record.storeName || `Store ${record.storeCode}`}
                             </Text>
                           ) : null}
                         </View>

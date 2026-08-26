@@ -10,8 +10,7 @@ const SUPABASE_ANON_KEY =
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-export const CLOUDINARY_CLOUD_NAME =
-  process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME ?? 'dqtldfxeh';
+export const CLOUDINARY_CLOUD_NAME = process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME ?? 'dqtldfxeh';
 export const CLOUDINARY_UPLOAD_PRESET =
   process.env.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET ?? 'dlr_unsigned';
 export const CLOUDINARY_UPLOAD_ENDPOINT = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`;
@@ -52,6 +51,8 @@ export interface SupabaseDLRRecord {
   Reason: string;
   SecondReason?: string | null;
   Qty: number;
+  Department?: string;
+  SubDep?: string;
   'Store Code': string;
   image: string[];
 }
@@ -186,6 +187,7 @@ export interface DLRLocalRecord {
   createdAt: string;
   updatedAt: string;
   storeCode?: string;
+  storeName?: string;
   scannedCode?: string;
   product: ProductItem | null;
   reason: string | null;
@@ -279,11 +281,9 @@ export async function compressImage(uri: string): Promise<string> {
       };
     };
 
-    const useLegacy =
-      typeof mod.manipulateAsync === 'function' && Boolean(mod.SaveFormat);
+    const useLegacy = typeof mod.manipulateAsync === 'function' && Boolean(mod.SaveFormat);
 
     let bestUri = uri;
-    let bestSize = await getFileSizeBytes(uri);
 
     for (const pass of COMPRESSION_PASSES) {
       let outputUri = '';
@@ -308,7 +308,6 @@ export async function compressImage(uri: string): Promise<string> {
 
       const size = await getFileSizeBytes(outputUri);
       bestUri = outputUri;
-      bestSize = size;
 
       if (size > 0 && size <= MAX_UPLOAD_BYTES) {
         return outputUri;
@@ -334,8 +333,7 @@ export function buildDlrImageName(
   photoKey: DLRPhotoKey
 ): string {
   const code =
-    toSafeFileNamePart(record.scannedCode ?? '') ||
-    toSafeFileNamePart(record.product?.sku ?? '');
+    toSafeFileNamePart(record.scannedCode ?? '') || toSafeFileNamePart(record.product?.sku ?? '');
   return `${code}_${toSafeFileNamePart(record.id)}_${photoKey}`;
 }
 
@@ -379,6 +377,17 @@ export function buildSupabasePayload(record: DLRLocalRecord): SupabaseDLRRecord 
   const damageUrl = record.uploadedUrls.damage;
   const barcodeUrl = record.uploadedUrls.barcode;
   if (!product || !record.reason || !quantityUrl || !damageUrl || !barcodeUrl) return null;
+
+  const department =
+    product.departmentName && product.departmentName !== 'Unknown'
+      ? `${product.departmentCode ? product.departmentCode + ' · ' : ''}${product.departmentName}`
+      : product.departmentCode || product.departmentName || '';
+
+  const subDep =
+    product.subDepartmentName && product.subDepartmentName !== 'Unknown'
+      ? `${product.subDepartmentCode ? product.subDepartmentCode + ' · ' : ''}${product.subDepartmentName}`
+      : product.subDepartmentCode || product.subDepartmentName || '';
+
   return {
     SKU: product.sku,
     Description: product.description,
@@ -388,7 +397,9 @@ export function buildSupabasePayload(record: DLRLocalRecord): SupabaseDLRRecord 
     Reason: record.reason,
     SecondReason: record.secondReason || null,
     Qty: typeof record.qty === 'number' && record.qty > 0 ? record.qty : 1,
-    'Store Code': record.storeCode || '',
+    Department: department,
+    SubDep: subDep,
+    'Store Code': record.storeName || record.storeCode || '',
     image: [quantityUrl, damageUrl, barcodeUrl],
   };
 }
