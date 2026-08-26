@@ -8,19 +8,19 @@ import {
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
 } from 'react-native';
 import {
   ArrowLeft,
   Scan,
   AlertTriangle,
-  User,
   Check,
   X,
   Camera,
   Box as BoxIcon,
   Store,
+  Warehouse,
+  FileText,
+  ChevronRight,
 } from 'lucide-react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import Papa from 'papaparse';
@@ -58,6 +58,94 @@ interface Box {
   id: string;
   status: 'pending' | 'verified' | 'discrepant';
   items: Item[];
+}
+
+function SessionBanner({
+  title,
+  scanned,
+  total,
+  icon: Icon,
+  accent,
+  onResume,
+  onReset,
+}: {
+  title: string;
+  scanned: number;
+  total: number;
+  icon: React.ComponentType<{ color: string; size: number }>;
+  accent: string;
+  onResume: () => void;
+  onReset: () => void;
+}) {
+  const { isDark } = useTheme();
+  const pct = total > 0 ? Math.min(100, Math.round((scanned / total) * 100)) : 0;
+  const complete = total > 0 && scanned >= total;
+
+  return (
+    <View
+      className="mb-4 overflow-hidden rounded-xl border p-4"
+      style={{ borderColor: `${accent}55`, backgroundColor: `${accent}12` }}>
+      <View className="mb-2.5 flex-row items-center justify-between">
+        <View className="flex-row items-center gap-2">
+          <View
+            className="h-8 w-8 items-center justify-center rounded-lg"
+            style={{ backgroundColor: `${accent}26` }}>
+            <Icon color={accent} size={16} />
+          </View>
+          <Text className={`font-hanken text-sm font-bold ${isDark ? 'text-[#fafafa]' : 'text-[#18181b]'}`}>
+            {title}
+          </Text>
+        </View>
+        <View className="flex-row items-center gap-2">
+          {complete && (
+            <View className="rounded-full bg-[#22c55e]/20 px-1.5 py-0.5">
+              <Text className="font-jetbrains text-[8px] font-bold text-[#22c55e]">DONE</Text>
+            </View>
+          )}
+          <Text className="font-jetbrains text-[11px] font-bold" style={{ color: accent }}>
+            {scanned}/{total}
+          </Text>
+        </View>
+      </View>
+
+      <View className="mb-3 h-1.5 overflow-hidden rounded-full" style={{ backgroundColor: `${accent}26` }}>
+        <View style={{ width: `${pct}%`, backgroundColor: accent }} className="h-full rounded-full" />
+      </View>
+
+      <Text className={`mb-3 font-hanken text-[11px] ${isDark ? 'text-[#a1a1aa]' : 'text-[#71717a]'}`}>
+        {complete
+          ? 'All entries in this manifest are scanned. Resume to review or reset the session.'
+          : 'Saved progress detected — continue scanning right where you left off.'}
+      </Text>
+
+      <View className="flex-row items-center gap-2">
+        <TouchableOpacity
+          onPress={onResume}
+          activeOpacity={0.85}
+          className="flex-1 flex-row items-center justify-center gap-2 rounded-lg py-2.5"
+          style={{ backgroundColor: accent }}>
+          <Camera color="#131316" size={15} />
+          <Text className="font-jetbrains text-xs font-bold text-[#131316]">
+            {scanned > 0 ? 'RESUME SCANNING' : 'START SCANNING'}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={onReset}
+          className="rounded-lg border px-4 py-2.5"
+          style={{ borderColor: `${accent}44` }}>
+          <Text className="font-jetbrains text-xs font-semibold text-[#a1a1aa]">RESET</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <Text className="mb-2.5 mt-1 font-jetbrains text-[10px] font-bold uppercase tracking-wider text-[#a1a1aa]">
+      {children}
+    </Text>
+  );
 }
 
 const INITIAL_BOXES: Box[] = [
@@ -451,15 +539,23 @@ export default function TabOneScreen() {
       {toast && (
         <View
           style={{ zIndex: 999 }}
-          className={`absolute left-4 right-4 top-12 flex-row items-center gap-2.5 rounded-lg border p-3 ${
+          className={`absolute left-4 right-4 top-12 flex-row items-center gap-2.5 rounded-xl border p-3 ${
             toast.type === 'success'
               ? 'border-[#22c55e] bg-[#22c55e]/10'
               : toast.type === 'error'
                 ? 'border-[#ef4444] bg-[#ef4444]/10'
                 : innerCardBgClass
           }`}>
-          {toast.type === 'success' && <Check color="#22c55e" size={18} />}
-          {toast.type === 'error' && <AlertTriangle color="#ef4444" size={18} />}
+          {toast.type === 'success' && (
+            <View className="h-7 w-7 items-center justify-center rounded-full bg-[#22c55e]/20">
+              <Check color="#22c55e" size={15} />
+            </View>
+          )}
+          {toast.type === 'error' && (
+            <View className="h-7 w-7 items-center justify-center rounded-full bg-[#ef4444]/20">
+              <AlertTriangle color="#ef4444" size={15} />
+            </View>
+          )}
           <Text className={`flex-1 font-hanken text-xs font-semibold ${textPrimaryClass}`}>
             {toast.text}
           </Text>
@@ -474,14 +570,22 @@ export default function TabOneScreen() {
         <View className="flex-1">
           {/* Custom Header */}
           <View
-            className={`flex-row items-center justify-between border-b px-4 py-4 ${headerBgClass}`}>
-            <View className="flex-row items-center gap-3">
-              <Text className={`font-hanken text-lg font-bold ${textPrimaryClass}`}>
-                Receiving Dashboard
-              </Text>
+            className={`flex-row items-center justify-between border-b px-4 py-3.5 ${headerBgClass}`}>
+            <View className="flex-row items-center gap-2.5">
+              <View className="h-9 w-9 items-center justify-center rounded-xl bg-[#e5005c]/15">
+                <Warehouse color="#e5005c" size={20} />
+              </View>
+              <View>
+                <Text className={`font-hanken text-lg font-bold ${textPrimaryClass}`}>
+                  Receiving Dashboard
+                </Text>
+                <Text className={`font-jetbrains text-[9px] font-semibold ${textSecondaryClass}`}>
+                  MANIFEST INTAKE & SCAN SESSIONS
+                </Text>
+              </View>
             </View>
             <View
-              className={`max-w-[200px] flex-row items-center gap-1.5 rounded-lg border px-2.5 py-1.5 ${innerCardBgClass}`}>
+              className={`max-w-[190px] flex-row items-center gap-1.5 rounded-lg border px-2.5 py-1.5 ${innerCardBgClass}`}>
               <Store color="#e5005c" size={14} />
               <Text
                 className={`font-jetbrains text-xs font-bold ${textPrimaryClass}`}
@@ -492,123 +596,81 @@ export default function TabOneScreen() {
           </View>
 
           <ScrollView className="flex-1 px-4 py-4" showsVerticalScrollIndicator={false}>
-            {/* Active Box (CID) Session Resume Banner (This from @scanningBox.tsx)*/}
+            {/* ACTIVE SESSIONS */}
+            {(savedProgress || savedItemProgress) && <SectionLabel>Active Sessions</SectionLabel>}
+
+            {/* Active Box (CID) Session Resume Banner */}
             {savedProgress && savedProgress.total > 0 && (
-              <View className="mb-6 rounded-xl border border-[#ff80ab]/40 bg-[#ff80ab]/10 p-4">
-                <View className="mb-2 flex-row items-center justify-between">
-                  <View className="flex-row items-center gap-2">
-                    <BoxIcon color="#ff80ab" size={20} />
-                    <Text className={`font-hanken text-sm font-bold ${textPrimaryClass}`}>
-                      Active Box (CID) Session
-                    </Text>
-                  </View>
-                  <Text className="font-jetbrains text-xs font-bold text-[#ff80ab]">
-                    {savedProgress.scanned}/{savedProgress.total} Scanned
-                  </Text>
-                </View>
-
-                <Text className={`mb-3 font-hanken text-xs ${textSecondaryClass}`}>
-                  {savedProgress.scanned === savedProgress.total
-                    ? 'All boxes in manifest scanned! Resume or reset session anytime.'
-                    : 'Saved scanning progress detected. Resume scanning right where you left off.'}
-                </Text>
-
-                <View className="flex-row items-center gap-2">
-                  <TouchableOpacity
-                    onPress={() => navigation.navigate('ScanningBox' as never)}
-                    className="flex-1 flex-row items-center justify-center gap-2 rounded-lg bg-[#ff80ab] py-2.5">
-                    <Camera color="#131316" size={16} />
-                    <Text className="font-jetbrains text-xs font-bold text-[#131316]">
-                      {savedProgress.scanned > 0 ? 'RESUME SCANNING' : 'START SCANNING'}
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    onPress={async () => {
-                      await AsyncStorage.removeItem(SCANNED_CIDS_KEY);
-                      setSavedProgress((prev) => (prev ? { ...prev, scanned: 0 } : null));
-                      showToast('Scanning progress reset', 'info');
-                    }}
-                    className={`rounded-lg border px-3.5 py-2.5 ${innerCardBgClass}`}>
-                    <Text className={`font-jetbrains text-xs font-semibold ${textSecondaryClass}`}>
-                      RESET
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
+              <SessionBanner
+                title="Box (CID) Session"
+                scanned={savedProgress.scanned}
+                total={savedProgress.total}
+                icon={BoxIcon}
+                accent="#ff80ab"
+                onResume={() => navigation.navigate('ScanningBox' as never)}
+                onReset={async () => {
+                  await AsyncStorage.removeItem(SCANNED_CIDS_KEY);
+                  setSavedProgress((prev) => (prev ? { ...prev, scanned: 0 } : null));
+                  showToast('Scanning progress reset', 'info');
+                }}
+              />
             )}
 
-            {/* Active Item Session Resume Banner (from @scanningItem.tsx) */}
+            {/* Active Item Session Resume Banner */}
             {savedItemProgress && savedItemProgress.total > 0 && (
-              <View className="mb-6 rounded-xl border border-[#e5005c]/40 bg-[#e5005c]/10 p-4">
-                <View className="mb-2 flex-row items-center justify-between">
-                  <View className="flex-row items-center gap-2">
-                    <Scan color="#e5005c" size={20} />
-                    <Text className={`font-hanken text-sm font-bold ${textPrimaryClass}`}>
-                      Active Item Session
-                    </Text>
-                  </View>
-                  <Text className="font-jetbrains text-xs font-bold text-[#e5005c]">
-                    {savedItemProgress.scanned}/{savedItemProgress.total} Scanned
-                  </Text>
-                </View>
-
-                <Text className={`mb-3 font-hanken text-xs ${textSecondaryClass}`}>
-                  {savedItemProgress.scanned === savedItemProgress.total
-                    ? 'All items in manifest scanned! Resume or reset session anytime.'
-                    : 'Saved item scanning progress detected. Resume scanning right where you left off.'}
-                </Text>
-
-                <View className="flex-row items-center gap-2">
-                  <TouchableOpacity
-                    onPress={() => navigation.navigate('ScanningItem' as never)}
-                    className="flex-1 flex-row items-center justify-center gap-2 rounded-lg bg-[#e5005c] py-2.5">
-                    <Camera color="#ffffff" size={16} />
-                    <Text className="font-jetbrains text-xs font-bold text-[#ffffff]">
-                      {savedItemProgress.scanned > 0 ? 'RESUME SCANNING' : 'START SCANNING'}
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    onPress={async () => {
-                      await AsyncStorage.removeItem(SCANNED_ITEMS_KEY);
-                      setSavedItemProgress((prev) => (prev ? { ...prev, scanned: 0 } : null));
-                      showToast('Item scanning progress reset', 'info');
-                    }}
-                    className={`rounded-lg border px-3.5 py-2.5 ${innerCardBgClass}`}>
-                    <Text className={`font-jetbrains text-xs font-semibold ${textSecondaryClass}`}>
-                      RESET
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
+              <SessionBanner
+                title="Item Scan Session"
+                scanned={savedItemProgress.scanned}
+                total={savedItemProgress.total}
+                icon={Scan}
+                accent="#e5005c"
+                onResume={() => navigation.navigate('ScanningItem' as never)}
+                onReset={async () => {
+                  await AsyncStorage.removeItem(SCANNED_ITEMS_KEY);
+                  setSavedItemProgress((prev) => (prev ? { ...prev, scanned: 0 } : null));
+                  showToast('Item scanning progress reset', 'info');
+                }}
+              />
             )}
+
+            {/* GET STARTED */}
+            <SectionLabel>Get Started</SectionLabel>
 
             {/* Step 1: Upload Box Manifest */}
             <TouchableOpacity
               onPress={handleUpload}
               disabled={isUploading}
-              className={`mb-4 items-center justify-center rounded-lg border border-dashed p-8 ${innerCardBgClass}`}>
-              {isUploading ? (
-                <View
-                  className={`mb-4 h-14 w-14 items-center justify-center rounded-lg border ${innerCardBgClass}`}>
-                  <ActivityIndicator color="#e5005c" size="small" />
+              activeOpacity={0.8}
+              className={`mb-3 flex-row items-center gap-3.5 rounded-xl border border-dashed p-4 ${innerCardBgClass}`}>
+              <View className="h-14 w-14 items-center justify-center rounded-xl bg-[#ff80ab]/15">
+                {isUploading ? (
+                  <ActivityIndicator color="#ff80ab" size="small" />
+                ) : (
+                  <BoxIcon color="#ff80ab" size={26} />
+                )}
+              </View>
+              <View className="flex-1">
+                <View className="mb-0.5 flex-row items-center gap-2">
+                  <Text className="font-jetbrains text-[9px] font-bold text-[#ff80ab]">STEP 1</Text>
+                  <View className="rounded border border-[#3f3f46]/50 px-1.5 py-0.5">
+                    <Text className="font-jetbrains text-[8px] font-bold text-[#a1a1aa]">.CSV</Text>
+                  </View>
                 </View>
-              ) : (
-                <View
-                  className={`mb-4 h-14 w-14 items-center justify-center rounded-lg border ${innerCardBgClass}`}>
-                  <BoxIcon color="#e5005c" size={24} />
-                </View>
-              )}
-              <Text className={`mb-1 font-hanken text-base font-bold ${textPrimaryClass}`}>
-                Step 1: Upload Box Manifest
-              </Text>
-              <Text
-                className={`mb-5 max-w-[250px] text-center font-hanken text-xs ${textSecondaryClass}`}>
-                Upload CSV containing box-level data
-              </Text>
-              <View className={`rounded border px-3 py-1.5 ${innerCardBgClass}`}>
-                <Text className={`font-mono text-[10px] ${textSecondaryClass}`}>.CSV</Text>
+                <Text className={`font-hanken text-sm font-bold ${textPrimaryClass}`}>
+                  Box Manifest
+                </Text>
+                <Text
+                  className={`mt-0.5 font-hanken text-[11px] ${textSecondaryClass}`}
+                  numberOfLines={1}>
+                  CID NO column · box-level scanning
+                </Text>
+              </View>
+              <View className="h-8 w-8 items-center justify-center rounded-full bg-[#ff80ab]/15">
+                {isUploading ? (
+                  <ActivityIndicator color="#ff80ab" size="small" />
+                ) : (
+                  <ChevronRight color="#ff80ab" size={16} />
+                )}
               </View>
             </TouchableOpacity>
 
@@ -616,27 +678,37 @@ export default function TabOneScreen() {
             <TouchableOpacity
               onPress={handleUploadScanningData}
               disabled={isUploading}
-              className={`mb-8 items-center justify-center rounded-lg border border-dashed p-8 ${innerCardBgClass}`}>
-              {isUploading ? (
-                <View
-                  className={`mb-4 h-14 w-14 items-center justify-center rounded-lg border ${innerCardBgClass}`}>
+              activeOpacity={0.8}
+              className={`flex-row items-center gap-3.5 rounded-xl border border-dashed p-4 ${innerCardBgClass}`}>
+              <View className="h-14 w-14 items-center justify-center rounded-xl bg-[#e5005c]/15">
+                {isUploading ? (
                   <ActivityIndicator color="#e5005c" size="small" />
+                ) : (
+                  <FileText color="#e5005c" size={24} />
+                )}
+              </View>
+              <View className="flex-1">
+                <View className="mb-0.5 flex-row items-center gap-2">
+                  <Text className="font-jetbrains text-[9px] font-bold text-[#e5005c]">STEP 2</Text>
+                  <View className="rounded border border-[#3f3f46]/50 px-1.5 py-0.5">
+                    <Text className="font-jetbrains text-[8px] font-bold text-[#a1a1aa]">.CSV</Text>
+                  </View>
                 </View>
-              ) : (
-                <View
-                  className={`mb-4 h-14 w-14 items-center justify-center rounded-lg border ${innerCardBgClass}`}>
-                  <Scan color="#e5005c" size={24} />
-                </View>
-              )}
-              <Text className={`mb-1 font-hanken text-base font-bold ${textPrimaryClass}`}>
-                Step 2: Upload Scanning Items
-              </Text>
-              <Text
-                className={`mb-5 max-w-[250px] text-center font-hanken text-xs ${textSecondaryClass}`}>
-                Upload CSV containing item-level scan logs
-              </Text>
-              <View className={`rounded border px-3 py-1.5 ${innerCardBgClass}`}>
-                <Text className={`font-mono text-[10px] ${textSecondaryClass}`}>.CSV</Text>
+                <Text className={`font-hanken text-sm font-bold ${textPrimaryClass}`}>
+                  Scanning Items
+                </Text>
+                <Text
+                  className={`mt-0.5 font-hanken text-[11px] ${textSecondaryClass}`}
+                  numberOfLines={1}>
+                  CID · TRF · UPC · SKU · DESCRIPTION · QTY
+                </Text>
+              </View>
+              <View className="h-8 w-8 items-center justify-center rounded-full bg-[#e5005c]/15">
+                {isUploading ? (
+                  <ActivityIndicator color="#e5005c" size="small" />
+                ) : (
+                  <ChevronRight color="#e5005c" size={16} />
+                )}
               </View>
             </TouchableOpacity>
           </ScrollView>

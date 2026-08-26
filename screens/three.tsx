@@ -11,7 +11,6 @@ import {
   Calendar,
   ShieldCheck,
   Check,
-  Database,
   RefreshCw,
   Sparkles,
   FileWarning,
@@ -21,6 +20,14 @@ import * as Haptics from 'expo-haptics';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../context/auth';
 import { useTheme, type ThemeMode } from '../context/theme';
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <Text className="mb-2.5 mt-1 font-jetbrains text-[10px] font-bold uppercase tracking-wider text-[#a1a1aa]">
+      {children}
+    </Text>
+  );
+}
 
 export default function SettingsScreen() {
   const navigation = useNavigation();
@@ -59,6 +66,12 @@ export default function SettingsScreen() {
   const textPrimaryClass = isDark ? 'text-[#fafafa]' : 'text-[#18181b]';
   const textSecondaryClass = isDark ? 'text-[#a1a1aa]' : 'text-[#71717a]';
 
+  const THEME_OPTIONS = [
+    { mode: 'dark', label: 'Dark Mode', sub: 'Obsidian Dark', badge: 'ACTIVE', Icon: Moon, idleBg: '#2a2a2d' },
+    { mode: 'light', label: 'Light Mode', sub: 'Crisp Daylight', badge: 'ACTIVE', Icon: Sun, idleBg: '#e4e4e7' },
+    { mode: 'system', label: 'System', sub: 'Auto Match', badge: 'AUTO', Icon: Laptop, idleBg: '#2a2a2d' },
+  ] as const;
+
   return (
     <SafeAreaView className={`flex-1 ${bgClass}`}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
@@ -82,120 +95,70 @@ export default function SettingsScreen() {
 
       <ScrollView className="flex-1 px-4 py-4" showsVerticalScrollIndicator={false}>
         {/* Appearance & Color Theme Mode Selection */}
-        <Text
-          className={`mb-2.5 font-jetbrains text-[10px] font-bold uppercase tracking-wider ${textSecondaryClass}`}>
-          APPEARANCE & THEME MODE
-        </Text>
+        <SectionLabel>Appearance & Theme Mode</SectionLabel>
 
         <View className="mb-6 flex-row gap-2.5">
-          {/* Dark Theme Option */}
-          <TouchableOpacity
-            onPress={() => handleThemeChange('dark')}
-            activeOpacity={0.8}
-            className={`flex-1 items-center justify-center rounded-xl border p-3.5 shadow-sm ${
-              themeMode === 'dark' ? 'border-[#e5005c] bg-[#e5005c]/15' : cardBgClass
-            }`}>
-            <View
-              className={`mb-2 h-10 w-10 items-center justify-center rounded-full ${
-                themeMode === 'dark' ? 'bg-[#e5005c]' : 'bg-[#2a2a2d]'
-              }`}>
-              <Moon color={themeMode === 'dark' ? '#ffffff' : '#a1a1aa'} size={20} />
-            </View>
-            <Text
-              className={`font-jetbrains text-xs font-bold ${
-                themeMode === 'dark' ? 'text-[#e5005c]' : textPrimaryClass
-              }`}>
-              Dark Mode
-            </Text>
-            <Text className={`mt-0.5 font-jetbrains text-[9px] ${textSecondaryClass}`}>
-              Obsidian Dark
-            </Text>
-            {themeMode === 'dark' && (
-              <View className="mt-2 flex-row items-center gap-1 rounded-full bg-[#e5005c]/20 px-2 py-0.5">
-                <Check color="#e5005c" size={12} />
-                <Text className="font-jetbrains text-[9px] font-bold text-[#e5005c]">ACTIVE</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-
-          {/* Light Theme Option */}
-          <TouchableOpacity
-            onPress={() => handleThemeChange('light')}
-            activeOpacity={0.8}
-            className={`flex-1 items-center justify-center rounded-xl border p-3.5 shadow-sm ${
-              themeMode === 'light' ? 'border-[#e5005c] bg-[#e5005c]/15' : cardBgClass
-            }`}>
-            <View
-              className={`mb-2 h-10 w-10 items-center justify-center rounded-full ${
-                themeMode === 'light' ? 'bg-[#e5005c]' : 'bg-[#e4e4e7]'
-              }`}>
-              <Sun color={themeMode === 'light' ? '#ffffff' : '#52525b'} size={20} />
-            </View>
-            <Text
-              className={`font-jetbrains text-xs font-bold ${
-                themeMode === 'light' ? 'text-[#e5005c]' : textPrimaryClass
-              }`}>
-              Light Mode
-            </Text>
-            <Text className={`mt-0.5 font-jetbrains text-[9px] ${textSecondaryClass}`}>
-              Crisp Daylight
-            </Text>
-            {themeMode === 'light' && (
-              <View className="mt-2 flex-row items-center gap-1 rounded-full bg-[#e5005c]/20 px-2 py-0.5">
-                <Check color="#e5005c" size={12} />
-                <Text className="font-jetbrains text-[9px] font-bold text-[#e5005c]">ACTIVE</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-
-          {/* System Default Theme Option */}
-          <TouchableOpacity
-            onPress={() => handleThemeChange('system')}
-            activeOpacity={0.8}
-            className={`flex-1 items-center justify-center rounded-xl border p-3.5 shadow-sm ${
-              themeMode === 'system' ? 'border-[#e5005c] bg-[#e5005c]/15' : cardBgClass
-            }`}>
-            <View
-              className={`mb-2 h-10 w-10 items-center justify-center rounded-full ${
-                themeMode === 'system' ? 'bg-[#e5005c]' : 'bg-[#2a2a2d]'
-              }`}>
-              <Laptop color={themeMode === 'system' ? '#ffffff' : '#a1a1aa'} size={20} />
-            </View>
-            <Text
-              className={`font-jetbrains text-xs font-bold ${
-                themeMode === 'system' ? 'text-[#e5005c]' : textPrimaryClass
-              }`}>
-              System
-            </Text>
-            <Text className={`mt-0.5 font-jetbrains text-[9px] ${textSecondaryClass}`}>
-              Auto Match
-            </Text>
-            {themeMode === 'system' && (
-              <View className="mt-2 flex-row items-center gap-1 rounded-full bg-[#e5005c]/20 px-2 py-0.5">
-                <Check color="#e5005c" size={12} />
-                <Text className="font-jetbrains text-[9px] font-bold text-[#e5005c]">AUTO</Text>
-              </View>
-            )}
-          </TouchableOpacity>
+          {THEME_OPTIONS.map(({ mode, label, sub, badge, Icon, idleBg }) => {
+            const isActive = themeMode === mode;
+            return (
+              <TouchableOpacity
+                key={mode}
+                onPress={() => handleThemeChange(mode)}
+                activeOpacity={0.8}
+                className={`relative flex-1 items-center justify-center rounded-xl border p-3.5 ${
+                  isActive ? 'border-[#e5005c] bg-[#e5005c]/15' : cardBgClass
+                }`}>
+                {isActive && (
+                  <View className="absolute right-2 top-2 h-4 w-4 items-center justify-center rounded-full bg-[#e5005c]">
+                    <Check color="#ffffff" size={10} />
+                  </View>
+                )}
+                <View
+                  className="mb-2.5 h-11 w-11 items-center justify-center rounded-xl"
+                  style={{ backgroundColor: isActive ? '#e5005c' : idleBg }}>
+                  <Icon color={isActive ? '#ffffff' : mode === 'light' ? '#52525b' : '#a1a1aa'} size={20} />
+                </View>
+                <Text
+                  className={`font-jetbrains text-[11px] font-bold ${
+                    isActive ? 'text-[#e5005c]' : textPrimaryClass
+                  }`}>
+                  {label}
+                </Text>
+                <Text className={`mt-0.5 font-jetbrains text-[9px] ${textSecondaryClass}`}>
+                  {sub}
+                </Text>
+                <View
+                  className={`mt-2 rounded-full px-2 py-0.5 ${isActive ? 'bg-[#e5005c]/20' : 'bg-transparent'}`}>
+                  <Text
+                    className={`font-jetbrains text-[8px] font-bold tracking-wider ${
+                      isActive ? 'text-[#e5005c]' : 'text-transparent'
+                    }`}>
+                    {badge}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
         {/* Active Session Info */}
-        <Text
-          className={`mb-2.5 font-jetbrains text-[10px] font-bold uppercase tracking-wider ${textSecondaryClass}`}>
-          ACTIVE OPERATOR SESSION
-        </Text>
+        <SectionLabel>Active Operator Session</SectionLabel>
 
         <View className={`mb-6 overflow-hidden rounded-xl border ${cardBgClass}`}>
           {/* Operator ID Row */}
           <View
             className={`flex-row items-center justify-between border-b p-3.5 ${innerRowBgClass}`}>
             <View className="flex-row items-center gap-2.5">
-              <User color="#e5005c" size={18} />
-              <Text className={`font-hanken text-xs font-semibold ${textSecondaryClass}`}>
+              <View className="h-8 w-8 items-center justify-center rounded-lg bg-[#e5005c]/12">
+                <User color="#e5005c" size={15} />
+              </View>
+              <Text className="font-jetbrains text-[9px] font-bold uppercase tracking-wider text-[#a1a1aa]">
                 OPERATOR USER ID
               </Text>
             </View>
-            <Text className={`font-jetbrains text-xs font-bold ${textPrimaryClass}`}>
+            <Text
+              className={`max-w-[45%] text-right font-jetbrains text-xs font-bold ${textPrimaryClass}`}
+              numberOfLines={1}>
               {operatorId || 'OPERATOR'}
             </Text>
           </View>
@@ -204,12 +167,16 @@ export default function SettingsScreen() {
           <View
             className={`flex-row items-center justify-between border-b p-3.5 ${innerRowBgClass}`}>
             <View className="flex-row items-center gap-2.5">
-              <Store color="#e5005c" size={18} />
-              <Text className={`font-hanken text-xs font-semibold ${textSecondaryClass}`}>
+              <View className="h-8 w-8 items-center justify-center rounded-lg bg-[#e5005c]/12">
+                <Store color="#e5005c" size={15} />
+              </View>
+              <Text className="font-jetbrains text-[9px] font-bold uppercase tracking-wider text-[#a1a1aa]">
                 STORE CODE & NAME
               </Text>
             </View>
-            <Text className={`font-jetbrains text-xs font-bold ${textPrimaryClass}`}>
+            <Text
+              className={`max-w-[50%] text-right font-jetbrains text-xs font-bold ${textPrimaryClass}`}
+              numberOfLines={1}>
               {storeCode || 'N/A'} {storeName ? `(${storeName})` : ''}
             </Text>
           </View>
@@ -217,34 +184,40 @@ export default function SettingsScreen() {
           {/* Login Date Row */}
           <View className={`flex-row items-center justify-between p-3.5 ${innerRowBgClass}`}>
             <View className="flex-row items-center gap-2.5">
-              <Calendar color="#e5005c" size={18} />
-              <Text className={`font-hanken text-xs font-semibold ${textSecondaryClass}`}>
+              <View className="h-8 w-8 items-center justify-center rounded-lg bg-[#e5005c]/12">
+                <Calendar color="#e5005c" size={15} />
+              </View>
+              <Text className="font-jetbrains text-[9px] font-bold uppercase tracking-wider text-[#a1a1aa]">
                 SESSION WORK DATE
               </Text>
             </View>
-            <Text className={`font-jetbrains text-xs font-bold ${textPrimaryClass}`}>
+            <Text
+              className={`max-w-[50%] text-right font-jetbrains text-xs font-bold ${textPrimaryClass}`}
+              numberOfLines={1}>
               {loginDate || new Date().toLocaleDateString()}
             </Text>
           </View>
         </View>
 
         {/* Terminal Status & Manifest Database */}
-        <Text
-          className={`mb-2.5 font-jetbrains text-[10px] font-bold uppercase tracking-wider ${textSecondaryClass}`}>
-          TERMINAL STATUS & MANIFEST DATABASE
-        </Text>
+        <SectionLabel>Terminal Status & Database</SectionLabel>
 
         <View className={`mb-6 rounded-xl border p-4 ${cardBgClass}`}>
           <View className="mb-3 flex-row items-center justify-between border-b border-[#3f3f46]/30 pb-3">
             <View className="flex-row items-center gap-2.5">
-              <ShieldCheck color="#22c55e" size={20} />
+              <View className="h-9 w-9 items-center justify-center rounded-xl bg-[#22c55e]/15">
+                <ShieldCheck color="#22c55e" size={18} />
+              </View>
               <View>
                 <Text className={`font-hanken text-xs font-bold ${textPrimaryClass}`}>
                   Central Sync Status
                 </Text>
-                <Text className="font-jetbrains text-[10px] text-[#22c55e]">
-                  🟢 CONNECTED & AUTHENTICATED
-                </Text>
+                <View className="mt-0.5 flex-row items-center gap-1.5">
+                  <View className="h-1.5 w-1.5 rounded-full bg-[#22c55e]" />
+                  <Text className="font-jetbrains text-[10px] font-bold text-[#22c55e]">
+                    CONNECTED & AUTHENTICATED
+                  </Text>
+                </View>
               </View>
             </View>
 
@@ -252,29 +225,33 @@ export default function SettingsScreen() {
               onPress={handleRefresh}
               disabled={isRefreshing}
               className="flex-row items-center gap-1.5 rounded-lg border border-[#3f3f46] bg-[#2a2a2d] px-3 py-1.5 active:bg-[#3f3f46]">
-              <RefreshCw color="#fafafa" size={14} className={isRefreshing ? 'animate-spin' : ''} />
+              <RefreshCw color="#fafafa" size={14} />
               <Text className="font-jetbrains text-xs font-bold text-[#fafafa]">
-                {isRefreshing ? 'SYNCING...' : 'SYNC'}
+                {isRefreshing ? 'SYNCING…' : 'SYNC'}
               </Text>
             </TouchableOpacity>
           </View>
 
-          <View className="flex-row items-center justify-between">
-            <View className="flex-row items-center gap-2">
-              <Database color="#a1a1aa" size={16} />
-              <Text className={`font-jetbrains text-xs ${textSecondaryClass}`}>
-                Scanner Engine:{' '}
-                <Text className="font-bold text-[#e5005c]">v4.0.0 (Expo SDK 56)</Text>
+          <View className="flex-row gap-2">
+            <View className={`flex-1 rounded-lg px-2.5 py-2 ${innerRowBgClass}`}>
+              <Text className={`font-jetbrains text-[8px] font-bold uppercase tracking-wider ${textSecondaryClass}`}>
+                Scanner Engine
+              </Text>
+              <Text className="mt-0.5 font-jetbrains text-xs font-bold text-[#e5005c]">v4.0.0</Text>
+            </View>
+            <View className={`flex-1 rounded-lg px-2.5 py-2 ${innerRowBgClass}`}>
+              <Text className={`font-jetbrains text-[8px] font-bold uppercase tracking-wider ${textSecondaryClass}`}>
+                Runtime
+              </Text>
+              <Text className={`mt-0.5 font-jetbrains text-xs font-bold ${textPrimaryClass}`}>
+                Expo SDK 56
               </Text>
             </View>
           </View>
         </View>
 
         {/* Damage Lost Record (DLR) Intake */}
-        <Text
-          className={`mb-2.5 font-jetbrains text-[10px] font-bold uppercase tracking-wider ${textSecondaryClass}`}>
-          DAMAGE & LOSS TOOLS
-        </Text>
+        <SectionLabel>Damage & Loss Tools</SectionLabel>
 
         <TouchableOpacity
           onPress={() => {
@@ -285,20 +262,22 @@ export default function SettingsScreen() {
           }}
           activeOpacity={0.8}
           className={`mb-6 flex-row items-center justify-between rounded-xl border p-4 ${cardBgClass}`}>
-          <View className="flex-row items-center gap-2.5">
+          <View className="flex-1 flex-row items-center gap-2.5">
             <View className="h-10 w-10 items-center justify-center rounded-xl bg-[#e5005c]/15">
               <FileWarning color="#e5005c" size={20} />
             </View>
-            <View>
-              <Text className={`font-hanken text-xs font-bold ${textPrimaryClass}`}>
+            <View className="flex-1">
+              <Text className={`font-hanken text-sm font-bold ${textPrimaryClass}`}>
                 Damage Lost Record
               </Text>
               <Text className="font-jetbrains text-[10px] text-[#e5005c]">
-                SCAN · REASON · 3 PHOTOS · SYNC
+                SCAN · REASON · QTY · 3 PHOTOS · SYNC
               </Text>
             </View>
           </View>
-          <ChevronRight color="#a1a1aa" size={18} />
+          <View className="ml-2 h-8 w-8 items-center justify-center rounded-full bg-[#e5005c]/15">
+            <ChevronRight color="#e5005c" size={16} />
+          </View>
         </TouchableOpacity>
 
         {/* Terminate Session (Log Out) Button */}
@@ -321,8 +300,10 @@ export default function SettingsScreen() {
             );
           }}
           activeOpacity={0.8}
-          className="mb-10 flex-row items-center justify-center gap-2 rounded-xl border border-[#ef4444]/40 bg-[#ef4444]/15 py-3.5 active:bg-[#ef4444]/25">
-          <LogOut color="#ef4444" size={18} />
+          className="mb-10 flex-row items-center justify-center gap-2.5 rounded-xl border border-[#ef4444]/40 bg-[#ef4444]/15 py-3.5 active:bg-[#ef4444]/25">
+          <View className="h-7 w-7 items-center justify-center rounded-full bg-[#ef4444]/20">
+            <LogOut color="#ef4444" size={14} />
+          </View>
           <Text className="font-jetbrains text-xs font-extrabold tracking-wider text-[#ef4444]">
             TERMINATE SESSION (LOG OUT)
           </Text>

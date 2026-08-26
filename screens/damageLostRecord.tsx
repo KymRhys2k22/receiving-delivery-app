@@ -30,6 +30,8 @@ import {
   CircleCheck,
   ClipboardList,
   Trash2,
+  Plus,
+  Minus,
 } from 'lucide-react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
@@ -453,6 +455,7 @@ export default function DamageLostRecordScreen({ embedded = false }: { embedded?
           product,
           reason: null,
           secondReason: null,
+          qty: 1,
           photos: {},
           uploadedUrls: {},
         };
@@ -505,6 +508,11 @@ export default function DamageLostRecordScreen({ embedded = false }: { embedded?
     if (!current) return;
     if (!current.reason) {
       showNotification('error', 'REASON REQUIRED', 'Select a defect reason before continuing');
+      feedback('error');
+      return;
+    }
+    if (!Number.isFinite(current.qty) || (current.qty ?? 0) < 1) {
+      showNotification('error', 'QTY REQUIRED', 'Enter a damaged quantity of at least 1');
       feedback('error');
       return;
     }
@@ -926,6 +934,45 @@ export default function DamageLostRecordScreen({ embedded = false }: { embedded?
               </Text>
             </TouchableOpacity>
           ) : null}
+
+          <Text
+            className={`mb-1.5 mt-4 font-jetbrains text-[10px] font-bold uppercase tracking-wider ${textSecondaryClass}`}>
+            QTY DAMAGED (REQUIRED)
+          </Text>
+          <View className="flex-row items-center gap-2">
+            <TouchableOpacity
+              onPress={() =>
+                updateDraft((record) => ({
+                  ...record,
+                  qty: Math.max(0, (record.qty ?? 0) - 1),
+                }))
+              }
+              className="h-11 w-11 items-center justify-center rounded-lg border border-[#3f3f46] bg-[#2a2a2d]">
+              <Minus color="#fafafa" size={18} />
+            </TouchableOpacity>
+            <TextInput
+              value={draft?.qty !== undefined ? String(draft.qty) : ''}
+              onChangeText={(text) => {
+                const digits = text.replace(/[^0-9]/g, '').slice(0, 6);
+                updateDraft((record) => ({
+                  ...record,
+                  qty: digits === '' ? 0 : parseInt(digits, 10),
+                }));
+              }}
+              keyboardType="number-pad"
+              className={`h-11 flex-1 rounded-lg border text-center font-jetbrains text-base font-bold ${textPrimaryClass} ${inputBgClass}`}
+            />
+            <TouchableOpacity
+              onPress={() =>
+                updateDraft((record) => ({
+                  ...record,
+                  qty: Math.min(999999, (record.qty ?? 0) + 1),
+                }))
+              }
+              className="h-11 w-11 items-center justify-center rounded-lg border border-[#3f3f46] bg-[#2a2a2d]">
+              <Plus color="#fafafa" size={18} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View className="flex-row items-center gap-3 px-0 py-4">
@@ -1251,6 +1298,17 @@ export default function DamageLostRecordScreen({ embedded = false }: { embedded?
           <View
             className={`mt-1.5 flex-row items-center justify-between rounded-lg px-3 py-2 ${isDark ? 'bg-[#131316]' : 'bg-[#fafafa]'}`}>
             <Text className={`font-jetbrains text-[10px] uppercase ${textSecondaryClass}`}>
+              Qty
+            </Text>
+            <Text
+              className="max-w-[65%] text-right font-jetbrains text-xs font-bold text-[#e5005c]"
+              numberOfLines={1}>
+              {draft?.qty ?? 1}
+            </Text>
+          </View>
+          <View
+            className={`mt-1.5 flex-row items-center justify-between rounded-lg px-3 py-2 ${isDark ? 'bg-[#131316]' : 'bg-[#fafafa]'}`}>
+            <Text className={`font-jetbrains text-[10px] uppercase ${textSecondaryClass}`}>
               Reason
             </Text>
             <Text
@@ -1538,6 +1596,7 @@ export default function DamageLostRecordScreen({ embedded = false }: { embedded?
                         className={`mt-0.5 font-hanken text-[10px] ${textSecondaryClass}`}
                         numberOfLines={1}>
                         {record.reason || 'No reason selected'} ·{' '}
+                        {record.qty ? `Qty ${record.qty} · ` : ''}
                         {formatRecordTime(record.createdAt)}
                       </Text>
                       {record.lastError ? (

@@ -51,6 +51,7 @@ export interface SupabaseDLRRecord {
   Price: string;
   Reason: string;
   SecondReason?: string | null;
+  Qty: number;
   'Store Code': string;
   image: string[];
 }
@@ -189,6 +190,7 @@ export interface DLRLocalRecord {
   product: ProductItem | null;
   reason: string | null;
   secondReason: string | null;
+  qty?: number;
   photos: Partial<Record<DLRPhotoKey, string>>;
   uploadedUrls: Partial<Record<DLRPhotoKey, string>>;
   lastError?: string | null;
@@ -385,6 +387,7 @@ export function buildSupabasePayload(record: DLRLocalRecord): SupabaseDLRRecord 
     Price: product.price,
     Reason: record.reason,
     SecondReason: record.secondReason || null,
+    Qty: typeof record.qty === 'number' && record.qty > 0 ? record.qty : 1,
     'Store Code': record.storeCode || '',
     image: [quantityUrl, damageUrl, barcodeUrl],
   };
