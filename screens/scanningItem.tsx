@@ -33,6 +33,10 @@ import {
   RotateCcw,
   Download,
   ArrowUpDown,
+  Bluetooth,
+  Calendar as CalendarIcon,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
@@ -43,7 +47,12 @@ import * as XLSX from 'xlsx';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../context/auth';
 import { useTheme } from '../context/theme';
-import { MANIFEST_ITEMS_KEY, SCANNED_ITEMS_KEY, type ItemManifestRecord } from '../utils/storage';
+import {
+  MANIFEST_ITEMS_KEY,
+  SCANNED_ITEMS_KEY,
+  ITEM_EXPIRY_DATES_KEY,
+  type ItemManifestRecord,
+} from '../utils/storage';
 
 const playScanFeedback = async (type: 'success' | 'warning' | 'error') => {
   // 1. Tactile Haptic Vibration Feedback
@@ -124,6 +133,30 @@ const playScanFeedback = async (type: 'success' | 'warning' | 'error') => {
       return;
     }
   } catch {}
+};
+
+const MONTH_NAMES = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+
+const getOneYearAheadDate = () => {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() + 1);
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
 };
 
 function GhostItemImage({ upc }: { upc?: string }) {
@@ -211,6 +244,41 @@ export default function ScanningItemScreen() {
   const [scannedItemModal, setScannedItemModal] = useState<ItemManifestRecord | null>(null);
   const [qtyInputModalValue, setQtyInputModalValue] = useState<string>('1');
 
+  // Expiry date states for items under CID "LOCAL"
+  const [expiryDateMap, setExpiryDateMap] = useState<Record<string, string>>({});
+  const expiryDateMapRef = useRef<Record<string, string>>({});
+  const [expiryInputModalValue, setExpiryInputModalValue] = useState<string>('');
+  const [showCalendarModal, setShowCalendarModal] = useState<boolean>(false);
+  const [calendarViewYear, setCalendarViewYear] = useState<number>(
+    () => new Date().getFullYear() + 1
+  );
+  const [calendarViewMonth, setCalendarViewMonth] = useState<number>(() => new Date().getMonth());
+
+  useEffect(() => {
+    expiryDateMapRef.current = expiryDateMap;
+  }, [expiryDateMap]);
+
+  const openItemModalWithDefaults = useCallback(
+    (item: ItemManifestRecord) => {
+      setScannedItemModal(item);
+      const currentQty = scannedMapRef.current[item.id] || 0;
+      setQtyInputModalValue(String(currentQty > 0 ? currentQty : item.qty));
+
+      const isLocalCid = (item.cid || '').trim().toUpperCase() === 'LOCAL';
+      if (isLocalCid) {
+        const existingExp = expiryDateMapRef.current[item.id] || expiryDateMap[item.id];
+        // Default blank unless previously set by operator
+        setExpiryInputModalValue(existingExp || '');
+        const nextYear = new Date().getFullYear() + 1;
+        setCalendarViewYear(nextYear);
+        setCalendarViewMonth(new Date().getMonth());
+      } else {
+        setExpiryInputModalValue('');
+      }
+    },
+    [expiryDateMap]
+  );
+
   // State for choosing between multiple matching CIDs for a scanned barcode
   const [multipleCidMatches, setMultipleCidMatches] = useState<{
     barcode: string;
@@ -219,6 +287,36 @@ export default function ScanningItemScreen() {
 
   // Full screen tabs mode (covers camera when swiped up)
   const [isFullScreenTabs, setIsFullScreenTabs] = useState(false);
+  const [bluetoothInput, setBluetoothInput] = useState('');
+  const bluetoothInputRef = useRef<TextInput>(null);
+  const liveBufferRef = useRef('');
+  const scanBufferTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [isBuffering, setIsBuffering] = useState(false);
+
+  const refocusBluetoothInput = useCallback(() => {
+    if (isFullScreenTabs) {
+      setTimeout(() => {
+        bluetoothInputRef.current?.focus();
+      }, 150);
+    }
+  }, [isFullScreenTabs]);
+
+  // Focus bluetooth input automatically whenever swiped up into full screen tabs
+  useEffect(() => {
+    if (isFullScreenTabs) {
+      setTimeout(() => {
+        bluetoothInputRef.current?.focus();
+      }, 100);
+    }
+  }, [isFullScreenTabs]);
+
+  useEffect(() => {
+    return () => {
+      if (scanBufferTimerRef.current) {
+        clearTimeout(scanBufferTimerRef.current);
+      }
+    };
+  }, []);
 
   const panResponder = useMemo(
     () =>
@@ -342,6 +440,7 @@ export default function ScanningItemScreen() {
         try {
           const storedManifest = await AsyncStorage.getItem(MANIFEST_ITEMS_KEY);
           const storedScanned = await AsyncStorage.getItem(SCANNED_ITEMS_KEY);
+          const storedExpiry = await AsyncStorage.getItem(ITEM_EXPIRY_DATES_KEY);
 
           if (storedManifest) {
             const parsedItems = JSON.parse(storedManifest) as ItemManifestRecord[];
@@ -351,6 +450,11 @@ export default function ScanningItemScreen() {
               ? (JSON.parse(storedScanned) as Record<string, number>)
               : {};
             setScannedMap(parsedScanned);
+
+            if (storedExpiry) {
+              const parsedExpiry = JSON.parse(storedExpiry) as Record<string, string>;
+              setExpiryDateMap(parsedExpiry);
+            }
           }
         } catch {
           // Storage read failed — leave list as-is
@@ -502,8 +606,7 @@ export default function ScanningItemScreen() {
         if (matchesInActiveCid.length === 1) {
           const matchedItem = matchesInActiveCid[0];
           const currentQty = scannedMapRef.current[matchedItem.id] || 0;
-          setScannedItemModal(matchedItem);
-          setQtyInputModalValue(String(currentQty > 0 ? currentQty : matchedItem.qty));
+          openItemModalWithDefaults(matchedItem);
           if (currentQty >= matchedItem.qty && matchedItem.qty > 0) {
             showNotification(
               'warning',
@@ -540,8 +643,7 @@ export default function ScanningItemScreen() {
         if (allMatches.length === 1) {
           const matchedItem = allMatches[0];
           const currentQty = scannedMapRef.current[matchedItem.id] || 0;
-          setScannedItemModal(matchedItem);
-          setQtyInputModalValue(String(currentQty > 0 ? currentQty : matchedItem.qty));
+          openItemModalWithDefaults(matchedItem);
           if (currentQty >= matchedItem.qty && matchedItem.qty > 0) {
             showNotification(
               'warning',
@@ -599,6 +701,64 @@ export default function ScanningItemScreen() {
       handleScan(manualInput);
       setManualInput('');
       setShowManual(false);
+      refocusBluetoothInput();
+    }
+  };
+
+  /** Handle physical Bluetooth scanner input and manual input in swipe up mode */
+  const handleBluetoothSubmit = (text?: string) => {
+    if (scanBufferTimerRef.current) {
+      clearTimeout(scanBufferTimerRef.current);
+      scanBufferTimerRef.current = null;
+    }
+    setIsBuffering(false);
+
+    const codeToScan = (typeof text === 'string' ? text : liveBufferRef.current || bluetoothInput)
+      .replace(/[\r\n\t]+/g, '')
+      .trim();
+
+    liveBufferRef.current = '';
+    setBluetoothInput('');
+
+    if (codeToScan) {
+      handleScan(codeToScan);
+    }
+    setTimeout(() => {
+      bluetoothInputRef.current?.focus();
+    }, 100);
+  };
+
+  const handleBluetoothTextChange = (text: string) => {
+    const cleanText = text.replace(/[\r\n\t]+/g, '');
+    liveBufferRef.current = cleanText;
+    setBluetoothInput(cleanText);
+
+    if (scanBufferTimerRef.current) {
+      clearTimeout(scanBufferTimerRef.current);
+      scanBufferTimerRef.current = null;
+    }
+
+    if (cleanText.trim().length > 0) {
+      setIsBuffering(true);
+
+      // 0.5-second (500ms) delay before auto-triggering to ensure all digits from physical Bluetooth scanner are fully streamed
+      scanBufferTimerRef.current = setTimeout(() => {
+        setIsBuffering(false);
+
+        const finalCode = (liveBufferRef.current || cleanText).trim();
+        liveBufferRef.current = '';
+        setBluetoothInput('');
+        scanBufferTimerRef.current = null;
+
+        if (finalCode) {
+          handleScan(finalCode);
+        }
+        setTimeout(() => {
+          bluetoothInputRef.current?.focus();
+        }, 100);
+      }, 500);
+    } else {
+      setIsBuffering(false);
     }
   };
 
@@ -618,6 +778,13 @@ export default function ScanningItemScreen() {
 
   // Extract unique CIDs from items manifest
   const availableCids = Array.from(new Set(items.map((i) => i.cid.trim()).filter(Boolean)));
+
+  // Filtered available CIDs for the search inside the CID modal
+  const filteredAvailableCids = useMemo(() => {
+    const q = cidInputText.trim().toUpperCase();
+    if (!q) return availableCids;
+    return availableCids.filter((cid) => cid.toUpperCase().includes(q));
+  }, [availableCids, cidInputText]);
 
   // Filter items by active CID filter
   const filteredByCid = selectedCidFilter
@@ -737,6 +904,7 @@ export default function ScanningItemScreen() {
           'BOX CID',
           'TRF NO',
           'DESCRIPTION',
+          'EXPIRY DATE',
           'MANIFEST QTY (EXPECTED)',
           'SCANNED QTY (RECEIVED)',
           'VARIANCE QTY',
@@ -780,6 +948,8 @@ export default function ScanningItemScreen() {
         }
 
         const varianceStr = variance > 0 ? `+${variance}` : String(variance);
+        const isLocalCid = (item.cid || '').trim().toUpperCase() === 'LOCAL';
+        const expiryDateVal = isLocalCid || expiryDateMap[item.id] ? (expiryDateMap[item.id] || '') : '';
 
         sheetRows.push([
           status,
@@ -788,6 +958,7 @@ export default function ScanningItemScreen() {
           item.cid || '',
           item.trf || '',
           item.description || '',
+          expiryDateVal,
           expectedQty,
           scannedQty,
           varianceStr,
@@ -807,6 +978,7 @@ export default function ScanningItemScreen() {
         { wch: 14 }, // CID
         { wch: 14 }, // TRF
         { wch: 32 }, // Description
+        { wch: 16 }, // Expiry Date
         { wch: 24 }, // Expected Qty
         { wch: 24 }, // Received Qty
         { wch: 16 }, // Variance
@@ -899,6 +1071,7 @@ export default function ScanningItemScreen() {
                 onPress={() => {
                   setShowManual(false);
                   setManualInput('');
+                  refocusBluetoothInput();
                 }}>
                 <X color={isDark ? '#a1a1aa' : '#71717a'} size={20} />
               </TouchableOpacity>
@@ -940,56 +1113,54 @@ export default function ScanningItemScreen() {
                   Filter Items by Box CID
                 </Text>
               </View>
-              <TouchableOpacity onPress={() => setShowCidModal(false)}>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowCidModal(false);
+                  refocusBluetoothInput();
+                }}>
                 <X color={isDark ? '#a1a1aa' : '#71717a'} size={20} />
               </TouchableOpacity>
             </View>
 
             <Text className={`mb-3 font-hanken text-xs ${textSecondaryClass}`}>
-              Type or select a Box CID. Scanning will be restricted exclusively to items under the
-              selected CID.
+              Search or select a Box CID to filter the item list and restrict scanning exclusively
+              to items in that CID.
             </Text>
 
-            {/* Manual CID Input */}
-            <View className="mb-3 flex-row items-center gap-2">
+            {/* Search CID NO. Input */}
+            <View
+              className={`mb-3 flex-row items-center rounded-lg border px-3 ${
+                isDark
+                  ? 'border-[#3f3f46] bg-[#131316]'
+                  : 'border-[#d4d4d8] bg-[#fafafa]'
+              }`}>
+              <Search color={isDark ? '#a1a1aa' : '#71717a'} size={16} />
               <TextInput
                 value={cidInputText}
                 onChangeText={setCidInputText}
-                placeholder="Enter CID NO..."
+                placeholder="Search CID NO..."
                 placeholderTextColor={isDark ? '#71717a' : '#a1a1aa'}
                 autoCapitalize="characters"
-                className={`h-11 flex-1 rounded-lg border px-3 font-jetbrains text-sm ${
-                  isDark
-                    ? 'border-[#3f3f46] bg-[#131316] text-[#fafafa]'
-                    : 'border-[#d4d4d8] bg-[#fafafa] text-[#18181b]'
+                autoCorrect={false}
+                className={`h-11 flex-1 px-2.5 font-jetbrains text-sm ${
+                  isDark ? 'text-[#fafafa]' : 'text-[#18181b]'
                 }`}
               />
-              <TouchableOpacity
-                onPress={() => {
-                  if (cidInputText.trim()) {
-                    const clean = cidInputText.trim();
-                    setSelectedCidFilter(clean);
-                    setCidInputText('');
-                    setShowCidModal(false);
-                    showNotification(
-                      'success',
-                      '🔒 CID FILTER APPLIED',
-                      `Filter locked to CID: ${clean}`
-                    );
-                  }
-                }}
-                activeOpacity={0.8}
-                className="h-11 items-center justify-center rounded-lg bg-[#e5005c] px-4 active:bg-[#c20050]">
-                <Text className="font-jetbrains text-xs font-bold text-[#ffffff]">APPLY</Text>
-              </TouchableOpacity>
+              {cidInputText.length > 0 && (
+                <TouchableOpacity onPress={() => setCidInputText('')} className="p-1">
+                  <X color={isDark ? '#a1a1aa' : '#71717a'} size={15} />
+                </TouchableOpacity>
+              )}
             </View>
 
             {/* All CIDs option */}
             <TouchableOpacity
               onPress={() => {
                 setSelectedCidFilter(null);
+                setCidInputText('');
                 setShowCidModal(false);
                 showNotification('info', 'UNFILTERED MODE', 'Showing items from all CIDs');
+                refocusBluetoothInput();
               }}
               className={`mb-3 flex-row items-center justify-between rounded-lg border p-3 ${
                 selectedCidFilter === null
@@ -1006,14 +1177,43 @@ export default function ScanningItemScreen() {
 
             <Text
               className={`mb-2 font-jetbrains text-[10px] font-bold uppercase tracking-wider ${textSecondaryClass}`}>
-              Available CIDs from Manifest ({availableCids.length})
+              {cidInputText.trim()
+                ? `Matching CIDs (${filteredAvailableCids.length})`
+                : `Available CIDs from Manifest (${availableCids.length})`}
             </Text>
 
-            {/* Available CIDs List */}
+            {/* Available / Search Filtered CIDs List */}
             <FlatList
-              data={availableCids}
+              data={filteredAvailableCids}
               keyExtractor={(cid) => cid}
               className="max-h-52"
+              ListEmptyComponent={
+                <View className="items-center justify-center py-5">
+                  <Text className={`font-jetbrains text-xs ${textSecondaryClass}`}>
+                    No matching Box CID found
+                  </Text>
+                  {cidInputText.trim().length > 0 && (
+                    <TouchableOpacity
+                      onPress={() => {
+                        const customCid = cidInputText.trim();
+                        setSelectedCidFilter(customCid);
+                        setCidInputText('');
+                        setShowCidModal(false);
+                        showNotification(
+                          'success',
+                          '🔒 CID FILTER APPLIED',
+                          `Filter locked to CID: ${customCid}`
+                        );
+                        refocusBluetoothInput();
+                      }}
+                      className="mt-2.5 rounded-lg bg-[#e5005c] px-3.5 py-2 active:bg-[#c20050]">
+                      <Text className="font-jetbrains text-xs font-bold text-[#ffffff]">
+                        Filter by Custom CID: "{cidInputText.trim()}"
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              }
               renderItem={({ item: cid }) => {
                 const isSelected =
                   selectedCidFilter?.trim().toUpperCase() === cid.trim().toUpperCase();
@@ -1025,8 +1225,10 @@ export default function ScanningItemScreen() {
                   <TouchableOpacity
                     onPress={() => {
                       setSelectedCidFilter(cid);
+                      setCidInputText('');
                       setShowCidModal(false);
                       showNotification('success', '🔒 CID LOCKED', `Filter locked to CID: ${cid}`);
+                      refocusBluetoothInput();
                     }}
                     className={`mb-2 flex-row items-center justify-between rounded-lg border p-3 ${
                       isSelected
@@ -1082,7 +1284,11 @@ export default function ScanningItemScreen() {
                   </Text>
                 </View>
               </View>
-              <TouchableOpacity onPress={() => setMultipleCidMatches(null)}>
+              <TouchableOpacity
+                onPress={() => {
+                  setMultipleCidMatches(null);
+                  refocusBluetoothInput();
+                }}>
                 <X color={isDark ? '#a1a1aa' : '#71717a'} size={20} />
               </TouchableOpacity>
             </View>
@@ -1166,10 +1372,7 @@ export default function ScanningItemScreen() {
                         onPress={() => {
                           const targetItem = item;
                           setMultipleCidMatches(null);
-                          setScannedItemModal(targetItem);
-                          setQtyInputModalValue(
-                            String(currentQty > 0 ? currentQty : targetItem.qty)
-                          );
+                          openItemModalWithDefaults(targetItem);
                           if (currentQty >= targetItem.qty && targetItem.qty > 0) {
                             showNotification(
                               'warning',
@@ -1233,7 +1436,10 @@ export default function ScanningItemScreen() {
                 />
 
                 <TouchableOpacity
-                  onPress={() => setMultipleCidMatches(null)}
+                  onPress={() => {
+                    setMultipleCidMatches(null);
+                    refocusBluetoothInput();
+                  }}
                   className={`mt-3 items-center justify-center rounded-lg border py-3 ${
                     isDark
                       ? 'border-[#3f3f46] bg-[#2a2a2d] active:bg-[#3f3f46]'
@@ -1260,7 +1466,11 @@ export default function ScanningItemScreen() {
               <Text className={`font-hanken text-base font-bold ${textPrimaryClass}`}>
                 Item Barcode Scanned
               </Text>
-              <TouchableOpacity onPress={() => setScannedItemModal(null)}>
+              <TouchableOpacity
+                onPress={() => {
+                  setScannedItemModal(null);
+                  refocusBluetoothInput();
+                }}>
                 <X color={isDark ? '#a1a1aa' : '#71717a'} size={20} />
               </TouchableOpacity>
             </View>
@@ -1450,9 +1660,80 @@ export default function ScanningItemScreen() {
                   </TouchableOpacity>
                 </View>
 
+                {/* Expiry Date Section (Optional for CID LOCAL) */}
+                {(scannedItemModal.cid || '').trim().toUpperCase() === 'LOCAL' && (
+                  <View
+                    className={`mb-4 rounded-xl border p-3.5 ${
+                      isDark
+                        ? 'border-[#e5005c]/40 bg-[#e5005c]/10'
+                        : 'border-[#e5005c]/30 bg-[#e5005c]/5'
+                    }`}>
+                    <View className="mb-2 flex-row items-center justify-between">
+                      <View className="flex-row items-center gap-1.5">
+                        <CalendarIcon color="#e5005c" size={15} />
+                        <Text className="font-jetbrains text-xs font-bold text-[#e5005c]">
+                          EXPIRY DATE (CID: LOCAL)
+                        </Text>
+                      </View>
+                      <View className="rounded bg-[#e5005c]/20 px-2 py-0.5">
+                        <Text className="font-jetbrains text-[9px] font-bold text-[#e5005c]">
+                          OPTIONAL · 1 YR PICKER
+                        </Text>
+                      </View>
+                    </View>
+
+                    <Text className={`mb-2 font-hanken text-[11px] ${textSecondaryClass}`}>
+                      Optional for non-food items. Tap CALENDAR to pick a date (navigates 1 year ahead), or leave blank:
+                    </Text>
+
+                    <View className="flex-row items-center gap-2">
+                      <View
+                        className={`h-11 flex-1 flex-row items-center rounded-lg border px-3 ${
+                          isDark
+                            ? 'border-[#3f3f46] bg-[#131316]'
+                            : 'border-[#d4d4d8] bg-[#ffffff]'
+                        }`}>
+                        <TextInput
+                          value={expiryInputModalValue}
+                          onChangeText={setExpiryInputModalValue}
+                          placeholder="Optional (YYYY-MM-DD)"
+                          placeholderTextColor={isDark ? '#71717a' : '#a1a1aa'}
+                          className={`h-11 flex-1 font-jetbrains text-xs font-bold ${
+                            isDark ? 'text-[#fafafa]' : 'text-[#18181b]'
+                          }`}
+                        />
+                        {expiryInputModalValue.length > 0 && (
+                          <TouchableOpacity
+                            onPress={() => setExpiryInputModalValue('')}
+                            className="p-1">
+                            <X color={isDark ? '#a1a1aa' : '#71717a'} size={14} />
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                      <TouchableOpacity
+                        onPress={() => {
+                          const baseYear = new Date().getFullYear() + 1;
+                          setCalendarViewYear(baseYear);
+                          setCalendarViewMonth(new Date().getMonth());
+                          setShowCalendarModal(true);
+                        }}
+                        activeOpacity={0.8}
+                        className="h-11 flex-row items-center gap-1.5 rounded-lg bg-[#e5005c] px-3.5 active:bg-[#c20050]">
+                        <CalendarIcon color="#ffffff" size={16} />
+                        <Text className="font-jetbrains text-xs font-bold text-[#ffffff]">
+                          CALENDAR
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
+
                 <View className="flex-row items-center gap-3">
                   <TouchableOpacity
-                    onPress={() => setScannedItemModal(null)}
+                    onPress={() => {
+                      setScannedItemModal(null);
+                      refocusBluetoothInput();
+                    }}
                     className={`flex-1 items-center justify-center rounded-lg border py-3 ${
                       isDark
                         ? 'border-[#3f3f46] bg-[#2a2a2d] active:bg-[#3f3f46]'
@@ -1477,6 +1758,7 @@ export default function ScanningItemScreen() {
                       }
 
                       setScannedItemModal(null);
+                      refocusBluetoothInput();
 
                       // Save updated QTY to scannedMap
                       const updatedMap = { ...scannedMapRef.current };
@@ -1489,6 +1771,21 @@ export default function ScanningItemScreen() {
                       AsyncStorage.setItem(SCANNED_ITEMS_KEY, JSON.stringify(updatedMap)).catch(
                         () => {}
                       );
+
+                      // Save expiry date if CID is LOCAL
+                      if ((item.cid || '').trim().toUpperCase() === 'LOCAL') {
+                        const updatedExpiry = { ...expiryDateMapRef.current };
+                        if (expiryInputModalValue.trim()) {
+                          updatedExpiry[item.id] = expiryInputModalValue.trim();
+                        } else {
+                          delete updatedExpiry[item.id];
+                        }
+                        setExpiryDateMap(updatedExpiry);
+                        AsyncStorage.setItem(
+                          ITEM_EXPIRY_DATES_KEY,
+                          JSON.stringify(updatedExpiry)
+                        ).catch(() => {});
+                      }
 
                       const itemLabel = item.sku || item.upc || item.description || 'Item';
                       setLastScanned(itemLabel);
@@ -1539,6 +1836,182 @@ export default function ScanningItemScreen() {
         </View>
       </Modal>
 
+      {/* Expiry Date Calendar Modal (Navigated 1 Year Ahead by default) */}
+      <Modal visible={showCalendarModal} transparent animationType="fade">
+        <View className="flex-1 items-center justify-center bg-black/70 px-6">
+          <View
+            className={`w-full max-w-sm rounded-2xl border p-5 shadow-2xl ${
+              isDark ? 'border-[#3f3f46] bg-[#1f1f22]' : 'border-[#e4e4e7] bg-[#ffffff]'
+            }`}>
+            {/* Header */}
+            <View className="mb-3 flex-row items-center justify-between">
+              <View className="flex-row items-center gap-2">
+                <View className="rounded-lg bg-[#e5005c]/10 p-2">
+                  <CalendarIcon color="#e5005c" size={18} />
+                </View>
+                <View>
+                  <Text className={`font-hanken text-base font-bold ${textPrimaryClass}`}>
+                    Select Expiry Date
+                  </Text>
+                  <Text className={`font-jetbrains text-[10px] ${textSecondaryClass}`}>
+                    CID LOCAL · 1 Year Ahead Default
+                  </Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                onPress={() => setShowCalendarModal(false)}
+                className="p-1">
+                <X color={isDark ? '#a1a1aa' : '#71717a'} size={20} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Quick Year/Month Jump Chips */}
+            <View className="mb-3 flex-row items-center gap-1.5">
+              {[
+                { label: '+1 Year', addYears: 1, addMonths: 0 },
+                { label: '+2 Years', addYears: 2, addMonths: 0 },
+                { label: '+6 Mos', addYears: 0, addMonths: 6 },
+                { label: '+18 Mos', addYears: 1, addMonths: 6 },
+              ].map((chip, idx) => (
+                <TouchableOpacity
+                  key={idx}
+                  onPress={() => {
+                    const now = new Date();
+                    const targetYear = now.getFullYear() + chip.addYears;
+                    const targetMonth = (now.getMonth() + chip.addMonths) % 12;
+                    setCalendarViewYear(targetYear);
+                    setCalendarViewMonth(targetMonth);
+                    const day = String(now.getDate()).padStart(2, '0');
+                    const monthStr = String(targetMonth + 1).padStart(2, '0');
+                    setExpiryInputModalValue(`${targetYear}-${monthStr}-${day}`);
+                    try {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    } catch {}
+                  }}
+                  className={`flex-1 items-center justify-center rounded-lg border py-1.5 ${
+                    isDark ? 'border-[#3f3f46] bg-[#131316]' : 'border-[#d4d4d8] bg-[#fafafa]'
+                  }`}>
+                  <Text className="font-jetbrains text-[10px] font-bold text-[#e5005c]">
+                    {chip.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Month / Year Navigator */}
+            <View className="mb-3 flex-row items-center justify-between rounded-xl bg-[#e5005c]/10 px-3 py-2">
+              <TouchableOpacity
+                onPress={() => {
+                  if (calendarViewMonth === 0) {
+                    setCalendarViewMonth(11);
+                    setCalendarViewYear((y) => y - 1);
+                  } else {
+                    setCalendarViewMonth((m) => m - 1);
+                  }
+                }}
+                className="p-1">
+                <ChevronLeft color="#e5005c" size={20} />
+              </TouchableOpacity>
+
+              <Text className="font-jetbrains text-sm font-bold text-[#e5005c]">
+                {MONTH_NAMES[calendarViewMonth]} {calendarViewYear}
+              </Text>
+
+              <TouchableOpacity
+                onPress={() => {
+                  if (calendarViewMonth === 11) {
+                    setCalendarViewMonth(0);
+                    setCalendarViewYear((y) => y + 1);
+                  } else {
+                    setCalendarViewMonth((m) => m + 1);
+                  }
+                }}
+                className="p-1">
+                <ChevronRight color="#e5005c" size={20} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Days of Week Header */}
+            <View className="mb-1 flex-row">
+              {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((d, i) => (
+                <View key={i} className="flex-1 items-center py-1">
+                  <Text className={`font-jetbrains text-[10px] font-bold ${textSecondaryClass}`}>
+                    {d}
+                  </Text>
+                </View>
+              ))}
+            </View>
+
+            {/* Calendar Days Grid */}
+            <View className="flex-row flex-wrap">
+              {/* Empty leading spaces */}
+              {Array.from({
+                length: new Date(calendarViewYear, calendarViewMonth, 1).getDay(),
+              }).map((_, i) => (
+                <View key={`empty-${i}`} className="h-9 w-[14.28%]" />
+              ))}
+
+              {/* Month days */}
+              {Array.from({
+                length: new Date(calendarViewYear, calendarViewMonth + 1, 0).getDate(),
+              }).map((_, i) => {
+                const dayNum = i + 1;
+                const formattedDate = `${calendarViewYear}-${String(calendarViewMonth + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+                const isSelected = expiryInputModalValue === formattedDate;
+
+                return (
+                  <TouchableOpacity
+                    key={`day-${dayNum}`}
+                    onPress={() => {
+                      setExpiryInputModalValue(formattedDate);
+                      setShowCalendarModal(false);
+                      try {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      } catch {}
+                    }}
+                    className={`h-9 w-[14.28%] items-center justify-center rounded-lg ${
+                      isSelected ? 'bg-[#e5005c]' : 'active:bg-[#e5005c]/20'
+                    }`}>
+                    <Text
+                      className={`font-jetbrains text-xs font-semibold ${
+                        isSelected ? 'font-bold text-[#ffffff]' : textPrimaryClass
+                      }`}>
+                      {dayNum}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {/* Action Buttons: Clear & Set */}
+            <View className="mt-4 flex-row items-center gap-2">
+              <TouchableOpacity
+                onPress={() => {
+                  setExpiryInputModalValue('');
+                  setShowCalendarModal(false);
+                }}
+                className={`flex-1 items-center justify-center rounded-xl border py-3 ${
+                  isDark
+                    ? 'border-[#3f3f46] bg-[#2a2a2d] active:bg-[#3f3f46]'
+                    : 'border-[#d4d4d8] bg-[#f4f4f5] active:bg-[#e4e4e7]'
+                }`}>
+                <Text className={`font-jetbrains text-xs font-bold ${textSecondaryClass}`}>
+                  LEAVE BLANK
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => setShowCalendarModal(false)}
+                className="flex-1 items-center justify-center rounded-xl bg-[#e5005c] py-3 active:bg-[#c20050]">
+                <Text className="font-jetbrains text-xs font-bold text-[#ffffff]">
+                  {expiryInputModalValue ? `DONE (${expiryInputModalValue})` : 'CLOSE'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* Sort Options Modal */}
       <Modal visible={showSortModal} transparent animationType="fade">
         <View className="flex-1 items-center justify-center bg-black/70 px-6">
@@ -1553,7 +2026,11 @@ export default function ScanningItemScreen() {
                   Sort Items in Tab
                 </Text>
               </View>
-              <TouchableOpacity onPress={() => setShowSortModal(false)}>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowSortModal(false);
+                  refocusBluetoothInput();
+                }}>
                 <X color={isDark ? '#a1a1aa' : '#71717a'} size={20} />
               </TouchableOpacity>
             </View>
@@ -1577,6 +2054,7 @@ export default function ScanningItemScreen() {
                   onPress={() => {
                     setSortBy(option.id as SortOption);
                     setShowSortModal(false);
+                    refocusBluetoothInput();
                     try {
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     } catch {}
@@ -1907,6 +2385,101 @@ export default function ScanningItemScreen() {
         )}
       </TouchableOpacity>
 
+      {/* Bluetooth & Manual Barcode Scanner Input (Active when swiped up / Camera disabled) */}
+      {isFullScreenTabs && (
+        <View
+          className={`border-b px-4 py-3 shadow-sm ${
+            isDark ? 'border-[#3f3f46] bg-[#1a1a1d]' : 'border-[#e4e4e7] bg-[#ffffff]'
+          }`}>
+          <View className="mb-2 flex-row items-center justify-between">
+            <View className="flex-row items-center gap-1.5">
+              <View className="h-6 w-6 items-center justify-center rounded-md bg-[#e5005c]/15">
+                <Bluetooth color="#e5005c" size={14} />
+              </View>
+              <Text className="font-jetbrains text-[11px] font-bold text-[#e5005c]">
+                BLUETOOTH SCANNER ACTIVE
+              </Text>
+            </View>
+            <View
+              className={`flex-row items-center gap-1.5 rounded-full border px-2 py-0.5 ${
+                isBuffering
+                  ? 'border-[#eab308]/60 bg-[#eab308]/20'
+                  : 'border-[#22c55e]/30 bg-[#22c55e]/10'
+              }`}>
+              <View
+                className={`h-1.5 w-1.5 rounded-full ${
+                  isBuffering ? 'bg-[#eab308]' : 'bg-[#22c55e]'
+                }`}
+              />
+              <Text
+                className={`font-jetbrains text-[9px] font-bold ${
+                  isBuffering ? 'text-[#eab308]' : 'text-[#22c55e]'
+                }`}>
+                {isBuffering
+                  ? 'READING BARCODE...'
+                  : '0.5S AUTO-TRIGGER READY'}
+              </Text>
+            </View>
+          </View>
+
+          <View className="flex-row items-center gap-2">
+            <View
+              className={`flex-1 flex-row items-center rounded-xl border px-3 ${
+                isBuffering
+                  ? 'border-[#eab308] bg-[#eab308]/5'
+                  : isDark
+                    ? 'border-[#e5005c]/40 bg-[#131316]'
+                    : 'border-[#e5005c]/50 bg-[#fafafa]'
+              }`}>
+              <Scan color={isBuffering ? '#eab308' : '#e5005c'} size={16} />
+              <TextInput
+                ref={bluetoothInputRef}
+                value={bluetoothInput}
+                onChangeText={handleBluetoothTextChange}
+                placeholder="Scan or type SKU, UPC, CID NO..."
+                placeholderTextColor={isDark ? '#71717a' : '#a1a1aa'}
+                autoCapitalize="characters"
+                autoCorrect={false}
+                autoFocus={true}
+                blurOnSubmit={false}
+                className={`h-11 flex-1 px-2.5 font-jetbrains text-xs ${
+                  isDark ? 'text-[#fafafa]' : 'text-[#18181b]'
+                }`}
+              />
+              {bluetoothInput.length > 0 && (
+                <TouchableOpacity
+                  onPress={() => {
+                    if (scanBufferTimerRef.current) {
+                      clearTimeout(scanBufferTimerRef.current);
+                      scanBufferTimerRef.current = null;
+                    }
+                    setIsBuffering(false);
+                    liveBufferRef.current = '';
+                    setBluetoothInput('');
+                    bluetoothInputRef.current?.focus();
+                  }}
+                  className="p-1">
+                  <X color={isDark ? '#a1a1aa' : '#71717a'} size={15} />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <TouchableOpacity
+              onPress={() => handleBluetoothSubmit()}
+              activeOpacity={0.8}
+              className="h-11 items-center justify-center rounded-xl bg-[#e5005c] px-4 active:bg-[#c20050]">
+              <Text className="font-jetbrains text-xs font-bold text-[#ffffff]">SCAN</Text>
+            </TouchableOpacity>
+          </View>
+
+          <Text className={`mt-1.5 font-hanken text-[10px] ${textSecondaryClass}`}>
+            {isBuffering
+              ? `⏳ Streaming barcode (${bluetoothInput.length} chars received)... Processing in 0.5s or tap SCAN.`
+              : 'Scan barcodes with your Bluetooth scanner. 0.5s buffer captures all digits quickly and accurately.'}
+          </Text>
+        </View>
+      )}
+
       {/* 4 Tabs Navigation Bar */}
       <View className={`border-b ${tabBgClass}`}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
@@ -2155,8 +2728,7 @@ export default function ScanningItemScreen() {
             return (
               <TouchableOpacity
                 onPress={() => {
-                  setScannedItemModal(item);
-                  setQtyInputModalValue(String(currentQty > 0 ? currentQty : item.qty));
+                  openItemModalWithDefaults(item);
                 }}
                 activeOpacity={0.7}
                 className={`relative mb-3 overflow-hidden rounded-lg border p-4 ${
@@ -2173,9 +2745,9 @@ export default function ScanningItemScreen() {
 
                 {/* Card Content Layer */}
                 <View className="relative z-10">
-                  {/* Headers: CID & TRF */}
-                  <View className="mb-1.5 flex-row items-center justify-between">
-                    <View className="flex-row items-center gap-2">
+                  {/* Headers: CID & TRF & Expiry Date */}
+                  <View className="mb-1.5 flex-row flex-wrap items-center justify-between gap-1.5">
+                    <View className="flex-row flex-wrap items-center gap-2">
                       {item.cid ? (
                         <View
                           className={`rounded px-2 py-0.5 ${isDark ? 'bg-[#2a2a2d]' : 'bg-[#e4e4e7]'}`}>
@@ -2189,6 +2761,14 @@ export default function ScanningItemScreen() {
                           className={`rounded px-2 py-0.5 ${isDark ? 'bg-[#2a2a2d]' : 'bg-[#e4e4e7]'}`}>
                           <Text className={`font-jetbrains text-[10px] ${textSecondaryClass}`}>
                             TRF: {item.trf}
+                          </Text>
+                        </View>
+                      ) : null}
+                      {(item.cid || '').trim().toUpperCase() === 'LOCAL' && expiryDateMap[item.id] ? (
+                        <View className="flex-row items-center gap-1 rounded border border-[#e5005c]/30 bg-[#e5005c]/10 px-2 py-0.5">
+                          <CalendarIcon color="#e5005c" size={11} />
+                          <Text className="font-jetbrains text-[10px] font-bold text-[#e5005c]">
+                            EXP: {expiryDateMap[item.id]}
                           </Text>
                         </View>
                       ) : null}

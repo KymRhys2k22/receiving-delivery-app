@@ -21,6 +21,7 @@ import {
   Scan,
   ChevronUp,
   ChevronDown,
+  Bluetooth,
 } from 'lucide-react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
@@ -132,6 +133,36 @@ export default function ScanningBoxScreen() {
 
   // Full screen tabs mode (covers camera when swiped up)
   const [isFullScreenTabs, setIsFullScreenTabs] = useState(false);
+  const [bluetoothInput, setBluetoothInput] = useState('');
+  const bluetoothInputRef = useRef<TextInput>(null);
+  const liveBufferRef = useRef('');
+  const scanBufferTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [isBuffering, setIsBuffering] = useState(false);
+
+  const refocusBluetoothInput = useCallback(() => {
+    if (isFullScreenTabs) {
+      setTimeout(() => {
+        bluetoothInputRef.current?.focus();
+      }, 150);
+    }
+  }, [isFullScreenTabs]);
+
+  // Focus bluetooth input automatically whenever swiped up into full screen tabs
+  useEffect(() => {
+    if (isFullScreenTabs) {
+      setTimeout(() => {
+        bluetoothInputRef.current?.focus();
+      }, 100);
+    }
+  }, [isFullScreenTabs]);
+
+  useEffect(() => {
+    return () => {
+      if (scanBufferTimerRef.current) {
+        clearTimeout(scanBufferTimerRef.current);
+      }
+    };
+  }, []);
 
   const panResponder = useMemo(
     () =>
@@ -395,6 +426,64 @@ export default function ScanningBoxScreen() {
       handleScan(manualInput);
       setManualInput('');
       setShowManual(false);
+      refocusBluetoothInput();
+    }
+  };
+
+  /** Handle physical Bluetooth scanner input and manual input in swipe up mode */
+  const handleBluetoothSubmit = (text?: string) => {
+    if (scanBufferTimerRef.current) {
+      clearTimeout(scanBufferTimerRef.current);
+      scanBufferTimerRef.current = null;
+    }
+    setIsBuffering(false);
+
+    const codeToScan = (typeof text === 'string' ? text : liveBufferRef.current || bluetoothInput)
+      .replace(/[\r\n\t]+/g, '')
+      .trim();
+
+    liveBufferRef.current = '';
+    setBluetoothInput('');
+
+    if (codeToScan) {
+      handleScan(codeToScan);
+    }
+    setTimeout(() => {
+      bluetoothInputRef.current?.focus();
+    }, 100);
+  };
+
+  const handleBluetoothTextChange = (text: string) => {
+    const cleanText = text.replace(/[\r\n\t]+/g, '');
+    liveBufferRef.current = cleanText;
+    setBluetoothInput(cleanText);
+
+    if (scanBufferTimerRef.current) {
+      clearTimeout(scanBufferTimerRef.current);
+      scanBufferTimerRef.current = null;
+    }
+
+    if (cleanText.trim().length > 0) {
+      setIsBuffering(true);
+
+      // 0.5-second (500ms) delay before auto-triggering to ensure all digits from physical Bluetooth scanner are fully streamed
+      scanBufferTimerRef.current = setTimeout(() => {
+        setIsBuffering(false);
+
+        const finalCode = (liveBufferRef.current || cleanText).trim();
+        liveBufferRef.current = '';
+        setBluetoothInput('');
+        scanBufferTimerRef.current = null;
+
+        if (finalCode) {
+          handleScan(finalCode);
+        }
+        setTimeout(() => {
+          bluetoothInputRef.current?.focus();
+        }, 100);
+      }, 500);
+    } else {
+      setIsBuffering(false);
     }
   };
 
@@ -431,6 +520,7 @@ export default function ScanningBoxScreen() {
                 onPress={() => {
                   setShowManual(false);
                   setManualInput('');
+                  refocusBluetoothInput();
                 }}>
                 <X color={isDark ? '#a1a1aa' : '#71717a'} size={20} />
               </TouchableOpacity>
@@ -469,7 +559,11 @@ export default function ScanningBoxScreen() {
               <Text className={`font-hanken text-base font-bold ${textPrimaryClass}`}>
                 Confirm Scan
               </Text>
-              <TouchableOpacity onPress={() => setConfirmCidModal(null)}>
+              <TouchableOpacity
+                onPress={() => {
+                  setConfirmCidModal(null);
+                  refocusBluetoothInput();
+                }}>
                 <X color={isDark ? '#a1a1aa' : '#71717a'} size={20} />
               </TouchableOpacity>
             </View>
@@ -494,7 +588,10 @@ export default function ScanningBoxScreen() {
 
             <View className="flex-row items-center gap-3">
               <TouchableOpacity
-                onPress={() => setConfirmCidModal(null)}
+                onPress={() => {
+                  setConfirmCidModal(null);
+                  refocusBluetoothInput();
+                }}
                 className={`flex-1 items-center justify-center rounded-lg border py-3 ${
                   isDark
                     ? 'border-[#3f3f46] bg-[#2a2a2d] active:bg-[#3f3f46]'
@@ -511,6 +608,7 @@ export default function ScanningBoxScreen() {
                     const targetCid = confirmCidModal;
                     setConfirmCidModal(null);
                     handleScan(targetCid);
+                    refocusBluetoothInput();
                   }
                 }}
                 activeOpacity={0.8}
@@ -762,6 +860,101 @@ export default function ScanningBoxScreen() {
           </View>
         )}
       </TouchableOpacity>
+
+      {/* Bluetooth & Manual Barcode Scanner Input (Active when swiped up / Camera disabled) */}
+      {isFullScreenTabs && (
+        <View
+          className={`border-b px-4 py-3 shadow-sm ${
+            isDark ? 'border-[#3f3f46] bg-[#1a1a1d]' : 'border-[#e4e4e7] bg-[#ffffff]'
+          }`}>
+          <View className="mb-2 flex-row items-center justify-between">
+            <View className="flex-row items-center gap-1.5">
+              <View className="h-6 w-6 items-center justify-center rounded-md bg-[#ff80ab]/15">
+                <Bluetooth color="#ff80ab" size={14} />
+              </View>
+              <Text className="font-jetbrains text-[11px] font-bold text-[#ff80ab]">
+                BLUETOOTH SCANNER ACTIVE
+              </Text>
+            </View>
+            <View
+              className={`flex-row items-center gap-1.5 rounded-full border px-2 py-0.5 ${
+                isBuffering
+                  ? 'border-[#eab308]/60 bg-[#eab308]/20'
+                  : 'border-[#22c55e]/30 bg-[#22c55e]/10'
+              }`}>
+              <View
+                className={`h-1.5 w-1.5 rounded-full ${
+                  isBuffering ? 'bg-[#eab308]' : 'bg-[#22c55e]'
+                }`}
+              />
+              <Text
+                className={`font-jetbrains text-[9px] font-bold ${
+                  isBuffering ? 'text-[#eab308]' : 'text-[#22c55e]'
+                }`}>
+                {isBuffering
+                  ? 'READING BARCODE...'
+                  : '0.5S AUTO-TRIGGER READY'}
+              </Text>
+            </View>
+          </View>
+
+          <View className="flex-row items-center gap-2">
+            <View
+              className={`flex-1 flex-row items-center rounded-xl border px-3 ${
+                isBuffering
+                  ? 'border-[#eab308] bg-[#eab308]/5'
+                  : isDark
+                    ? 'border-[#ff80ab]/40 bg-[#131316]'
+                    : 'border-[#ff80ab]/50 bg-[#fafafa]'
+              }`}>
+              <Scan color={isBuffering ? '#eab308' : '#ff80ab'} size={16} />
+              <TextInput
+                ref={bluetoothInputRef}
+                value={bluetoothInput}
+                onChangeText={handleBluetoothTextChange}
+                placeholder="Scan or type Box CID NO..."
+                placeholderTextColor={isDark ? '#71717a' : '#a1a1aa'}
+                autoCapitalize="characters"
+                autoCorrect={false}
+                autoFocus={true}
+                blurOnSubmit={false}
+                className={`h-11 flex-1 px-2.5 font-jetbrains text-xs ${
+                  isDark ? 'text-[#fafafa]' : 'text-[#18181b]'
+                }`}
+              />
+              {bluetoothInput.length > 0 && (
+                <TouchableOpacity
+                  onPress={() => {
+                    if (scanBufferTimerRef.current) {
+                      clearTimeout(scanBufferTimerRef.current);
+                      scanBufferTimerRef.current = null;
+                    }
+                    setIsBuffering(false);
+                    liveBufferRef.current = '';
+                    setBluetoothInput('');
+                    bluetoothInputRef.current?.focus();
+                  }}
+                  className="p-1">
+                  <X color={isDark ? '#a1a1aa' : '#71717a'} size={15} />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <TouchableOpacity
+              onPress={() => handleBluetoothSubmit()}
+              activeOpacity={0.8}
+              className="h-11 items-center justify-center rounded-xl bg-[#ff80ab] px-4 active:bg-[#ff4081]">
+              <Text className="font-jetbrains text-xs font-bold text-[#131316]">SCAN</Text>
+            </TouchableOpacity>
+          </View>
+
+          <Text className={`mt-1.5 font-hanken text-[10px] ${textSecondaryClass}`}>
+            {isBuffering
+              ? `⏳ Streaming barcode (${bluetoothInput.length} chars received)... Processing in 0.5s or tap SCAN.`
+              : 'Scan Box CIDs with your Bluetooth scanner. 0.5s buffer captures all digits quickly and accurately.'}
+          </Text>
+        </View>
+      )}
 
       {/* Tabs */}
       <View className={`flex-row border-b ${tabBgClass}`}>

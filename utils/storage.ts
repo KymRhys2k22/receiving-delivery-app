@@ -5,6 +5,7 @@ export const MANIFEST_CIDS_KEY = 'manifest_cids';
 export const SCANNED_CIDS_KEY = 'scanned_cids';
 export const MANIFEST_ITEMS_KEY = 'manifest_items';
 export const SCANNED_ITEMS_KEY = 'scanned_items';
+export const ITEM_EXPIRY_DATES_KEY = 'item_expiry_dates';
 export const SCAN_HISTORY_KEY = 'scan_history';
 
 // Shared Interfaces
