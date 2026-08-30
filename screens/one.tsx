@@ -27,7 +27,6 @@ import Papa from 'papaparse';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../context/auth';
 import { useTheme } from '../context/theme';
-import { StatusBar } from 'expo-status-bar';
 import {
   MANIFEST_CIDS_KEY,
   SCANNED_CIDS_KEY,
@@ -92,7 +91,8 @@ function SessionBanner({
             style={{ backgroundColor: `${accent}26` }}>
             <Icon color={accent} size={16} />
           </View>
-          <Text className={`font-hanken text-sm font-bold ${isDark ? 'text-[#fafafa]' : 'text-[#18181b]'}`}>
+          <Text
+            className={`font-hanken text-sm font-bold ${isDark ? 'text-[#fafafa]' : 'text-[#18181b]'}`}>
             {title}
           </Text>
         </View>
@@ -108,11 +108,17 @@ function SessionBanner({
         </View>
       </View>
 
-      <View className="mb-3 h-1.5 overflow-hidden rounded-full" style={{ backgroundColor: `${accent}26` }}>
-        <View style={{ width: `${pct}%`, backgroundColor: accent }} className="h-full rounded-full" />
+      <View
+        className="mb-3 h-1.5 overflow-hidden rounded-full"
+        style={{ backgroundColor: `${accent}26` }}>
+        <View
+          style={{ width: `${pct}%`, backgroundColor: accent }}
+          className="h-full rounded-full"
+        />
       </View>
 
-      <Text className={`mb-3 font-hanken text-[11px] ${isDark ? 'text-[#a1a1aa]' : 'text-[#71717a]'}`}>
+      <Text
+        className={`mb-3 font-hanken text-[11px] ${isDark ? 'text-[#a1a1aa]' : 'text-[#71717a]'}`}>
         {complete
           ? 'All entries in this manifest are scanned. Resume to review or reset the session.'
           : 'Saved progress detected — continue scanning right where you left off.'}
@@ -579,9 +585,12 @@ export default function TabOneScreen() {
                 <Text className={`font-hanken text-lg font-bold ${textPrimaryClass}`}>
                   Receiving Dashboard
                 </Text>
-                <Text className={`font-jetbrains text-[9px] font-semibold ${textSecondaryClass}`}>
-                  MANIFEST INTAKE & SCAN SESSIONS
-                </Text>
+                <View className="mt-0.5 flex-row items-center gap-1.5">
+                  <View className="h-1.5 w-1.5 rounded-full bg-[#22c55e]" />
+                  <Text className="font-jetbrains text-[9px] font-bold text-[#22c55e]">
+                    ONLINE · VERIFICATION SYSTEM
+                  </Text>
+                </View>
               </View>
             </View>
             <View
@@ -596,6 +605,46 @@ export default function TabOneScreen() {
           </View>
 
           <ScrollView className="flex-1 px-4 py-4" showsVerticalScrollIndicator={false}>
+            {/* Quick Actions Shortcuts (Stitch UI Grid) */}
+            <View className="mb-4 flex-row gap-2.5">
+              <TouchableOpacity
+                onPress={() => navigation.navigate('ScanningBox' as never)}
+                activeOpacity={0.8}
+                className="flex-1 flex-col items-center justify-center rounded-xl border border-[#ff80ab]/30 bg-[#ff80ab]/10 p-3 active:bg-[#ff80ab]/20">
+                <View className="mb-1.5 h-8 w-8 items-center justify-center rounded-lg bg-[#ff80ab]/20">
+                  <BoxIcon color="#ff80ab" size={18} />
+                </View>
+                <Text className="font-jetbrains text-xs font-bold text-[#ff80ab]">Box Scanner</Text>
+                <Text className={`font-jetbrains text-[8px] ${textSecondaryClass}`}>SCAN CIDS</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => navigation.navigate('ScanningItem' as never)}
+                activeOpacity={0.8}
+                className="flex-1 flex-col items-center justify-center rounded-xl border border-[#e5005c]/30 bg-[#e5005c]/10 p-3 active:bg-[#e5005c]/20">
+                <View className="mb-1.5 h-8 w-8 items-center justify-center rounded-lg bg-[#e5005c]/20">
+                  <Scan color="#e5005c" size={18} />
+                </View>
+                <Text className="font-jetbrains text-xs font-bold text-[#e5005c]">
+                  Item Scanner
+                </Text>
+                <Text className={`font-jetbrains text-[8px] ${textSecondaryClass}`}>SKU & UPC</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => navigation.navigate('DamageLostRecord' as never)}
+                activeOpacity={0.8}
+                className="flex-1 flex-col items-center justify-center rounded-xl border border-[#fabc4e]/30 bg-[#fabc4e]/10 p-3 active:bg-[#fabc4e]/20">
+                <View className="mb-1.5 h-8 w-8 items-center justify-center rounded-lg bg-[#fabc4e]/20">
+                  <FileText color="#fabc4e" size={18} />
+                </View>
+                <Text className="font-jetbrains text-xs font-bold text-[#fabc4e]">DLR Tool</Text>
+                <Text className={`font-jetbrains text-[8px] ${textSecondaryClass}`}>
+                  DAMAGE & LOSS
+                </Text>
+              </TouchableOpacity>
+            </View>
+
             {/* ACTIVE SESSIONS */}
             {(savedProgress || savedItemProgress) && <SectionLabel>Active Sessions</SectionLabel>}
 
@@ -633,36 +682,36 @@ export default function TabOneScreen() {
               />
             )}
 
-            {/* GET STARTED */}
-            <SectionLabel>Get Started</SectionLabel>
+            {/* MANIFEST INTAKE */}
+            <SectionLabel>Manifest Intake & Upload</SectionLabel>
 
             {/* Step 1: Upload Box Manifest */}
             <TouchableOpacity
               onPress={handleUpload}
               disabled={isUploading}
               activeOpacity={0.8}
-              className={`mb-3 flex-row items-center gap-3.5 rounded-xl border border-dashed p-4 ${innerCardBgClass}`}>
-              <View className="h-14 w-14 items-center justify-center rounded-xl bg-[#ff80ab]/15">
+              className={`mb-3 flex-row items-center gap-3.5 rounded-xl border border-dashed p-4 ${cardBgClass}`}>
+              <View className="h-13 w-13 items-center justify-center rounded-xl border border-[#ff80ab]/30 bg-[#ff80ab]/15">
                 {isUploading ? (
                   <ActivityIndicator color="#ff80ab" size="small" />
                 ) : (
-                  <BoxIcon color="#ff80ab" size={26} />
+                  <BoxIcon color="#ff80ab" size={24} />
                 )}
               </View>
               <View className="flex-1">
                 <View className="mb-0.5 flex-row items-center gap-2">
                   <Text className="font-jetbrains text-[9px] font-bold text-[#ff80ab]">STEP 1</Text>
-                  <View className="rounded border border-[#3f3f46]/50 px-1.5 py-0.5">
+                  <View className="rounded border border-[#3f3f46]/50 bg-black/20 px-1.5 py-0.5">
                     <Text className="font-jetbrains text-[8px] font-bold text-[#a1a1aa]">.CSV</Text>
                   </View>
                 </View>
                 <Text className={`font-hanken text-sm font-bold ${textPrimaryClass}`}>
-                  Box Manifest
+                  Upload Box Manifest
                 </Text>
                 <Text
                   className={`mt-0.5 font-hanken text-[11px] ${textSecondaryClass}`}
                   numberOfLines={1}>
-                  CID NO column · box-level scanning
+                  CID NO column · Box-level receiving
                 </Text>
               </View>
               <View className="h-8 w-8 items-center justify-center rounded-full bg-[#ff80ab]/15">
@@ -679,8 +728,8 @@ export default function TabOneScreen() {
               onPress={handleUploadScanningData}
               disabled={isUploading}
               activeOpacity={0.8}
-              className={`flex-row items-center gap-3.5 rounded-xl border border-dashed p-4 ${innerCardBgClass}`}>
-              <View className="h-14 w-14 items-center justify-center rounded-xl bg-[#e5005c]/15">
+              className={`mb-6 flex-row items-center gap-3.5 rounded-xl border border-dashed p-4 ${cardBgClass}`}>
+              <View className="h-13 w-13 items-center justify-center rounded-xl border border-[#e5005c]/30 bg-[#e5005c]/15">
                 {isUploading ? (
                   <ActivityIndicator color="#e5005c" size="small" />
                 ) : (
@@ -690,12 +739,12 @@ export default function TabOneScreen() {
               <View className="flex-1">
                 <View className="mb-0.5 flex-row items-center gap-2">
                   <Text className="font-jetbrains text-[9px] font-bold text-[#e5005c]">STEP 2</Text>
-                  <View className="rounded border border-[#3f3f46]/50 px-1.5 py-0.5">
+                  <View className="rounded border border-[#3f3f46]/50 bg-black/20 px-1.5 py-0.5">
                     <Text className="font-jetbrains text-[8px] font-bold text-[#a1a1aa]">.CSV</Text>
                   </View>
                 </View>
                 <Text className={`font-hanken text-sm font-bold ${textPrimaryClass}`}>
-                  Scanning Items
+                  Upload Scanning Items
                 </Text>
                 <Text
                   className={`mt-0.5 font-hanken text-[11px] ${textSecondaryClass}`}

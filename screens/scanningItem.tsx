@@ -211,6 +211,12 @@ export default function ScanningItemScreen() {
   const [scannedItemModal, setScannedItemModal] = useState<ItemManifestRecord | null>(null);
   const [qtyInputModalValue, setQtyInputModalValue] = useState<string>('1');
 
+  // State for choosing between multiple matching CIDs for a scanned barcode
+  const [multipleCidMatches, setMultipleCidMatches] = useState<{
+    barcode: string;
+    items: ItemManifestRecord[];
+  } | null>(null);
+
   // Full screen tabs mode (covers camera when swiped up)
   const [isFullScreenTabs, setIsFullScreenTabs] = useState(false);
 
@@ -354,13 +360,13 @@ export default function ScanningItemScreen() {
     }, [])
   );
 
-  /** Secure case-insensitive item matcher by UPC, SKU, CID NO, or TRF NO */
-  const findMatchingItem = (
+  /** Secure case-insensitive item matcher by UPC, SKU, CID NO, or TRF NO returning ALL matches */
+  const findAllMatchingItems = (
     input: string,
     list: ItemManifestRecord[]
-  ): ItemManifestRecord | null => {
+  ): ItemManifestRecord[] => {
     let raw = input.trim();
-    if (!raw) return null;
+    if (!raw) return [];
 
     // Remove 3 leading zeros if present (e.g. "000309179" -> "309179")
     if (raw.startsWith('000')) {
@@ -368,33 +374,49 @@ export default function ScanningItemScreen() {
     }
     const cleanUpper = raw.toUpperCase();
 
+    const matches: ItemManifestRecord[] = [];
+    const addedIds = new Set<string>();
+
+    const addMatches = (foundList: ItemManifestRecord[]) => {
+      foundList.forEach((i) => {
+        if (!addedIds.has(i.id)) {
+          addedIds.add(i.id);
+          matches.push(i);
+        }
+      });
+    };
+
     // 1. Match by UPC (Exact / Case-insensitive, or stripped 3 leading zeros)
-    const matchByUpc = list.find((i) => {
-      const u = i.upc.trim().toUpperCase();
-      return u === cleanUpper || (u.startsWith('000') && u.slice(3) === cleanUpper);
-    });
-    if (matchByUpc) return matchByUpc;
+    addMatches(
+      list.filter((i) => {
+        const u = i.upc.trim().toUpperCase();
+        return u === cleanUpper || (u.startsWith('000') && u.slice(3) === cleanUpper);
+      })
+    );
 
     // 2. Match by SKU (Exact / Case-insensitive, or stripped 3 leading zeros)
-    const matchBySku = list.find((i) => {
-      const s = i.sku.trim().toUpperCase();
-      return s === cleanUpper || (s.startsWith('000') && s.slice(3) === cleanUpper);
-    });
-    if (matchBySku) return matchBySku;
+    addMatches(
+      list.filter((i) => {
+        const s = i.sku.trim().toUpperCase();
+        return s === cleanUpper || (s.startsWith('000') && s.slice(3) === cleanUpper);
+      })
+    );
 
     // 3. Match by CID NO
-    const matchByCid = list.find((i) => {
-      const c = i.cid.trim().toUpperCase();
-      return c === cleanUpper || (c.startsWith('000') && c.slice(3) === cleanUpper);
-    });
-    if (matchByCid) return matchByCid;
+    addMatches(
+      list.filter((i) => {
+        const c = i.cid.trim().toUpperCase();
+        return c === cleanUpper || (c.startsWith('000') && c.slice(3) === cleanUpper);
+      })
+    );
 
     // 4. Match by TRF NO
-    const matchByTrf = list.find((i) => {
-      const t = i.trf.trim().toUpperCase();
-      return t === cleanUpper || (t.startsWith('000') && t.slice(3) === cleanUpper);
-    });
-    if (matchByTrf) return matchByTrf;
+    addMatches(
+      list.filter((i) => {
+        const t = i.trf.trim().toUpperCase();
+        return t === cleanUpper || (t.startsWith('000') && t.slice(3) === cleanUpper);
+      })
+    );
 
     // 5. Token extraction match for formatted barcodes (e.g. "SKU:123" or "UPC=456")
     if (raw.includes(':') || raw.includes('=') || raw.includes('/')) {
@@ -403,31 +425,32 @@ export default function ScanningItemScreen() {
         if (tok.startsWith('000')) tok = tok.slice(3);
         return tok;
       });
-      const tokenMatch = list.find((i) => {
-        const u = i.upc.trim().toUpperCase();
-        const s = i.sku.trim().toUpperCase();
-        const c = i.cid.trim().toUpperCase();
-        const t = i.trf.trim().toUpperCase();
-        const uClean = u.startsWith('000') ? u.slice(3) : u;
-        const sClean = s.startsWith('000') ? s.slice(3) : s;
-        const cClean = c.startsWith('000') ? c.slice(3) : c;
-        const tClean = t.startsWith('000') ? t.slice(3) : t;
+      addMatches(
+        list.filter((i) => {
+          const u = i.upc.trim().toUpperCase();
+          const s = i.sku.trim().toUpperCase();
+          const c = i.cid.trim().toUpperCase();
+          const t = i.trf.trim().toUpperCase();
+          const uClean = u.startsWith('000') ? u.slice(3) : u;
+          const sClean = s.startsWith('000') ? s.slice(3) : s;
+          const cClean = c.startsWith('000') ? c.slice(3) : c;
+          const tClean = t.startsWith('000') ? t.slice(3) : t;
 
-        return (
-          tokens.includes(u) ||
-          tokens.includes(uClean) ||
-          tokens.includes(s) ||
-          tokens.includes(sClean) ||
-          tokens.includes(c) ||
-          tokens.includes(cClean) ||
-          tokens.includes(t) ||
-          tokens.includes(tClean)
-        );
-      });
-      if (tokenMatch) return tokenMatch;
+          return (
+            tokens.includes(u) ||
+            tokens.includes(uClean) ||
+            tokens.includes(s) ||
+            tokens.includes(sClean) ||
+            tokens.includes(c) ||
+            tokens.includes(cClean) ||
+            tokens.includes(t) ||
+            tokens.includes(tClean)
+          );
+        })
+      );
     }
 
-    return null;
+    return matches;
   };
 
   /** Process scanned barcode or manual input */
@@ -453,7 +476,10 @@ export default function ScanningItemScreen() {
             i.cid.trim().toUpperCase().slice(3) === cleanUpper)
       );
 
-      if (matchedCidRecord && !findMatchingItem(raw, currentItems)) {
+      const allMatches = findAllMatchingItems(raw, currentItems);
+
+      // If scanned code is a CID and not an item SKU/UPC barcode
+      if (matchedCidRecord && allMatches.length === 0) {
         const targetCid = matchedCidRecord.cid;
         setSelectedCidFilter(targetCid);
         showNotification(
@@ -465,29 +491,81 @@ export default function ScanningItemScreen() {
         return;
       }
 
-      // 2. Find matching item record in manifest
-      const matchedItem = findMatchingItem(raw, currentItems);
+      const activeCid = selectedCidRef.current;
 
-      if (matchedItem) {
-        const activeCid = selectedCidRef.current;
+      // If a CID filter is actively locked
+      if (activeCid) {
+        const matchesInActiveCid = allMatches.filter(
+          (i) => i.cid.trim().toUpperCase() === activeCid.trim().toUpperCase()
+        );
 
-        // Enforce strict CID restriction if filter is active
-        if (activeCid && matchedItem.cid.trim().toUpperCase() !== activeCid.trim().toUpperCase()) {
+        if (matchesInActiveCid.length === 1) {
+          const matchedItem = matchesInActiveCid[0];
+          const currentQty = scannedMapRef.current[matchedItem.id] || 0;
+          setScannedItemModal(matchedItem);
+          setQtyInputModalValue(String(currentQty > 0 ? currentQty : matchedItem.qty));
+          if (currentQty >= matchedItem.qty && matchedItem.qty > 0) {
+            showNotification(
+              'warning',
+              '⚠️ ITEM ALREADY FULFILLED',
+              `Item "${matchedItem.sku || matchedItem.upc}" (CID: ${matchedItem.cid}) is ALREADY FULFILLED (${currentQty}/${matchedItem.qty} scanned).`
+            );
+            playScanFeedback('warning');
+          } else {
+            playScanFeedback('success');
+          }
+          return;
+        }
+
+        if (matchesInActiveCid.length > 1) {
+          // Multiple matching items inside the active CID
+          setMultipleCidMatches({ barcode: raw, items: matchesInActiveCid });
+          playScanFeedback('warning');
+          return;
+        }
+
+        // If items were found in the manifest, but belong to other CIDs
+        if (allMatches.length > 0) {
+          const otherCids = Array.from(new Set(allMatches.map((i) => i.cid))).join(', ');
           showNotification(
             'error',
             '❌ CID MISMATCH RESTRICTION',
-            `Item ${matchedItem.sku || matchedItem.upc} belongs to CID "${matchedItem.cid}", but filter is locked to CID "${activeCid}"!`
+            `Item belongs to CID(s) [${otherCids}], but filter is locked to CID "${activeCid}"!`
           );
           playScanFeedback('error');
           return;
         }
+      } else {
+        // No CID filter is locked
+        if (allMatches.length === 1) {
+          const matchedItem = allMatches[0];
+          const currentQty = scannedMapRef.current[matchedItem.id] || 0;
+          setScannedItemModal(matchedItem);
+          setQtyInputModalValue(String(currentQty > 0 ? currentQty : matchedItem.qty));
+          if (currentQty >= matchedItem.qty && matchedItem.qty > 0) {
+            showNotification(
+              'warning',
+              '⚠️ ITEM ALREADY FULFILLED',
+              `Item "${matchedItem.sku || matchedItem.upc}" (CID: ${matchedItem.cid}) is ALREADY FULFILLED (${currentQty}/${matchedItem.qty} scanned).`
+            );
+            playScanFeedback('warning');
+          } else {
+            playScanFeedback('success');
+          }
+          return;
+        }
 
-        // CID matches active filter (or filter is clear) -> open QTY input modal
-        const currentQty = scannedMapRef.current[matchedItem.id] || 0;
-        setScannedItemModal(matchedItem);
-        setQtyInputModalValue(String(currentQty > 0 ? currentQty : matchedItem.qty));
-        playScanFeedback('success');
-        return;
+        if (allMatches.length > 1) {
+          // Found in multiple CIDs or multiple line items -> prompt operator to pick CID
+          setMultipleCidMatches({ barcode: raw, items: allMatches });
+          playScanFeedback('warning');
+          showNotification(
+            'info',
+            '📦 MULTIPLE BOX CIDS DETECTED',
+            `Barcode found in ${allMatches.length} Box CIDs. Tap to select which CID NO.`
+          );
+          return;
+        }
       }
 
       // 3. Not found in item manifest
@@ -805,33 +883,43 @@ export default function ScanningItemScreen() {
   ]);
 
   return (
-    <SafeAreaView className="flex-1 bg-[#131316]">
+    <SafeAreaView className={`flex-1 ${bgClass}`}>
       {/* Manual Entry Modal */}
       <Modal visible={showManual} transparent animationType="fade">
-        <View className=" flex-1 items-center justify-center bg-black/70 px-6">
-          <View className="w-full rounded-xl border border-[#3f3f46] bg-[#1f1f22] p-5">
+        <View className="flex-1 items-center justify-center bg-black/70 px-6">
+          <View
+            className={`w-full rounded-xl border p-5 shadow-2xl ${
+              isDark ? 'border-[#3f3f46] bg-[#1f1f22]' : 'border-[#e4e4e7] bg-[#ffffff]'
+            }`}>
             <View className="mb-4 flex-row items-center justify-between">
-              <Text className="font-hanken text-base font-bold text-[#fafafa]">Manual Entry</Text>
+              <Text className={`font-hanken text-base font-bold ${textPrimaryClass}`}>
+                Manual Entry
+              </Text>
               <TouchableOpacity
                 onPress={() => {
                   setShowManual(false);
                   setManualInput('');
                 }}>
-                <X color="#a1a1aa" size={20} />
+                <X color={isDark ? '#a1a1aa' : '#71717a'} size={20} />
               </TouchableOpacity>
             </View>
             <TextInput
               value={manualInput}
               onChangeText={setManualInput}
               placeholder="Enter UPC, SKU, CID, or TRF..."
-              placeholderTextColor="#71717a"
+              placeholderTextColor={isDark ? '#71717a' : '#a1a1aa'}
               autoFocus
               autoCapitalize="characters"
-              className="mb-4 h-11 rounded-lg border border-[#3f3f46] bg-[#131316] px-3 font-jetbrains text-sm text-[#fafafa]"
+              className={`mb-4 h-11 rounded-lg border px-3 font-jetbrains text-sm ${
+                isDark
+                  ? 'border-[#3f3f46] bg-[#131316] text-[#fafafa]'
+                  : 'border-[#d4d4d8] bg-[#fafafa] text-[#18181b]'
+              }`}
             />
             <TouchableOpacity
               onPress={submitManual}
-              className="items-center justify-center rounded-lg bg-[#e5005c] py-3">
+              activeOpacity={0.8}
+              className="items-center justify-center rounded-lg bg-[#e5005c] py-3 active:bg-[#c20050]">
               <Text className="font-jetbrains text-sm font-bold text-[#ffffff]">CONFIRM</Text>
             </TouchableOpacity>
           </View>
@@ -841,20 +929,23 @@ export default function ScanningItemScreen() {
       {/* CID Filter Selection Modal */}
       <Modal visible={showCidModal} transparent animationType="fade">
         <View className="flex-1 items-center justify-center bg-black/70 px-6">
-          <View className="max-h-[80%] w-full rounded-xl border border-[#3f3f46] bg-[#1f1f22] p-5">
+          <View
+            className={`max-h-[80%] w-full rounded-xl border p-5 shadow-2xl ${
+              isDark ? 'border-[#3f3f46] bg-[#1f1f22]' : 'border-[#e4e4e7] bg-[#ffffff]'
+            }`}>
             <View className="mb-3 flex-row items-center justify-between">
               <View className="flex-row items-center gap-2">
                 <BoxIcon color="#e5005c" size={20} />
-                <Text className="font-hanken text-base font-bold text-[#fafafa]">
+                <Text className={`font-hanken text-base font-bold ${textPrimaryClass}`}>
                   Filter Items by Box CID
                 </Text>
               </View>
               <TouchableOpacity onPress={() => setShowCidModal(false)}>
-                <X color="#a1a1aa" size={20} />
+                <X color={isDark ? '#a1a1aa' : '#71717a'} size={20} />
               </TouchableOpacity>
             </View>
 
-            <Text className="mb-3 font-hanken text-xs text-[#a1a1aa]">
+            <Text className={`mb-3 font-hanken text-xs ${textSecondaryClass}`}>
               Type or select a Box CID. Scanning will be restricted exclusively to items under the
               selected CID.
             </Text>
@@ -865,9 +956,13 @@ export default function ScanningItemScreen() {
                 value={cidInputText}
                 onChangeText={setCidInputText}
                 placeholder="Enter CID NO..."
-                placeholderTextColor="#71717a"
+                placeholderTextColor={isDark ? '#71717a' : '#a1a1aa'}
                 autoCapitalize="characters"
-                className="h-11 flex-1 rounded-lg border border-[#3f3f46] bg-[#131316] px-3 font-jetbrains text-sm text-[#fafafa]"
+                className={`h-11 flex-1 rounded-lg border px-3 font-jetbrains text-sm ${
+                  isDark
+                    ? 'border-[#3f3f46] bg-[#131316] text-[#fafafa]'
+                    : 'border-[#d4d4d8] bg-[#fafafa] text-[#18181b]'
+                }`}
               />
               <TouchableOpacity
                 onPress={() => {
@@ -883,7 +978,8 @@ export default function ScanningItemScreen() {
                     );
                   }
                 }}
-                className="h-11 items-center justify-center rounded-lg bg-[#e5005c] px-4">
+                activeOpacity={0.8}
+                className="h-11 items-center justify-center rounded-lg bg-[#e5005c] px-4 active:bg-[#c20050]">
                 <Text className="font-jetbrains text-xs font-bold text-[#ffffff]">APPLY</Text>
               </TouchableOpacity>
             </View>
@@ -898,15 +994,18 @@ export default function ScanningItemScreen() {
               className={`mb-3 flex-row items-center justify-between rounded-lg border p-3 ${
                 selectedCidFilter === null
                   ? 'border-[#e5005c] bg-[#e5005c]/10'
-                  : 'border-[#3f3f46] bg-[#131316]'
+                  : isDark
+                    ? 'border-[#3f3f46] bg-[#131316]'
+                    : 'border-[#e4e4e7] bg-[#fafafa]'
               }`}>
-              <Text className="font-jetbrains text-xs font-bold text-[#fafafa]">
+              <Text className={`font-jetbrains text-xs font-bold ${textPrimaryClass}`}>
                 ALL CIDS (Show All Items)
               </Text>
               {selectedCidFilter === null && <CheckCircle color="#e5005c" size={16} />}
             </TouchableOpacity>
 
-            <Text className="mb-2 font-jetbrains text-[10px] font-bold uppercase tracking-wider text-[#a1a1aa]">
+            <Text
+              className={`mb-2 font-jetbrains text-[10px] font-bold uppercase tracking-wider ${textSecondaryClass}`}>
               Available CIDs from Manifest ({availableCids.length})
             </Text>
 
@@ -914,7 +1013,7 @@ export default function ScanningItemScreen() {
             <FlatList
               data={availableCids}
               keyExtractor={(cid) => cid}
-              className=" max-h-52"
+              className="max-h-52"
               renderItem={({ item: cid }) => {
                 const isSelected =
                   selectedCidFilter?.trim().toUpperCase() === cid.trim().toUpperCase();
@@ -932,17 +1031,23 @@ export default function ScanningItemScreen() {
                     className={`mb-2 flex-row items-center justify-between rounded-lg border p-3 ${
                       isSelected
                         ? 'border-[#e5005c] bg-[#e5005c]/15'
-                        : 'border-[#3f3f46] bg-[#131316]'
+                        : isDark
+                          ? 'border-[#3f3f46] bg-[#131316]'
+                          : 'border-[#e4e4e7] bg-[#fafafa]'
                     }`}>
                     <View className="flex-row items-center gap-2">
-                      <BoxIcon color={isSelected ? '#e5005c' : '#a1a1aa'} size={16} />
-                      <Text className="font-jetbrains text-xs font-semibold text-[#fafafa]">
+                      <BoxIcon
+                        color={isSelected ? '#e5005c' : isDark ? '#a1a1aa' : '#71717a'}
+                        size={16}
+                      />
+                      <Text className={`font-jetbrains text-xs font-semibold ${textPrimaryClass}`}>
                         CID: {cid}
                       </Text>
                     </View>
                     <View className="flex-row items-center gap-2">
-                      <View className="rounded bg-[#2a2a2d] px-2 py-0.5">
-                        <Text className="font-jetbrains text-[10px] text-[#a1a1aa]">
+                      <View
+                        className={`rounded px-2 py-0.5 ${isDark ? 'bg-[#2a2a2d]' : 'bg-[#e4e4e7]'}`}>
+                        <Text className={`font-jetbrains text-[10px] ${textSecondaryClass}`}>
                           {cidItemCount} items
                         </Text>
                       </View>
@@ -956,50 +1061,275 @@ export default function ScanningItemScreen() {
         </View>
       </Modal>
 
+      {/* Multiple Matching Box CIDs Selection Modal */}
+      <Modal visible={multipleCidMatches !== null} transparent animationType="fade">
+        <View className="flex-1 items-center justify-center bg-black/70 px-6">
+          <View
+            className={`max-h-[85%] w-full rounded-xl border p-5 shadow-2xl ${
+              isDark ? 'border-[#3f3f46] bg-[#1f1f22]' : 'border-[#e4e4e7] bg-[#ffffff]'
+            }`}>
+            <View className="mb-3 flex-row items-center justify-between">
+              <View className="flex-row items-center gap-2">
+                <View className="rounded-lg bg-[#e5005c]/10 p-2">
+                  <BoxIcon color="#e5005c" size={20} />
+                </View>
+                <View>
+                  <Text className={`font-hanken text-base font-bold ${textPrimaryClass}`}>
+                    Select Box CID NO
+                  </Text>
+                  <Text className={`font-jetbrains text-[10px] ${textSecondaryClass}`}>
+                    MULTIPLE CIDS FOUND FOR BARCODE
+                  </Text>
+                </View>
+              </View>
+              <TouchableOpacity onPress={() => setMultipleCidMatches(null)}>
+                <X color={isDark ? '#a1a1aa' : '#71717a'} size={20} />
+              </TouchableOpacity>
+            </View>
+
+            {multipleCidMatches && (
+              <>
+                {/* Item Info Summary */}
+                {multipleCidMatches.items.length > 0 && (
+                  <View
+                    className={`mb-3 rounded-lg border p-3 ${
+                      isDark
+                        ? 'border-[#e5005c]/30 bg-[#e5005c]/10'
+                        : 'border-[#e5005c]/25 bg-[#e5005c]/5'
+                    }`}>
+                    <View className="flex-row items-center justify-between">
+                      <Text className={`font-jetbrains text-xs font-bold ${textPrimaryClass}`}>
+                        SKU: {multipleCidMatches.items[0].sku || multipleCidMatches.barcode}
+                      </Text>
+                      {multipleCidMatches.items[0].upc ? (
+                        <Text className="font-jetbrains text-xs font-semibold text-[#e5005c]">
+                          UPC: {multipleCidMatches.items[0].upc}
+                        </Text>
+                      ) : null}
+                    </View>
+                    {multipleCidMatches.items[0].description ? (
+                      <Text
+                        className={`mt-1 font-hanken text-xs ${textSecondaryClass}`}
+                        numberOfLines={2}>
+                        {multipleCidMatches.items[0].description}
+                      </Text>
+                    ) : null}
+                  </View>
+                )}
+
+                <Text
+                  className={`mb-2 font-jetbrains text-[10px] font-bold uppercase tracking-wider ${textSecondaryClass}`}>
+                  Tap the Box CID you are currently unpacking ({multipleCidMatches.items.length}{' '}
+                  records):
+                </Text>
+
+                {/* CID List */}
+                <FlatList
+                  data={multipleCidMatches.items}
+                  keyExtractor={(item) => item.id}
+                  className="max-h-64"
+                  showsVerticalScrollIndicator={false}
+                  renderItem={({ item }) => {
+                    const currentQty = scannedMap[item.id] || 0;
+                    const isFulfilled = currentQty === item.qty && item.qty > 0;
+                    const isOver = currentQty > item.qty;
+                    const isPartial = currentQty > 0 && currentQty < item.qty;
+
+                    const statusBg = isFulfilled
+                      ? 'border-[#22c55e]/50 bg-[#22c55e]/10'
+                      : isOver
+                        ? 'border-[#ef4444]/50 bg-[#ef4444]/10'
+                        : isPartial
+                          ? 'border-[#eab308]/50 bg-[#eab308]/10'
+                          : isDark
+                            ? 'border-[#3f3f46] bg-[#131316]'
+                            : 'border-[#e4e4e7] bg-[#fafafa]';
+
+                    const statusTextColor = isFulfilled
+                      ? 'text-[#22c55e]'
+                      : isOver
+                        ? 'text-[#ef4444]'
+                        : isPartial
+                          ? 'text-[#eab308]'
+                          : textSecondaryClass;
+
+                    const statusLabel = isFulfilled
+                      ? 'FULFILLED'
+                      : isOver
+                        ? `OVER (+${currentQty - item.qty})`
+                        : isPartial
+                          ? `PARTIAL (${currentQty}/${item.qty})`
+                          : 'UNSCANNED';
+
+                    return (
+                      <TouchableOpacity
+                        onPress={() => {
+                          const targetItem = item;
+                          setMultipleCidMatches(null);
+                          setScannedItemModal(targetItem);
+                          setQtyInputModalValue(
+                            String(currentQty > 0 ? currentQty : targetItem.qty)
+                          );
+                          if (currentQty >= targetItem.qty && targetItem.qty > 0) {
+                            showNotification(
+                              'warning',
+                              '⚠️ ITEM ALREADY FULFILLED',
+                              `CID "${targetItem.cid}" for "${targetItem.sku || targetItem.upc}" is ALREADY FULFILLED (${currentQty}/${targetItem.qty} scanned).`
+                            );
+                            playScanFeedback('warning');
+                          } else {
+                            playScanFeedback('success');
+                          }
+                          try {
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                          } catch {}
+                        }}
+                        activeOpacity={0.7}
+                        className={`mb-2.5 rounded-xl border p-3.5 shadow-sm active:scale-[0.99] ${statusBg}`}>
+                        <View className="flex-row items-center justify-between">
+                          <View className="flex-row items-center gap-2">
+                            <BoxIcon color={isFulfilled ? '#22c55e' : '#e5005c'} size={18} />
+                            <View>
+                              <Text
+                                className={`font-jetbrains text-sm font-bold ${textPrimaryClass}`}>
+                                CID: {item.cid}
+                              </Text>
+                              {item.trf ? (
+                                <Text
+                                  className={`font-jetbrains text-[10px] ${textSecondaryClass}`}>
+                                  TRF NO: {item.trf}
+                                </Text>
+                              ) : null}
+                            </View>
+                          </View>
+
+                          <View className="items-end">
+                            <View
+                              className={`rounded border px-2 py-0.5 ${
+                                isFulfilled
+                                  ? 'border-[#22c55e]/40 bg-[#22c55e]/20'
+                                  : isOver
+                                    ? 'border-[#ef4444]/40 bg-[#ef4444]/20'
+                                    : isPartial
+                                      ? 'border-[#eab308]/40 bg-[#eab308]/20'
+                                      : isDark
+                                        ? 'border-[#3f3f46] bg-[#2a2a2d]'
+                                        : 'border-[#d4d4d8] bg-[#e4e4e7]'
+                              }`}>
+                              <Text
+                                className={`font-jetbrains text-[10px] font-bold ${statusTextColor}`}>
+                                {statusLabel}
+                              </Text>
+                            </View>
+                            <Text
+                              className={`mt-1 font-jetbrains text-xs font-bold ${textPrimaryClass}`}>
+                              Scanned: {currentQty} / {item.qty}
+                            </Text>
+                          </View>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  }}
+                />
+
+                <TouchableOpacity
+                  onPress={() => setMultipleCidMatches(null)}
+                  className={`mt-3 items-center justify-center rounded-lg border py-3 ${
+                    isDark
+                      ? 'border-[#3f3f46] bg-[#2a2a2d] active:bg-[#3f3f46]'
+                      : 'border-[#d4d4d8] bg-[#f4f4f5] active:bg-[#e4e4e7]'
+                  }`}>
+                  <Text className={`font-jetbrains text-xs font-bold ${textSecondaryClass}`}>
+                    CANCEL
+                  </Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
+
       {/* Scanned Item QTY Input Modal */}
       <Modal visible={scannedItemModal !== null} transparent animationType="fade">
         <View className="flex-1 items-center justify-center bg-black/70 px-6">
-          <View className="w-full rounded-xl border border-[#3f3f46] bg-[#1f1f22] p-5">
+          <View
+            className={`w-full rounded-xl border p-5 shadow-2xl ${
+              isDark ? 'border-[#3f3f46] bg-[#1f1f22]' : 'border-[#e4e4e7] bg-[#ffffff]'
+            }`}>
             <View className="mb-3 flex-row items-center justify-between">
-              <Text className="font-hanken text-base font-bold text-[#fafafa]">
+              <Text className={`font-hanken text-base font-bold ${textPrimaryClass}`}>
                 Item Barcode Scanned
               </Text>
               <TouchableOpacity onPress={() => setScannedItemModal(null)}>
-                <X color="#a1a1aa" size={20} />
+                <X color={isDark ? '#a1a1aa' : '#71717a'} size={20} />
               </TouchableOpacity>
             </View>
 
             {scannedItemModal && (
               <>
-                <Text className="mb-3 font-hanken text-xs text-[#a1a1aa]">
+                {/* Visual Status Banner if item is already fulfilled or over-scanned */}
+                {(scannedMap[scannedItemModal.id] || 0) === scannedItemModal.qty &&
+                  scannedItemModal.qty > 0 && (
+                    <View className="mb-3 flex-row items-center gap-2 rounded-lg border border-[#22c55e]/50 bg-[#22c55e]/15 p-2.5">
+                      <CheckCircle color="#22c55e" size={16} />
+                      <Text className="flex-1 font-jetbrains text-xs font-bold text-[#22c55e]">
+                        ✓ THIS ITEM IS ALREADY FULLY FULFILLED ({scannedMap[scannedItemModal.id]} /{' '}
+                        {scannedItemModal.qty})
+                      </Text>
+                    </View>
+                  )}
+
+                {(scannedMap[scannedItemModal.id] || 0) > scannedItemModal.qty && (
+                  <View className="mb-3 flex-row items-center gap-2 rounded-lg border border-[#ef4444]/50 bg-[#ef4444]/15 p-2.5">
+                    <AlertTriangle color="#ef4444" size={16} />
+                    <Text className="flex-1 font-jetbrains text-xs font-bold text-[#ef4444]">
+                      ⚠️ THIS ITEM IS OVER-SCANNED (+
+                      {(scannedMap[scannedItemModal.id] || 0) - scannedItemModal.qty} OVER MANIFEST)
+                    </Text>
+                  </View>
+                )}
+
+                <Text className={`mb-3 font-hanken text-xs ${textSecondaryClass}`}>
                   Verify or input the QTY of the item scanned to record to the receiving tabs:
                 </Text>
 
-                <View className="relative mb-3 overflow-hidden rounded-lg border border-[#e5005c]/30 bg-[#e5005c]/10 p-3.5">
+                <View
+                  className={`relative mb-3 overflow-hidden rounded-lg border p-3.5 ${
+                    isDark
+                      ? 'border-[#e5005c]/30 bg-[#e5005c]/10'
+                      : 'border-[#e5005c]/25 bg-[#e5005c]/5'
+                  }`}>
                   <GhostItemImage upc={scannedItemModal.upc} />
                   <View className="relative z-10 gap-1.5">
                     {scannedItemModal.sku ? (
-                      <Text className="font-jetbrains text-xs font-bold text-[#fafafa]">
+                      <Text className={`font-jetbrains text-xs font-bold ${textPrimaryClass}`}>
                         SKU: {scannedItemModal.sku}
                       </Text>
                     ) : null}
                     {scannedItemModal.upc ? (
-                      <Text className="font-jetbrains text-xs text-[#e5005c]">
+                      <Text className="font-jetbrains text-xs font-semibold text-[#e5005c]">
                         UPC: {scannedItemModal.upc}
                       </Text>
                     ) : null}
                     {scannedItemModal.cid ? (
-                      <Text className="font-jetbrains text-[11px] text-[#a1a1aa]">
+                      <Text className={`font-jetbrains text-[11px] ${textSecondaryClass}`}>
                         CID: {scannedItemModal.cid} | TRF: {scannedItemModal.trf}
                       </Text>
                     ) : null}
                     {scannedItemModal.description ? (
-                      <Text className="font-hanken text-xs text-[#a1a1aa]" numberOfLines={2}>
+                      <Text
+                        className={`font-hanken text-xs ${textSecondaryClass}`}
+                        numberOfLines={2}>
                         {scannedItemModal.description}
                       </Text>
                     ) : null}
-                    <View className="mt-1 flex-row items-center justify-between border-t border-[#e5005c]/20 pt-2">
-                      <Text className="font-jetbrains text-xs text-[#a1a1aa]">MANIFEST QTY:</Text>
+                    <View
+                      className={`mt-1 flex-row items-center justify-between border-t pt-2 ${
+                        isDark ? 'border-[#e5005c]/20' : 'border-[#e5005c]/15'
+                      }`}>
+                      <Text className={`font-jetbrains text-xs ${textSecondaryClass}`}>
+                        MANIFEST QTY:
+                      </Text>
                       <Text className="font-jetbrains text-xs font-bold text-[#22c55e]">
                         {scannedItemModal.qty}
                       </Text>
@@ -1008,7 +1338,8 @@ export default function ScanningItemScreen() {
                 </View>
 
                 {/* Standard Pack QTY Presets: [6, 8, 10, 12, 18, 24, 48] */}
-                <Text className="mb-1.5 font-jetbrains text-[11px] font-bold uppercase tracking-wider text-[#a1a1aa]">
+                <Text
+                  className={`mb-1.5 font-jetbrains text-[11px] font-bold uppercase tracking-wider ${textSecondaryClass}`}>
                   Quick Pack Presets (Tap to Set):
                 </Text>
                 <View className="mb-3 flex-row flex-wrap gap-1.5">
@@ -1026,11 +1357,13 @@ export default function ScanningItemScreen() {
                         className={`rounded-lg border px-3 py-1.5 ${
                           isSelected
                             ? 'border-[#e5005c] bg-[#e5005c]'
-                            : 'border-[#3f3f46] bg-[#2a2a2d]'
+                            : isDark
+                              ? 'border-[#3f3f46] bg-[#2a2a2d] active:bg-[#3f3f46]'
+                              : 'border-[#d4d4d8] bg-[#f4f4f5] active:bg-[#e4e4e7]'
                         }`}>
                         <Text
                           className={`font-jetbrains text-xs font-bold ${
-                            isSelected ? 'text-[#ffffff]' : 'text-[#fafafa]'
+                            isSelected ? 'text-[#ffffff]' : textPrimaryClass
                           }`}>
                           {preset}
                         </Text>
@@ -1048,7 +1381,9 @@ export default function ScanningItemScreen() {
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                       } catch {}
                     }}
-                    className="flex-1 flex-row items-center justify-center gap-1.5 rounded-lg border border-[#22c55e]/40 bg-[#22c55e]/15 py-2">
+                    className={`flex-1 flex-row items-center justify-center gap-1.5 rounded-lg border border-[#22c55e]/40 py-2 active:opacity-80 ${
+                      isDark ? 'bg-[#22c55e]/15' : 'bg-[#22c55e]/10'
+                    }`}>
                     <CheckCircle color="#22c55e" size={14} />
                     <Text className="font-jetbrains text-xs font-bold text-[#22c55e]">
                       FULFILL ALL ({scannedItemModal.qty})
@@ -1062,7 +1397,9 @@ export default function ScanningItemScreen() {
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                       } catch {}
                     }}
-                    className="flex-row items-center justify-center gap-1.5 rounded-lg border border-[#ef4444]/40 bg-[#ef4444]/15 px-3 py-2">
+                    className={`flex-row items-center justify-center gap-1.5 rounded-lg border border-[#ef4444]/40 px-3 py-2 active:opacity-80 ${
+                      isDark ? 'bg-[#ef4444]/15' : 'bg-[#ef4444]/10'
+                    }`}>
                     <RotateCcw color="#ef4444" size={14} />
                     <Text className="font-jetbrains text-xs font-bold text-[#ef4444]">
                       RESET (0)
@@ -1071,7 +1408,7 @@ export default function ScanningItemScreen() {
                 </View>
 
                 {/* Manual Input Row */}
-                <Text className="mb-1.5 font-jetbrains text-xs font-semibold text-[#fafafa]">
+                <Text className={`mb-1.5 font-jetbrains text-xs font-semibold ${textPrimaryClass}`}>
                   MANUAL INPUT QUANTITY:
                 </Text>
                 <View className="mb-4 flex-row items-center gap-2">
@@ -1080,15 +1417,23 @@ export default function ScanningItemScreen() {
                       const current = parseInt(qtyInputModalValue, 10) || 0;
                       setQtyInputModalValue(String(Math.max(0, current - 1)));
                     }}
-                    className="h-11 w-11 items-center justify-center rounded-lg border border-[#3f3f46] bg-[#2a2a2d]">
-                    <Minus color="#fafafa" size={18} />
+                    className={`h-11 w-11 items-center justify-center rounded-lg border ${
+                      isDark
+                        ? 'border-[#3f3f46] bg-[#2a2a2d] active:bg-[#3f3f46]'
+                        : 'border-[#d4d4d8] bg-[#f4f4f5] active:bg-[#e4e4e7]'
+                    }`}>
+                    <Minus color={isDark ? '#fafafa' : '#18181b'} size={18} />
                   </TouchableOpacity>
 
                   <TextInput
                     value={qtyInputModalValue}
                     onChangeText={setQtyInputModalValue}
                     keyboardType="number-pad"
-                    className="h-11 flex-1 rounded-lg border border-[#3f3f46] bg-[#131316] text-center font-jetbrains text-base font-bold text-[#fafafa]"
+                    className={`h-11 flex-1 rounded-lg border text-center font-jetbrains text-base font-bold ${
+                      isDark
+                        ? 'border-[#3f3f46] bg-[#131316] text-[#fafafa]'
+                        : 'border-[#d4d4d8] bg-[#fafafa] text-[#18181b]'
+                    }`}
                   />
 
                   <TouchableOpacity
@@ -1096,16 +1441,26 @@ export default function ScanningItemScreen() {
                       const current = parseInt(qtyInputModalValue, 10) || 0;
                       setQtyInputModalValue(String(current + 1));
                     }}
-                    className="h-11 w-11 items-center justify-center rounded-lg border border-[#3f3f46] bg-[#2a2a2d]">
-                    <Plus color="#fafafa" size={18} />
+                    className={`h-11 w-11 items-center justify-center rounded-lg border ${
+                      isDark
+                        ? 'border-[#3f3f46] bg-[#2a2a2d] active:bg-[#3f3f46]'
+                        : 'border-[#d4d4d8] bg-[#f4f4f5] active:bg-[#e4e4e7]'
+                    }`}>
+                    <Plus color={isDark ? '#fafafa' : '#18181b'} size={18} />
                   </TouchableOpacity>
                 </View>
 
                 <View className="flex-row items-center gap-3">
                   <TouchableOpacity
                     onPress={() => setScannedItemModal(null)}
-                    className="flex-1 items-center justify-center rounded-lg border border-[#3f3f46] bg-[#2a2a2d] py-3">
-                    <Text className="font-jetbrains text-xs font-bold text-[#a1a1aa]">CANCEL</Text>
+                    className={`flex-1 items-center justify-center rounded-lg border py-3 ${
+                      isDark
+                        ? 'border-[#3f3f46] bg-[#2a2a2d] active:bg-[#3f3f46]'
+                        : 'border-[#d4d4d8] bg-[#f4f4f5] active:bg-[#e4e4e7]'
+                    }`}>
+                    <Text className={`font-jetbrains text-xs font-bold ${textSecondaryClass}`}>
+                      CANCEL
+                    </Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
@@ -1171,7 +1526,8 @@ export default function ScanningItemScreen() {
                         );
                       }
                     }}
-                    className="flex-1 items-center justify-center rounded-lg bg-[#e5005c] py-3">
+                    activeOpacity={0.8}
+                    className="flex-1 items-center justify-center rounded-lg bg-[#e5005c] py-3 active:bg-[#c20050]">
                     <Text className="font-jetbrains text-xs font-bold text-[#ffffff]">
                       SAVE RECORD
                     </Text>
@@ -1186,20 +1542,23 @@ export default function ScanningItemScreen() {
       {/* Sort Options Modal */}
       <Modal visible={showSortModal} transparent animationType="fade">
         <View className="flex-1 items-center justify-center bg-black/70 px-6">
-          <View className="w-full rounded-xl border border-[#3f3f46] bg-[#1f1f22] p-5">
+          <View
+            className={`w-full rounded-xl border p-5 shadow-2xl ${
+              isDark ? 'border-[#3f3f46] bg-[#1f1f22]' : 'border-[#e4e4e7] bg-[#ffffff]'
+            }`}>
             <View className="mb-3 flex-row items-center justify-between">
               <View className="flex-row items-center gap-2">
                 <ArrowUpDown color="#e5005c" size={20} />
-                <Text className="font-hanken text-base font-bold text-[#fafafa]">
+                <Text className={`font-hanken text-base font-bold ${textPrimaryClass}`}>
                   Sort Items in Tab
                 </Text>
               </View>
               <TouchableOpacity onPress={() => setShowSortModal(false)}>
-                <X color="#a1a1aa" size={20} />
+                <X color={isDark ? '#a1a1aa' : '#71717a'} size={20} />
               </TouchableOpacity>
             </View>
 
-            <Text className="mb-3 font-hanken text-xs text-[#a1a1aa]">
+            <Text className={`mb-3 font-hanken text-xs ${textSecondaryClass}`}>
               Choose how items in the active tab should be ordered:
             </Text>
 
@@ -1225,11 +1584,13 @@ export default function ScanningItemScreen() {
                   className={`mb-2 flex-row items-center justify-between rounded-lg border p-3 ${
                     isSelected
                       ? 'border-[#e5005c] bg-[#e5005c]/15'
-                      : 'border-[#3f3f46] bg-[#131316]'
+                      : isDark
+                        ? 'border-[#3f3f46] bg-[#131316]'
+                        : 'border-[#e4e4e7] bg-[#fafafa]'
                   }`}>
                   <Text
                     className={`font-jetbrains text-xs font-semibold ${
-                      isSelected ? 'text-[#e5005c]' : 'text-[#fafafa]'
+                      isSelected ? 'text-[#e5005c]' : textPrimaryClass
                     }`}>
                     {option.label}
                   </Text>

@@ -67,9 +67,30 @@ export default function SettingsScreen() {
   const textSecondaryClass = isDark ? 'text-[#a1a1aa]' : 'text-[#71717a]';
 
   const THEME_OPTIONS = [
-    { mode: 'dark', label: 'Dark Mode', sub: 'Obsidian Dark', badge: 'ACTIVE', Icon: Moon, idleBg: '#2a2a2d' },
-    { mode: 'light', label: 'Light Mode', sub: 'Crisp Daylight', badge: 'ACTIVE', Icon: Sun, idleBg: '#e4e4e7' },
-    { mode: 'system', label: 'System', sub: 'Auto Match', badge: 'AUTO', Icon: Laptop, idleBg: '#2a2a2d' },
+    {
+      mode: 'dark',
+      label: 'Dark Mode',
+      sub: 'Obsidian Dark',
+      badge: 'ACTIVE',
+      Icon: Moon,
+      idleBg: '#2a2a2d',
+    },
+    {
+      mode: 'light',
+      label: 'Light Mode',
+      sub: 'Crisp Daylight',
+      badge: 'ACTIVE',
+      Icon: Sun,
+      idleBg: '#e4e4e7',
+    },
+    {
+      mode: 'system',
+      label: 'System',
+      sub: 'Auto Match',
+      badge: 'AUTO',
+      Icon: Laptop,
+      idleBg: '#2a2a2d',
+    },
   ] as const;
 
   return (
@@ -116,7 +137,10 @@ export default function SettingsScreen() {
                 <View
                   className="mb-2.5 h-11 w-11 items-center justify-center rounded-xl"
                   style={{ backgroundColor: isActive ? '#e5005c' : idleBg }}>
-                  <Icon color={isActive ? '#ffffff' : mode === 'light' ? '#52525b' : '#a1a1aa'} size={20} />
+                  <Icon
+                    color={isActive ? '#ffffff' : mode === 'light' ? '#52525b' : '#a1a1aa'}
+                    size={20}
+                  />
                 </View>
                 <Text
                   className={`font-jetbrains text-[11px] font-bold ${
@@ -149,7 +173,7 @@ export default function SettingsScreen() {
           <View
             className={`flex-row items-center justify-between border-b p-3.5 ${innerRowBgClass}`}>
             <View className="flex-row items-center gap-2.5">
-              <View className="h-8 w-8 items-center justify-center rounded-lg bg-[#e5005c]/12">
+              <View className="bg-[#e5005c]/12 h-8 w-8 items-center justify-center rounded-lg">
                 <User color="#e5005c" size={15} />
               </View>
               <Text className="font-jetbrains text-[9px] font-bold uppercase tracking-wider text-[#a1a1aa]">
@@ -167,7 +191,7 @@ export default function SettingsScreen() {
           <View
             className={`flex-row items-center justify-between border-b p-3.5 ${innerRowBgClass}`}>
             <View className="flex-row items-center gap-2.5">
-              <View className="h-8 w-8 items-center justify-center rounded-lg bg-[#e5005c]/12">
+              <View className="bg-[#e5005c]/12 h-8 w-8 items-center justify-center rounded-lg">
                 <Store color="#e5005c" size={15} />
               </View>
               <Text className="font-jetbrains text-[9px] font-bold uppercase tracking-wider text-[#a1a1aa]">
@@ -184,7 +208,7 @@ export default function SettingsScreen() {
           {/* Login Date Row */}
           <View className={`flex-row items-center justify-between p-3.5 ${innerRowBgClass}`}>
             <View className="flex-row items-center gap-2.5">
-              <View className="h-8 w-8 items-center justify-center rounded-lg bg-[#e5005c]/12">
+              <View className="bg-[#e5005c]/12 h-8 w-8 items-center justify-center rounded-lg">
                 <Calendar color="#e5005c" size={15} />
               </View>
               <Text className="font-jetbrains text-[9px] font-bold uppercase tracking-wider text-[#a1a1aa]">
@@ -234,13 +258,15 @@ export default function SettingsScreen() {
 
           <View className="flex-row gap-2">
             <View className={`flex-1 rounded-lg px-2.5 py-2 ${innerRowBgClass}`}>
-              <Text className={`font-jetbrains text-[8px] font-bold uppercase tracking-wider ${textSecondaryClass}`}>
+              <Text
+                className={`font-jetbrains text-[8px] font-bold uppercase tracking-wider ${textSecondaryClass}`}>
                 Scanner Engine
               </Text>
               <Text className="mt-0.5 font-jetbrains text-xs font-bold text-[#e5005c]">v4.0.0</Text>
             </View>
             <View className={`flex-1 rounded-lg px-2.5 py-2 ${innerRowBgClass}`}>
-              <Text className={`font-jetbrains text-[8px] font-bold uppercase tracking-wider ${textSecondaryClass}`}>
+              <Text
+                className={`font-jetbrains text-[8px] font-bold uppercase tracking-wider ${textSecondaryClass}`}>
                 Runtime
               </Text>
               <Text className={`mt-0.5 font-jetbrains text-xs font-bold ${textPrimaryClass}`}>

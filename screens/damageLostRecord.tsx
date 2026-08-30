@@ -10,6 +10,7 @@ import {
   ScrollView,
   Image,
   StyleSheet,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -32,6 +33,8 @@ import {
   Trash2,
   Plus,
   Minus,
+  ExternalLink,
+  Globe,
 } from 'lucide-react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
@@ -1094,27 +1097,78 @@ export default function DamageLostRecordScreen({ embedded = false }: { embedded?
   const renderSubmitStep = () => {
     if (submitted) {
       return (
-        <View className="flex-1 items-center justify-center px-8">
-          <View className="h-20 w-20 items-center justify-center rounded-full bg-[#22c55e]/15">
-            <CircleCheck color="#22c55e" size={44} />
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1, alignItems: 'center', justifyContent: 'center' }}
+          className="flex-1 px-5 py-6"
+          showsVerticalScrollIndicator={false}>
+          <View className="h-18 w-18 items-center justify-center rounded-full border border-[#22c55e]/30 bg-[#22c55e]/15">
+            <CircleCheck color="#22c55e" size={40} />
           </View>
-          <Text className={`mt-5 text-center font-hanken text-xl font-bold ${textPrimaryClass}`}>
+          <Text
+            className={`mt-4 text-center font-hanken text-2xl font-extrabold ${textPrimaryClass}`}>
             Record Submitted
           </Text>
-          <Text className={`mt-2 text-center font-hanken text-sm ${textSecondaryClass}`}>
+          <Text
+            className={`mt-1.5 text-center font-hanken text-xs ${textSecondaryClass} max-w-[320px]`}>
             Damage record for{' '}
             <Text className="font-jetbrains font-bold text-[#e5005c]">
               {draft?.product?.sku || draft?.scannedCode}
             </Text>{' '}
-            was saved to the database with all 3 evidence photos.
+            was successfully synced with all 3 evidence photos.
           </Text>
+
+          {/* Central DLR Web Portal Card */}
+          <View
+            className={`mt-5 w-full rounded-xl border p-4 shadow-sm ${
+              isDark ? 'border-[#3f3f46] bg-[#1f1f22]' : 'border-[#e4e4e7] bg-[#ffffff]'
+            }`}>
+            <View className="flex-row items-center gap-3">
+              <View className="h-10 w-10 items-center justify-center rounded-lg bg-[#e5005c]/15">
+                <Globe color="#e5005c" size={20} />
+              </View>
+              <View className="flex-1">
+                <Text className={`font-hanken text-sm font-bold ${textPrimaryClass}`}>
+                  Central DLR Web Portal
+                </Text>
+                <Text
+                  className={`font-jetbrains text-[10px] font-semibold text-[#e5005c]`}
+                  numberOfLines={1}>
+                  https://dlr-view.vercel.app/
+                </Text>
+              </View>
+            </View>
+
+            <Text className={`mt-2 font-hanken text-[11px] ${textSecondaryClass}`}>
+              View and audit all submitted Damage & Lost Records with full image attachments online.
+            </Text>
+
+            <TouchableOpacity
+              onPress={() => Linking.openURL('https://dlr-view.vercel.app/')}
+              activeOpacity={0.8}
+              className="mt-3.5 flex-row items-center justify-center gap-2 rounded-lg bg-[#e5005c] py-3 active:bg-[#c20050]">
+              <Globe color="#ffffff" size={15} />
+              <Text className="font-jetbrains text-xs font-bold tracking-wider text-white">
+                VIEW IN DLR PORTAL
+              </Text>
+              <ExternalLink color="#ffffff" size={14} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Record Another Item Action */}
           <TouchableOpacity
             onPress={resetFlow}
-            className="mt-8 flex-row items-center gap-2 rounded-lg bg-[#e5005c] px-6 py-3.5">
-            <Scan color="#ffffff" size={16} />
-            <Text className="font-jetbrains text-xs font-bold text-white">RECORD ANOTHER ITEM</Text>
+            activeOpacity={0.8}
+            className={`mt-3.5 w-full flex-row items-center justify-center gap-2 rounded-lg border py-3.5 ${
+              isDark
+                ? 'border-[#3f3f46] bg-[#2a2a2d] active:bg-[#3f3f46]'
+                : 'border-[#d4d4d8] bg-[#f4f4f5] active:bg-[#e4e4e7]'
+            }`}>
+            <Scan color={isDark ? '#fafafa' : '#18181b'} size={16} />
+            <Text className={`font-jetbrains text-xs font-bold ${textPrimaryClass}`}>
+              RECORD ANOTHER ITEM
+            </Text>
           </TouchableOpacity>
-        </View>
+        </ScrollView>
       );
     }
 
@@ -1330,6 +1384,29 @@ export default function DamageLostRecordScreen({ embedded = false }: { embedded?
           ) : null}
         </View>
 
+        {/* Central DLR Web Portal Reference Link */}
+        <TouchableOpacity
+          onPress={() => Linking.openURL('https://dlr-view.vercel.app/')}
+          activeOpacity={0.8}
+          className={`mt-3 flex-row items-center justify-between rounded-xl border p-3 ${
+            isDark ? 'border-[#3f3f46] bg-[#1f1f22]' : 'border-[#e4e4e7] bg-[#ffffff]'
+          }`}>
+          <View className="flex-row items-center gap-2.5">
+            <View className="rounded-lg bg-[#e5005c]/10 p-2">
+              <Globe color="#e5005c" size={16} />
+            </View>
+            <View>
+              <Text className={`font-hanken text-xs font-bold ${textPrimaryClass}`}>
+                Live DLR Portal
+              </Text>
+              <Text className="font-jetbrains text-[10px] text-[#e5005c]">
+                https://dlr-view.vercel.app/
+              </Text>
+            </View>
+          </View>
+          <ExternalLink color={isDark ? '#a1a1aa' : '#71717a'} size={15} />
+        </TouchableOpacity>
+
         {submitting ? (
           <View className="mt-4 flex-row items-center justify-center gap-2 rounded-xl border border-[#e5005c]/30 bg-[#e5005c]/10 py-3.5">
             <ActivityIndicator size="small" color="#e5005c" />
@@ -1378,7 +1455,7 @@ export default function DamageLostRecordScreen({ embedded = false }: { embedded?
             Damage Lost Record
           </Text>
           <Text className={`font-jetbrains text-[9px] font-semibold ${textSecondaryClass}`}>
-            DLR INTAKE · CLOUDINARY + SUPABASE
+            4 STEPS TO COMPLETE
           </Text>
         </View>
         <TouchableOpacity

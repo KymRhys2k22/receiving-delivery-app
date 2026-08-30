@@ -19,7 +19,7 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const systemColorScheme = useRNColorScheme();
   const { setColorScheme } = useNativeWindColorScheme();
-  const [themeMode, setThemeModeState] = useState<ThemeMode>('dark');
+  const [themeMode, setThemeModeState] = useState<ThemeMode>('light');
 
   useEffect(() => {
     const loadTheme = async () => {
@@ -31,7 +31,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
             savedMode === 'system' ? (systemColorScheme === 'dark' ? 'dark' : 'light') : savedMode;
           setColorScheme(effectiveMode);
         } else {
-          setColorScheme('dark');
+          setColorScheme('light');
         }
       } catch {}
     };
@@ -49,7 +49,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   };
 
   const toggleTheme = () => {
-    const nextMode = themeMode === 'dark' ? 'light' : 'dark';
+    const nextMode = themeMode === 'light' ? 'dark' : 'light';
     setThemeMode(nextMode);
   };
 

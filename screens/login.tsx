@@ -30,7 +30,7 @@ export default function LoginScreen() {
 
   const [operatorId, setOperatorId] = useState('');
   const [storeCode, setStoreCode] = useState('');
-  const [workDate, setWorkDate] = useState(getTodayDateString());
+  const [workDate] = useState(getTodayDateString());
   const [error, setError] = useState<string | null>(null);
 
   const [focusedField, setFocusedField] = useState<'operator' | 'store' | 'date' | null>(null);

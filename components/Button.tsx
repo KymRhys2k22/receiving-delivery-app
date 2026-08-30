@@ -3,22 +3,32 @@ import { Text, TouchableOpacity, TouchableOpacityProps, View } from 'react-nativ
 
 interface ButtonProps extends TouchableOpacityProps {
   title: string;
+  variant?: 'primary' | 'secondary' | 'danger';
 }
 
-export const Button = forwardRef<View, ButtonProps>(({ title, ...touchableProps }, ref) => {
-  return (
-    <TouchableOpacity
-      ref={ref}
-      {...touchableProps}
-      className={`${styles.button} ${touchableProps.className}`}>
-      <Text className={styles.buttonText}>{title}</Text>
-    </TouchableOpacity>
-  );
-});
+export const Button = forwardRef<View, ButtonProps>(
+  ({ title, variant = 'primary', ...touchableProps }, ref) => {
+    const variantStyle =
+      variant === 'secondary'
+        ? 'bg-[#1f1f22] border border-[#3f3f46] active:bg-[#2a2a2d]'
+        : variant === 'danger'
+          ? 'bg-[#ef4444] active:bg-[#dc2626]'
+          : 'bg-[#e5005c] active:bg-[#c20050]';
+
+    const textStyle = variant === 'secondary' ? 'text-[#fafafa]' : 'text-white';
+
+    return (
+      <TouchableOpacity
+        ref={ref}
+        activeOpacity={0.8}
+        {...touchableProps}
+        className={`items-center justify-center rounded-lg px-4 py-3 shadow-sm ${variantStyle} ${touchableProps.className || ''}`}>
+        <Text className={`font-jetbrains text-sm font-bold tracking-wider ${textStyle}`}>
+          {title}
+        </Text>
+      </TouchableOpacity>
+    );
+  }
+);
 
 Button.displayName = 'Button';
-
-const styles = {
-  button: 'items-center bg-indigo-500 rounded-[28px] shadow-md p-4',
-  buttonText: 'text-white text-lg font-semibold text-center',
-};

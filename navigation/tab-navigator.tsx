@@ -21,7 +21,8 @@ function TabBarIcon({
   label: string;
 }) {
   const { isDark } = useTheme();
-  const activeBg = '#e5005c';
+  const activeBg = isDark ? '#e5005c26' : '#e5005c1a';
+  const activeTextColor = '#e5005c';
   const inactiveTextColor = isDark ? '#a1a1aa' : '#71717a';
 
   return (
@@ -30,17 +31,21 @@ function TabBarIcon({
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: focused ? activeBg : 'transparent',
-        borderRadius: 12,
-        width: 80,
-        height: 52,
+        borderRadius: 10,
+        width: 72,
+        height: 48,
+        borderWidth: focused ? 1 : 0,
+        borderColor: focused ? '#e5005c55' : 'transparent',
       }}>
-      <Icon color={focused ? '#ffffff' : inactiveTextColor} size={20} />
+      <Icon color={focused ? activeTextColor : inactiveTextColor} size={18} />
       <Text
         style={{
           fontSize: 10,
-          fontWeight: '600',
-          color: focused ? '#ffffff' : inactiveTextColor,
-          marginTop: 2,
+          fontFamily: 'JetBrains Mono',
+          fontWeight: focused ? '700' : '500',
+          color: focused ? activeTextColor : inactiveTextColor,
+          marginTop: 3,
+          letterSpacing: 0.2,
         }}>
         {label}
       </Text>
@@ -56,12 +61,16 @@ const Tab = createBottomTabNavigator({
       tabBarStyle: {
         backgroundColor: isDark ? '#131316' : '#ffffff',
         borderTopColor: isDark ? '#2a2a2d' : '#e4e4e7',
-        height: 80,
-        paddingBottom: 15,
-        paddingTop: 15,
+        borderTopWidth: 1,
+        height: 76,
+        paddingBottom: 12,
+        paddingTop: 12,
+        elevation: 0,
+        shadowOpacity: 0,
       },
     };
   },
+
   screens: {
     One: {
       screen: One,

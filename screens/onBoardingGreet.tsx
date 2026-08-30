@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, Image, StatusBar, BackHandler } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -12,12 +12,12 @@ export default function OnBoardingGreetScreen() {
   const { isDark } = useTheme();
   const [secondsLeft, setSecondsLeft] = useState(3);
 
-  const goToDashboard = () => {
+  const goToDashboard = useCallback(() => {
     navigation.reset({
       index: 0,
       routes: [{ name: 'TabNavigator' as never }],
     });
-  };
+  }, [navigation]);
 
   // Prevent back button gesture on Android during onboarding greet
   useEffect(() => {
@@ -31,7 +31,7 @@ export default function OnBoardingGreetScreen() {
     if (secondsLeft === 0) {
       goToDashboard();
     }
-  }, [secondsLeft]);
+  }, [secondsLeft, goToDashboard]);
 
   useEffect(() => {
     const timer = setInterval(() => {

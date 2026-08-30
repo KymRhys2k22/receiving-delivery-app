@@ -94,7 +94,7 @@ export default function HistoryScreen() {
         showToast(`Loaded Item Session: ${record.fileName}`);
         navigation.navigate('ScanningItem' as never);
       }
-    } catch (err) {
+    } catch {
       showToast('Failed to resume session');
     }
   };

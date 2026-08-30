@@ -415,34 +415,44 @@ export default function ScanningBoxScreen() {
   const displayBoxes = activeTab === 'unscanned' ? unscannedBoxes : scannedBoxes;
 
   return (
-    <SafeAreaView className="flex-1 bg-[#131316]">
+    <SafeAreaView className={`flex-1 ${bgClass}`}>
       {/* Manual Entry Modal */}
       <Modal visible={showManual} transparent animationType="fade">
         <View className="flex-1 items-center justify-center bg-black/70 px-6">
-          <View className="w-full rounded-xl border border-[#3f3f46] bg-[#1f1f22] p-5">
+          <View
+            className={`w-full rounded-xl border p-5 shadow-2xl ${
+              isDark ? 'border-[#3f3f46] bg-[#1f1f22]' : 'border-[#e4e4e7] bg-[#ffffff]'
+            }`}>
             <View className="mb-4 flex-row items-center justify-between">
-              <Text className="font-hanken text-base font-bold text-[#fafafa]">Manual Entry</Text>
+              <Text className={`font-hanken text-base font-bold ${textPrimaryClass}`}>
+                Manual Entry
+              </Text>
               <TouchableOpacity
                 onPress={() => {
                   setShowManual(false);
                   setManualInput('');
                 }}>
-                <X color="#a1a1aa" size={20} />
+                <X color={isDark ? '#a1a1aa' : '#71717a'} size={20} />
               </TouchableOpacity>
             </View>
             <TextInput
               value={manualInput}
               onChangeText={setManualInput}
               placeholder="Enter CID NO..."
-              placeholderTextColor="#71717a"
+              placeholderTextColor={isDark ? '#71717a' : '#a1a1aa'}
               autoFocus
               autoCapitalize="characters"
-              className="mb-4 h-11 rounded-lg border border-[#3f3f46] bg-[#131316] px-3 font-jetbrains text-sm text-[#fafafa]"
+              className={`mb-4 h-11 rounded-lg border px-3 font-jetbrains text-sm ${
+                isDark
+                  ? 'border-[#3f3f46] bg-[#131316] text-[#fafafa]'
+                  : 'border-[#d4d4d8] bg-[#fafafa] text-[#18181b]'
+              }`}
             />
             <TouchableOpacity
               onPress={submitManual}
-              className="items-center justify-center rounded-lg bg-[#ff80ab] py-3">
-              <Text className="font-jetbrains text-sm font-bold text-[#131316]">CONFIRM</Text>
+              activeOpacity={0.8}
+              className="items-center justify-center rounded-lg bg-[#e5005c] py-3 active:bg-[#c20050]">
+              <Text className="font-jetbrains text-sm font-bold text-[#ffffff]">CONFIRM</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -451,20 +461,33 @@ export default function ScanningBoxScreen() {
       {/* Confirm Add to Scanned Modal */}
       <Modal visible={confirmCidModal !== null} transparent animationType="fade">
         <View className="flex-1 items-center justify-center bg-black/70 px-6">
-          <View className="w-full rounded-xl border border-[#3f3f46] bg-[#1f1f22] p-5">
+          <View
+            className={`w-full rounded-xl border p-5 shadow-2xl ${
+              isDark ? 'border-[#3f3f46] bg-[#1f1f22]' : 'border-[#e4e4e7] bg-[#ffffff]'
+            }`}>
             <View className="mb-3 flex-row items-center justify-between">
-              <Text className="font-hanken text-base font-bold text-[#fafafa]">Confirm Scan</Text>
+              <Text className={`font-hanken text-base font-bold ${textPrimaryClass}`}>
+                Confirm Scan
+              </Text>
               <TouchableOpacity onPress={() => setConfirmCidModal(null)}>
-                <X color="#a1a1aa" size={20} />
+                <X color={isDark ? '#a1a1aa' : '#71717a'} size={20} />
               </TouchableOpacity>
             </View>
 
-            <Text className="mb-3 font-hanken text-xs text-[#a1a1aa]">
+            <Text className={`mb-3 font-hanken text-xs ${textSecondaryClass}`}>
               Do you want to add this CID NO. to the scanned list?
             </Text>
 
-            <View className="mb-5 items-center justify-center rounded-lg border border-[#ff80ab]/30 bg-[#ff80ab]/10 p-3">
-              <Text className="font-jetbrains text-sm font-bold text-[#ffb2c3]">
+            <View
+              className={`mb-5 items-center justify-center rounded-lg border p-3 ${
+                isDark
+                  ? 'border-[#ff80ab]/30 bg-[#ff80ab]/10'
+                  : 'border-[#e5005c]/30 bg-[#e5005c]/10'
+              }`}>
+              <Text
+                className={`font-jetbrains text-sm font-bold ${
+                  isDark ? 'text-[#ffb2c3]' : 'text-[#e5005c]'
+                }`}>
                 CID NO. : {confirmCidModal}
               </Text>
             </View>
@@ -472,8 +495,14 @@ export default function ScanningBoxScreen() {
             <View className="flex-row items-center gap-3">
               <TouchableOpacity
                 onPress={() => setConfirmCidModal(null)}
-                className="flex-1 items-center justify-center rounded-lg border border-[#3f3f46] bg-[#2a2a2d] py-3">
-                <Text className="font-jetbrains text-xs font-bold text-[#a1a1aa]">CANCEL</Text>
+                className={`flex-1 items-center justify-center rounded-lg border py-3 ${
+                  isDark
+                    ? 'border-[#3f3f46] bg-[#2a2a2d] active:bg-[#3f3f46]'
+                    : 'border-[#d4d4d8] bg-[#f4f4f5] active:bg-[#e4e4e7]'
+                }`}>
+                <Text className={`font-jetbrains text-xs font-bold ${textSecondaryClass}`}>
+                  CANCEL
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -484,8 +513,9 @@ export default function ScanningBoxScreen() {
                     handleScan(targetCid);
                   }
                 }}
-                className="flex-1 items-center justify-center rounded-lg bg-[#ff80ab] py-3">
-                <Text className="font-jetbrains text-xs font-bold text-[#131316]">PROCEED</Text>
+                activeOpacity={0.8}
+                className="flex-1 items-center justify-center rounded-lg bg-[#e5005c] py-3 active:bg-[#c20050]">
+                <Text className="font-jetbrains text-xs font-bold text-[#ffffff]">PROCEED</Text>
               </TouchableOpacity>
             </View>
           </View>
