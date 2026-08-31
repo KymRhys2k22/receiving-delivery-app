@@ -244,10 +244,11 @@ export default function ScanningItemScreen() {
   const [scannedItemModal, setScannedItemModal] = useState<ItemManifestRecord | null>(null);
   const [qtyInputModalValue, setQtyInputModalValue] = useState<string>('1');
 
-  // Expiry date states for items under CID "LOCAL"
+  // Expiry date states for items under all CIDs
   const [expiryDateMap, setExpiryDateMap] = useState<Record<string, string>>({});
   const expiryDateMapRef = useRef<Record<string, string>>({});
   const [expiryInputModalValue, setExpiryInputModalValue] = useState<string>('');
+  const [showCalendarInput, setShowCalendarInput] = useState<boolean>(false);
   const [showCalendarModal, setShowCalendarModal] = useState<boolean>(false);
   const [calendarViewYear, setCalendarViewYear] = useState<number>(
     () => new Date().getFullYear() + 1
@@ -264,17 +265,12 @@ export default function ScanningItemScreen() {
       const currentQty = scannedMapRef.current[item.id] || 0;
       setQtyInputModalValue(String(currentQty > 0 ? currentQty : item.qty));
 
-      const isLocalCid = (item.cid || '').trim().toUpperCase() === 'LOCAL';
-      if (isLocalCid) {
-        const existingExp = expiryDateMapRef.current[item.id] || expiryDateMap[item.id];
-        // Default blank unless previously set by operator
-        setExpiryInputModalValue(existingExp || '');
-        const nextYear = new Date().getFullYear() + 1;
-        setCalendarViewYear(nextYear);
-        setCalendarViewMonth(new Date().getMonth());
-      } else {
-        setExpiryInputModalValue('');
-      }
+      const existingExp = expiryDateMapRef.current[item.id] || expiryDateMap[item.id] || '';
+      setExpiryInputModalValue(existingExp);
+      setShowCalendarInput(!!existingExp);
+      const nextYear = new Date().getFullYear() + 1;
+      setCalendarViewYear(nextYear);
+      setCalendarViewMonth(new Date().getMonth());
     },
     [expiryDateMap]
   );
@@ -948,8 +944,7 @@ export default function ScanningItemScreen() {
         }
 
         const varianceStr = variance > 0 ? `+${variance}` : String(variance);
-        const isLocalCid = (item.cid || '').trim().toUpperCase() === 'LOCAL';
-        const expiryDateVal = isLocalCid || expiryDateMap[item.id] ? (expiryDateMap[item.id] || '') : '';
+        const expiryDateVal = expiryDateMap[item.id] || '';
 
         sheetRows.push([
           status,
@@ -1660,8 +1655,41 @@ export default function ScanningItemScreen() {
                   </TouchableOpacity>
                 </View>
 
-                {/* Expiry Date Section (Optional for CID LOCAL) */}
-                {(scannedItemModal.cid || '').trim().toUpperCase() === 'LOCAL' && (
+                {/* Expiry Date / Calendar Section with Toggle Button (Available for all CIDs) */}
+                {!showCalendarInput ? (
+                  <TouchableOpacity
+                    onPress={() => {
+                      setShowCalendarInput(true);
+                      try {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      } catch {}
+                    }}
+                    className={`mb-4 flex-row items-center justify-between rounded-xl border p-3 ${
+                      isDark
+                        ? 'border-[#3f3f46] bg-[#2a2a2d] active:bg-[#3f3f46]'
+                        : 'border-[#d4d4d8] bg-[#f4f4f5] active:bg-[#e4e4e7]'
+                    }`}>
+                    <View className="flex-row items-center gap-2.5">
+                      <View className="rounded-lg bg-[#e5005c]/10 p-2">
+                        <CalendarIcon color="#e5005c" size={16} />
+                      </View>
+                      <View>
+                        <Text className={`font-jetbrains text-xs font-bold ${textPrimaryClass}`}>
+                          {expiryInputModalValue ? `EXPIRY: ${expiryInputModalValue}` : 'EXPIRY DATE / CALENDAR'}
+                        </Text>
+                        <Text className={`font-hanken text-[10px] ${textSecondaryClass}`}>
+                          {expiryInputModalValue ? 'Tap to edit expiry date' : 'Optional · Tap to toggle calendar input'}
+                        </Text>
+                      </View>
+                    </View>
+                    <View className="flex-row items-center gap-1 rounded-lg bg-[#e5005c]/15 px-2.5 py-1.5">
+                      <Text className="font-jetbrains text-xs font-bold text-[#e5005c]">
+                        {expiryInputModalValue ? 'EDIT' : '+ ADD'}
+                      </Text>
+                      <ChevronDown color="#e5005c" size={14} />
+                    </View>
+                  </TouchableOpacity>
+                ) : (
                   <View
                     className={`mb-4 rounded-xl border p-3.5 ${
                       isDark
@@ -1672,18 +1700,26 @@ export default function ScanningItemScreen() {
                       <View className="flex-row items-center gap-1.5">
                         <CalendarIcon color="#e5005c" size={15} />
                         <Text className="font-jetbrains text-xs font-bold text-[#e5005c]">
-                          EXPIRY DATE (CID: LOCAL)
+                          EXPIRY DATE {scannedItemModal.cid ? `(CID: ${scannedItemModal.cid})` : ''}
                         </Text>
                       </View>
-                      <View className="rounded bg-[#e5005c]/20 px-2 py-0.5">
+                      <TouchableOpacity
+                        onPress={() => {
+                          setShowCalendarInput(false);
+                          try {
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                          } catch {}
+                        }}
+                        className="flex-row items-center gap-1 rounded bg-[#e5005c]/20 px-2 py-0.5 active:bg-[#e5005c]/30">
                         <Text className="font-jetbrains text-[9px] font-bold text-[#e5005c]">
-                          OPTIONAL · 1 YR PICKER
+                          HIDE
                         </Text>
-                      </View>
+                        <ChevronUp color="#e5005c" size={12} />
+                      </TouchableOpacity>
                     </View>
 
                     <Text className={`mb-2 font-hanken text-[11px] ${textSecondaryClass}`}>
-                      Optional for non-food items. Tap CALENDAR to pick a date (navigates 1 year ahead), or leave blank:
+                      Optional. Tap CALENDAR to pick a date (navigates 1 year ahead), or type date:
                     </Text>
 
                     <View className="flex-row items-center gap-2">
@@ -1772,20 +1808,18 @@ export default function ScanningItemScreen() {
                         () => {}
                       );
 
-                      // Save expiry date if CID is LOCAL
-                      if ((item.cid || '').trim().toUpperCase() === 'LOCAL') {
-                        const updatedExpiry = { ...expiryDateMapRef.current };
-                        if (expiryInputModalValue.trim()) {
-                          updatedExpiry[item.id] = expiryInputModalValue.trim();
-                        } else {
-                          delete updatedExpiry[item.id];
-                        }
-                        setExpiryDateMap(updatedExpiry);
-                        AsyncStorage.setItem(
-                          ITEM_EXPIRY_DATES_KEY,
-                          JSON.stringify(updatedExpiry)
-                        ).catch(() => {});
+                      // Save expiry date for all CIDs
+                      const updatedExpiry = { ...expiryDateMapRef.current };
+                      if (expiryInputModalValue.trim()) {
+                        updatedExpiry[item.id] = expiryInputModalValue.trim();
+                      } else {
+                        delete updatedExpiry[item.id];
                       }
+                      setExpiryDateMap(updatedExpiry);
+                      AsyncStorage.setItem(
+                        ITEM_EXPIRY_DATES_KEY,
+                        JSON.stringify(updatedExpiry)
+                      ).catch(() => {});
 
                       const itemLabel = item.sku || item.upc || item.description || 'Item';
                       setLastScanned(itemLabel);
@@ -1854,7 +1888,7 @@ export default function ScanningItemScreen() {
                     Select Expiry Date
                   </Text>
                   <Text className={`font-jetbrains text-[10px] ${textSecondaryClass}`}>
-                    CID LOCAL · 1 Year Ahead Default
+                    {scannedItemModal?.cid ? `CID: ${scannedItemModal.cid} · ` : ''}1 Year Ahead Default
                   </Text>
                 </View>
               </View>
@@ -2764,7 +2798,7 @@ export default function ScanningItemScreen() {
                           </Text>
                         </View>
                       ) : null}
-                      {(item.cid || '').trim().toUpperCase() === 'LOCAL' && expiryDateMap[item.id] ? (
+                      {expiryDateMap[item.id] ? (
                         <View className="flex-row items-center gap-1 rounded border border-[#e5005c]/30 bg-[#e5005c]/10 px-2 py-0.5">
                           <CalendarIcon color="#e5005c" size={11} />
                           <Text className="font-jetbrains text-[10px] font-bold text-[#e5005c]">
