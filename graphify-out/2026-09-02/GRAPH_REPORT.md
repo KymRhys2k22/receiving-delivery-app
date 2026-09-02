@@ -1,11 +1,11 @@
-# Graph Report - receiving-delivery-app  (2026-09-03)
+# Graph Report - receiving-delivery-app  (2026-09-02)
 
 ## Corpus Check
-- 39 files · ~82,506 words
+- 39 files · ~81,133 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 425 nodes · 555 edges · 58 communities (25 shown, 33 thin omitted)
+- 422 nodes · 550 edges · 57 communities (25 shown, 32 thin omitted)
 - Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 17 edges (avg confidence: 0.78)
 - Token cost: 0 input · 0 output
 
@@ -47,10 +47,10 @@
 - expo-splash-screen
 - expo-status-bar
 - @expo/vector-icons
-- expo-network
+- lucide-react-native
 - nativewind
 - react
-- @react-native-async-storage/async-storage
+- react-native
 - react-native-gesture-handler
 - react-native-reanimated
 - react-native-safe-area-context
@@ -66,14 +66,13 @@
 - rules/graphify.md
 - workflows/graphify.md
 - expo-font
-- react-native-screens
 
 ## God Nodes (most connected - your core abstractions)
 1. `New session - 2026-08-26T06:38:56.026Z` - 90 edges
 2. `useTheme()` - 25 edges
 3. `useAuth()` - 16 edges
-4. `DamageLostRecordScreen()` - 16 edges
-5. `expo` - 15 edges
+4. `expo` - 15 edges
+5. `DamageLostRecordScreen()` - 15 edges
 6. `scripts` - 9 edges
 7. `processDlrSyncQueue()` - 9 edges
 8. `Components` - 6 edges
@@ -101,7 +100,7 @@
 - **App Branding and Mascot Design** — assets_icon_app_icon, assets_icon_delivery_elephant_mascot, assets_icon_branding_visual_identity [INFERRED 0.85]
 - **Splash Screen and Mascot Visual Identity** — assets_splash_png_splash_screen, assets_splash_png_delivery_elephant_mascot, assets_splash_png_branding_visual_identity [INFERRED 0.85]
 
-## Communities (58 total, 33 thin omitted)
+## Communities (57 total, 32 thin omitted)
 
 ### Community 0 - "useTheme"
 Cohesion: 0.08
@@ -109,7 +108,7 @@ Nodes (42): AppContent(), AuthContext, AuthContextType, AuthProvider(), useAuth(
 
 ### Community 1 - "dlr.ts"
 Cohesion: 0.08
-Nodes (46): DamageLostRecordScreen(), feedback(), formatRecordTime(), ProductCard(), ReasonPickerModal(), Step, STEP_LIST, buildDlrImageName() (+38 more)
+Nodes (45): DamageLostRecordScreen(), feedback(), formatRecordTime(), ProductCard(), ReasonPickerModal(), Step, STEP_LIST, buildDlrImageName() (+37 more)
 
 ### Community 2 - "expo"
 Cohesion: 0.06
@@ -129,7 +128,7 @@ Nodes (7): EditScreenInfo(), EditScreenInfoProps, styles, ScreenContent(), Scree
 
 ### Community 7 - "dependencies"
 Cohesion: 0.22
-Nodes (9): expo, lucide-react-native, dependencies, expo, lucide-react-native, papaparse, react-native, papaparse (+1 more)
+Nodes (9): expo, dependencies, expo, papaparse, @react-native-async-storage/async-storage, react-native-screens, papaparse, @react-native-async-storage/async-storage (+1 more)
 
 ### Community 8 - "tsconfig.json"
 Cohesion: 0.33
@@ -180,9 +179,9 @@ Cohesion: 0.50
 Nodes (3): 1. Cloudinary: replace YOUR_PRESET first. Success = JSON with "secure_url", 2. Supabase read: table exists? (empty [] is fine, error = table missing), 3. Supabase insert: tests schema + RLS exactly like the app does
 
 ## Knowledge Gaps
-- **227 isolated node(s):** `name`, `slug`, `version`, `favicon`, `tsconfigPaths` (+222 more)
+- **226 isolated node(s):** `name`, `slug`, `version`, `favicon`, `tsconfigPaths` (+221 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **33 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **32 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
@@ -192,11 +191,11 @@ _Questions this graph is uniquely positioned to answer:_
 - **Why does `expo-sharing` connect `expo` to `useTheme`?**
   _High betweenness centrality (0.046) - this node is a cross-community bridge._
 - **What connects `name`, `slug`, `version` to the rest of the system?**
-  _227 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _226 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `useTheme` be split into smaller, more focused modules?**
   _Cohesion score 0.08032786885245902 - nodes in this community are weakly interconnected._
 - **Should `dlr.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.0783673469387755 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.07908163265306123 - nodes in this community are weakly interconnected._
 - **Should `expo` be split into smaller, more focused modules?**
   _Cohesion score 0.06218487394957983 - nodes in this community are weakly interconnected._
 - **Should `devDependencies` be split into smaller, more focused modules?**

@@ -2068,26 +2068,26 @@
       "norm_label": "expo-file-system"
     },
     {
-      "label": "expo-camera",
+      "label": "expo",
       "file_type": "code",
       "source_file": "package.json",
-      "source_location": "L22",
+      "source_location": "L21",
       "_origin": "ast",
-      "id": "package_dependencies_expo_camera",
+      "id": "package_dependencies_expo",
       "community": 23,
-      "community_name": "expo-camera",
-      "norm_label": "expo-camera"
+      "community_name": "expo",
+      "norm_label": "expo"
     },
     {
-      "label": "expo-camera",
+      "label": "expo",
       "file_type": "concept",
       "source_file": "package.json",
-      "source_location": "L22",
+      "source_location": "L21",
       "_origin": "ast",
-      "id": "expo_camera",
+      "id": "expo",
       "community": 23,
-      "community_name": "expo-camera",
-      "norm_label": "expo-camera"
+      "community_name": "expo",
+      "norm_label": "expo"
     },
     {
       "label": "Assistant (Build \u00b7 Ox Alpha Free (Unlimited) \u00b7 10.0s)",
@@ -4356,15 +4356,15 @@
       "norm_label": "dependencies"
     },
     {
-      "label": "expo",
+      "label": "expo-camera",
       "file_type": "code",
       "source_file": "package.json",
-      "source_location": "L21",
+      "source_location": "L22",
       "_origin": "ast",
-      "id": "package_dependencies_expo",
+      "id": "package_dependencies_expo_camera",
       "community": 7,
       "community_name": "dependencies",
-      "norm_label": "expo"
+      "norm_label": "expo-camera"
     },
     {
       "label": "lucide-react-native",
@@ -4400,15 +4400,15 @@
       "norm_label": "react-native"
     },
     {
-      "label": "expo",
+      "label": "expo-camera",
       "file_type": "concept",
       "source_file": "package.json",
-      "source_location": "L21",
+      "source_location": "L22",
       "_origin": "ast",
-      "id": "expo",
+      "id": "expo_camera",
       "community": 7,
       "community_name": "dependencies",
-      "norm_label": "expo"
+      "norm_label": "expo-camera"
     },
     {
       "label": "lucide-react-native",
@@ -5022,7 +5022,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "screens/damageLostRecord.tsx",
-      "source_location": "L2012",
+      "source_location": "L2013",
       "weight": 1.0,
       "_origin": "ast",
       "source": "screens_damagelostrecord_damagelostrecordscreen",

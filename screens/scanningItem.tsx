@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useMemo, useContext } from 'react';
 import {
   View,
   Text,
@@ -38,7 +38,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react-native';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { NavigationContext } from '@react-navigation/native';
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -201,8 +201,9 @@ function GhostItemImage({ upc }: { upc?: string }) {
   );
 }
 
-export default function ScanningItemScreen() {
-  const navigation = useNavigation();
+export default function ScanningItemScreen({ navigation: propNavigation }: { navigation?: any } = {}) {
+  const contextNavigation = useContext(NavigationContext);
+  const navigation = propNavigation || contextNavigation;
   const { operatorId, storeCode, storeName, loginDate } = useAuth();
   const { isDark } = useTheme();
 
@@ -430,35 +431,33 @@ export default function ScanningItemScreen() {
   }, [isHoldScanning, laserAnim]);
 
   // Reload item manifest and saved progress from AsyncStorage
-  useFocusEffect(
-    useCallback(() => {
-      const loadSavedProgress = async () => {
-        try {
-          const storedManifest = await AsyncStorage.getItem(MANIFEST_ITEMS_KEY);
-          const storedScanned = await AsyncStorage.getItem(SCANNED_ITEMS_KEY);
-          const storedExpiry = await AsyncStorage.getItem(ITEM_EXPIRY_DATES_KEY);
+  useEffect(() => {
+    const loadSavedProgress = async () => {
+      try {
+        const storedManifest = await AsyncStorage.getItem(MANIFEST_ITEMS_KEY);
+        const storedScanned = await AsyncStorage.getItem(SCANNED_ITEMS_KEY);
+        const storedExpiry = await AsyncStorage.getItem(ITEM_EXPIRY_DATES_KEY);
 
-          if (storedManifest) {
-            const parsedItems = JSON.parse(storedManifest) as ItemManifestRecord[];
-            setItems(parsedItems);
+        if (storedManifest) {
+          const parsedItems = JSON.parse(storedManifest) as ItemManifestRecord[];
+          setItems(parsedItems);
 
-            const parsedScanned = storedScanned
-              ? (JSON.parse(storedScanned) as Record<string, number>)
-              : {};
-            setScannedMap(parsedScanned);
+          const parsedScanned = storedScanned
+            ? (JSON.parse(storedScanned) as Record<string, number>)
+            : {};
+          setScannedMap(parsedScanned);
 
-            if (storedExpiry) {
-              const parsedExpiry = JSON.parse(storedExpiry) as Record<string, string>;
-              setExpiryDateMap(parsedExpiry);
-            }
+          if (storedExpiry) {
+            const parsedExpiry = JSON.parse(storedExpiry) as Record<string, string>;
+            setExpiryDateMap(parsedExpiry);
           }
-        } catch {
-          // Storage read failed — leave list as-is
         }
-      };
-      loadSavedProgress();
-    }, [])
-  );
+      } catch {
+        // Storage read failed — leave list as-is
+      }
+    };
+    loadSavedProgress();
+  }, []);
 
   /** Secure case-insensitive item matcher by UPC, SKU, CID NO, or TRF NO returning ALL matches */
   const findAllMatchingItems = (

@@ -31,10 +31,10 @@
   "29": "expo-splash-screen",
   "30": "expo-status-bar",
   "31": "@expo/vector-icons",
-  "32": "expo-network",
+  "32": "lucide-react-native",
   "33": "nativewind",
   "34": "react",
-  "35": "@react-native-async-storage/async-storage",
+  "35": "react-native",
   "36": "react-native-gesture-handler",
   "37": "react-native-reanimated",
   "38": "react-native-safe-area-context",
@@ -55,6 +55,5 @@
   "53": "rules/graphify.md",
   "54": "workflows/graphify.md",
   "55": "expo-font",
-  "56": "README.md",
-  "57": "react-native-screens"
+  "56": "README.md"
 }

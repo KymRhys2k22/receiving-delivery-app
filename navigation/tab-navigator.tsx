@@ -7,8 +7,10 @@ import Two from '../screens/two';
 import DamageLostRecordScreen from '../screens/damageLostRecord';
 import { useTheme } from '../context/theme';
 
-function DamageLostRecordTab() {
-  return <DamageLostRecordScreen embedded />;
+
+
+function DamageLostRecordTab(props: any) {
+  return <DamageLostRecordScreen {...props} embedded />;
 }
 
 function TabBarIcon({
@@ -91,7 +93,7 @@ const Tab = createBottomTabNavigator({
         ),
       },
     },
-    DamageLostRecord: {
+    DamageLostRecordTab: {
       screen: DamageLostRecordTab,
       options: {
         title: 'DLR',

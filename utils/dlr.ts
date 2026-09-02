@@ -57,6 +57,43 @@ export interface SupabaseDLRRecord {
   image: string[];
 }
 
+export interface SupabaseDLRRow {
+  id: string;
+  created_at: string;
+  SKU: string;
+  Description: string;
+  UPC: string;
+  Cost: string;
+  Price: string;
+  Reason: string;
+  SecondReason?: string | null;
+  Qty: number;
+  Department?: string;
+  SubDep?: string;
+  'Store Code'?: string;
+  image: string[];
+}
+
+export async function fetchSupabaseDlrRecords(limit = 100): Promise<SupabaseDLRRow[]> {
+  const { data, error } = await supabase
+    .from('dlr_records')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+  return (data as SupabaseDLRRow[]) || [];
+}
+
+export async function deleteSupabaseDlrRecord(id: string): Promise<void> {
+  const { error } = await supabase.from('dlr_records').delete().eq('id', id);
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
 export const DEFECT_REASONS = [
   'Broken',
   'Contaminated',

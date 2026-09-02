@@ -9,7 +9,7 @@ npm-debug.*
 *.mobileprovision
 *.orig.*
 web-build/
-
+release.md
 # Environment variables (secrets / config)
 .env
 .env.local

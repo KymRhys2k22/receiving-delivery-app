@@ -1,7 +1,7 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useContext } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { NavigationContext } from '@react-navigation/native';
 import {
   Box as BoxIcon,
   Package,
@@ -27,8 +27,9 @@ import {
 
 export { SCAN_HISTORY_KEY, type HistorySessionRecord, saveSessionToHistory };
 
-export default function HistoryScreen() {
-  const navigation = useNavigation();
+export default function HistoryScreen({ navigation: propNavigation }: { navigation?: any } = {}) {
+  const contextNavigation = useContext(NavigationContext);
+  const navigation = propNavigation || contextNavigation;
   const { isDark } = useTheme();
   const [history, setHistory] = useState<HistorySessionRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -66,11 +67,9 @@ export default function HistoryScreen() {
     }
   }, []);
 
-  useFocusEffect(
-    useCallback(() => {
-      loadHistory();
-    }, [loadHistory])
-  );
+  useEffect(() => {
+    loadHistory();
+  }, [loadHistory]);
 
   /** Resume a historical session */
   const handleResumeSession = async (record: HistorySessionRecord) => {

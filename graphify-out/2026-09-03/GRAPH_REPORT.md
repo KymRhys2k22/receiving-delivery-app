@@ -38,7 +38,7 @@
 - eslint.config.js
 - css-env.d.ts
 - expo-file-system
-- expo-camera
+- expo
 - New session - 2026-08-26T06:38:56.026Z
 - expo-image-manipulator
 - expo-haptics
@@ -129,7 +129,7 @@ Nodes (7): EditScreenInfo(), EditScreenInfoProps, styles, ScreenContent(), Scree
 
 ### Community 7 - "dependencies"
 Cohesion: 0.22
-Nodes (9): expo, lucide-react-native, dependencies, expo, lucide-react-native, papaparse, react-native, papaparse (+1 more)
+Nodes (9): expo-camera, lucide-react-native, dependencies, expo-camera, lucide-react-native, papaparse, react-native, papaparse (+1 more)
 
 ### Community 8 - "tsconfig.json"
 Cohesion: 0.33

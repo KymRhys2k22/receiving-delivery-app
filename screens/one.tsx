@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import React, { useState, useEffect, useCallback, useContext } from 'react';
+import { NavigationContext } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Text,
@@ -175,8 +175,9 @@ const INITIAL_BOXES: Box[] = [
   },
 ];
 
-export default function TabOneScreen() {
-  const navigation = useNavigation();
+export default function TabOneScreen({ navigation: propNavigation }: { navigation?: any } = {}) {
+  const contextNavigation = useContext(NavigationContext);
+  const navigation = propNavigation || contextNavigation;
   const { storeCode, storeName } = useAuth();
   const { isDark } = useTheme();
   const [currentMode, setCurrentMode] = useState<'dashboard' | 'verify_items'>('dashboard');
@@ -229,64 +230,62 @@ export default function TabOneScreen() {
     total: number;
   } | null>(null);
 
-  useFocusEffect(
-    useCallback(() => {
-      const checkProgress = async () => {
-        try {
-          // 1. Box CID Progress
-          const storedManifest = await AsyncStorage.getItem(MANIFEST_CIDS_KEY);
-          const storedScanned = await AsyncStorage.getItem(SCANNED_CIDS_KEY);
+  useEffect(() => {
+    const checkProgress = async () => {
+      try {
+        // 1. Box CID Progress
+        const storedManifest = await AsyncStorage.getItem(MANIFEST_CIDS_KEY);
+        const storedScanned = await AsyncStorage.getItem(SCANNED_CIDS_KEY);
 
-          if (storedManifest) {
-            const allCids = JSON.parse(storedManifest) as string[];
-            const scannedCids = storedScanned ? (JSON.parse(storedScanned) as string[]) : [];
+        if (storedManifest) {
+          const allCids = JSON.parse(storedManifest) as string[];
+          const scannedCids = storedScanned ? (JSON.parse(storedScanned) as string[]) : [];
 
-            const uniqueManifest = Array.from(
-              new Set(allCids.map((c) => c.trim()).filter(Boolean))
-            );
-            const uniqueScanned = Array.from(
-              new Set(scannedCids.map((c) => c.trim()).filter(Boolean))
-            );
+          const uniqueManifest = Array.from(
+            new Set(allCids.map((c) => c.trim()).filter(Boolean))
+          );
+          const uniqueScanned = Array.from(
+            new Set(scannedCids.map((c) => c.trim()).filter(Boolean))
+          );
 
-            setSavedProgress({
-              scanned: uniqueScanned.length,
-              total: uniqueManifest.length,
-            });
-          } else {
-            setSavedProgress(null);
-          }
-
-          // 2. Item Progress
-          const storedItemManifest = await AsyncStorage.getItem(MANIFEST_ITEMS_KEY);
-          const storedScannedItems = await AsyncStorage.getItem(SCANNED_ITEMS_KEY);
-
-          if (storedItemManifest) {
-            const manifestItems = JSON.parse(storedItemManifest) as ItemManifestRecord[];
-            const scannedMap = storedScannedItems
-              ? (JSON.parse(storedScannedItems) as Record<string, number>)
-              : {};
-
-            const totalQty = manifestItems.reduce((sum, item) => sum + (item.qty || 1), 0);
-            const scannedQty = manifestItems.reduce(
-              (sum, item) => sum + (scannedMap[item.id] || 0),
-              0
-            );
-
-            setSavedItemProgress({
-              scanned: scannedQty,
-              total: totalQty,
-            });
-          } else {
-            setSavedItemProgress(null);
-          }
-        } catch {
+          setSavedProgress({
+            scanned: uniqueScanned.length,
+            total: uniqueManifest.length,
+          });
+        } else {
           setSavedProgress(null);
+        }
+
+        // 2. Item Progress
+        const storedItemManifest = await AsyncStorage.getItem(MANIFEST_ITEMS_KEY);
+        const storedScannedItems = await AsyncStorage.getItem(SCANNED_ITEMS_KEY);
+
+        if (storedItemManifest) {
+          const manifestItems = JSON.parse(storedItemManifest) as ItemManifestRecord[];
+          const scannedMap = storedScannedItems
+            ? (JSON.parse(storedScannedItems) as Record<string, number>)
+            : {};
+
+          const totalQty = manifestItems.reduce((sum, item) => sum + (item.qty || 1), 0);
+          const scannedQty = manifestItems.reduce(
+            (sum, item) => sum + (scannedMap[item.id] || 0),
+            0
+          );
+
+          setSavedItemProgress({
+            scanned: scannedQty,
+            total: totalQty,
+          });
+        } else {
           setSavedItemProgress(null);
         }
-      };
-      checkProgress();
-    }, [])
-  );
+      } catch {
+        setSavedProgress(null);
+        setSavedItemProgress(null);
+      }
+    };
+    checkProgress();
+  }, []);
 
   /**
    * Step 1 — Upload Box Manifest CSV.

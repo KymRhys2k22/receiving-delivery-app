@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useMemo, useContext } from 'react';
 import {
   View,
   Text,
@@ -23,7 +23,7 @@ import {
   ChevronDown,
   Bluetooth,
 } from 'lucide-react-native';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { NavigationContext } from '@react-navigation/native';
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -111,8 +111,9 @@ const playScanFeedback = async (type: 'success' | 'warning' | 'error') => {
   } catch {}
 };
 
-export default function ScanningBoxScreen() {
-  const navigation = useNavigation();
+export default function ScanningBoxScreen({ navigation: propNavigation }: { navigation?: any } = {}) {
+  const contextNavigation = useContext(NavigationContext);
+  const navigation = propNavigation || contextNavigation;
   const { isDark } = useTheme();
 
   const bgClass = isDark ? 'bg-[#131316]' : 'bg-[#f4f4f5]';
@@ -295,35 +296,33 @@ export default function ScanningBoxScreen() {
     return unique;
   };
 
-  // Reload manifest and saved scanned CIDs from AsyncStorage every time screen comes into focus
-  useFocusEffect(
-    useCallback(() => {
-      const loadSavedProgress = async () => {
-        try {
-          const storedManifest = await AsyncStorage.getItem(MANIFEST_CIDS_KEY);
-          const storedScanned = await AsyncStorage.getItem(SCANNED_CIDS_KEY);
+  // Reload manifest and saved scanned CIDs from AsyncStorage
+  useEffect(() => {
+    const loadSavedProgress = async () => {
+      try {
+        const storedManifest = await AsyncStorage.getItem(MANIFEST_CIDS_KEY);
+        const storedScanned = await AsyncStorage.getItem(SCANNED_CIDS_KEY);
 
-          if (storedManifest) {
-            const allCids = JSON.parse(storedManifest) as string[];
-            const uniqueCids = deduplicateCids(allCids);
-            masterCidsRef.current = uniqueCids;
+        if (storedManifest) {
+          const allCids = JSON.parse(storedManifest) as string[];
+          const uniqueCids = deduplicateCids(allCids);
+          masterCidsRef.current = uniqueCids;
 
-            const scannedCids = storedScanned
-              ? deduplicateCids(JSON.parse(storedScanned) as string[])
-              : [];
-            setScannedBoxes(scannedCids);
+          const scannedCids = storedScanned
+            ? deduplicateCids(JSON.parse(storedScanned) as string[])
+            : [];
+          setScannedBoxes(scannedCids);
 
-            const scannedSet = new Set(scannedCids.map((s) => s.toUpperCase()));
-            const remainingUnscanned = uniqueCids.filter((c) => !scannedSet.has(c.toUpperCase()));
-            setUnscannedBoxes(remainingUnscanned);
-          }
-        } catch {
-          // Storage read failed — leave list as-is
+          const scannedSet = new Set(scannedCids.map((s) => s.toUpperCase()));
+          const remainingUnscanned = uniqueCids.filter((c) => !scannedSet.has(c.toUpperCase()));
+          setUnscannedBoxes(remainingUnscanned);
         }
-      };
-      loadSavedProgress();
-    }, [])
-  );
+      } catch {
+        // Storage read failed — leave list as-is
+      }
+    };
+    loadSavedProgress();
+  }, []);
 
   const totalBoxes = unscannedBoxes.length + scannedBoxes.length;
   const progressPct = totalBoxes > 0 ? Math.round((scannedBoxes.length / totalBoxes) * 100) : 0;

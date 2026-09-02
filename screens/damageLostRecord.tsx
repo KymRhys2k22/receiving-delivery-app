@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useContext } from 'react';
 import {
   Alert,
   View,
@@ -11,10 +11,13 @@ import {
   Image,
   StyleSheet,
   Linking,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
   CheckCircle,
   X,
   AlertTriangle,
@@ -25,7 +28,7 @@ import {
   Flashlight,
   Camera,
   CloudUpload,
-  WifiOff,
+  Wifi,
   RotateCcw,
   Search,
   CircleCheck,
@@ -35,10 +38,13 @@ import {
   Minus,
   ExternalLink,
   Globe,
+  Database,
+  Building2,
 } from 'lucide-react-native';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { NavigationContext } from '@react-navigation/native';
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
+import * as Network from 'expo-network';
 import { useAuth } from '../context/auth';
 import { useTheme } from '../context/theme';
 import {
@@ -49,18 +55,15 @@ import {
   compressImage,
   createDlrId,
   fetchCatalog,
-  getPendingSyncCount,
-  loadDlrRecords,
+  fetchSupabaseDlrRecords,
+  deleteSupabaseDlrRecord,
   lookupProduct,
-  processDlrSyncQueue,
-  saveDlrRecords,
   supabase,
-  upsertDlrRecord,
   uploadToCloudinary,
   type DLRLocalRecord,
   type DLRPhotoKey,
-  type DLRStatus,
   type ProductItem,
+  type SupabaseDLRRow,
 } from '../utils/dlr';
 
 const feedback = async (type: 'success' | 'warning' | 'error') => {
@@ -282,22 +285,6 @@ function ReasonPickerModal({
   );
 }
 
-function StatusBadge({ status }: { status: DLRStatus }) {
-  const config =
-    status === 'PENDING_SYNC'
-      ? { label: 'QUEUED', color: '#f59e0b' }
-      : status === 'SYNCED'
-        ? { label: 'SYNCED', color: '#22c55e' }
-        : { label: 'DRAFT', color: '#a1a1aa' };
-  return (
-    <View className="rounded px-1.5 py-0.5" style={{ backgroundColor: `${config.color}22` }}>
-      <Text className="font-jetbrains text-[8px] font-bold" style={{ color: config.color }}>
-        {config.label}
-      </Text>
-    </View>
-  );
-}
-
 function formatRecordTime(iso: string): string {
   try {
     return new Date(iso).toLocaleString(undefined, {
@@ -311,8 +298,92 @@ function formatRecordTime(iso: string): string {
   }
 }
 
-export default function DamageLostRecordScreen({ embedded = false }: { embedded?: boolean }) {
-  const navigation = useNavigation();
+function LoadingBar({
+  progress,
+  color = '#e5005c',
+  height = 4,
+  className = '',
+}: {
+  progress?: number;
+  color?: string;
+  height?: number;
+  className?: string;
+}) {
+  const animValue = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (progress === undefined) {
+      animValue.setValue(0);
+      const animation = Animated.loop(
+        Animated.sequence([
+          Animated.timing(animValue, {
+            toValue: 1,
+            duration: 850,
+            useNativeDriver: false,
+          }),
+          Animated.timing(animValue, {
+            toValue: 0,
+            duration: 850,
+            useNativeDriver: false,
+          }),
+        ])
+      );
+      animation.start();
+      return () => animation.stop();
+    } else {
+      Animated.timing(animValue, {
+        toValue: Math.max(0, Math.min(1, progress)),
+        duration: 300,
+        useNativeDriver: false,
+      }).start();
+    }
+  }, [progress, animValue]);
+
+  const widthStyle =
+    progress === undefined
+      ? animValue.interpolate({
+          inputRange: [0, 1],
+          outputRange: ['25%', '85%'],
+        })
+      : animValue.interpolate({
+          inputRange: [0, 1],
+          outputRange: ['0%', '100%'],
+        });
+
+  const leftStyle =
+    progress === undefined
+      ? animValue.interpolate({
+          inputRange: [0, 1],
+          outputRange: ['0%', '15%'],
+        })
+      : 0;
+
+  return (
+    <View
+      className={`w-full overflow-hidden rounded-full bg-[#3f3f46]/30 ${className}`}
+      style={{ height }}>
+      <Animated.View
+        style={{
+          height: '100%',
+          backgroundColor: color,
+          borderRadius: height / 2,
+          width: widthStyle,
+          left: leftStyle,
+        }}
+      />
+    </View>
+  );
+}
+
+export default function DamageLostRecordScreen({
+  embedded = false,
+  navigation: propNavigation,
+}: {
+  embedded?: boolean;
+  navigation?: any;
+}) {
+  const contextNavigation = useContext(NavigationContext);
+  const navigation = propNavigation || contextNavigation;
   const { storeCode, storeName } = useAuth();
   const { isDark } = useTheme();
 
@@ -343,6 +414,13 @@ export default function DamageLostRecordScreen({ embedded = false }: { embedded?
     isLookingUpRef.current = isLookingUp;
   }, [isLookingUp]);
 
+  const [isScanActive, setIsScanActive] = useState(false);
+  const isScanActiveRef = useRef(false);
+  useEffect(() => {
+    isScanActiveRef.current = isScanActive;
+  }, [isScanActive]);
+  const scanCooldown = useRef(false);
+
   const [manualModalVisible, setManualModalVisible] = useState(false);
   const [manualInput, setManualInput] = useState('');
 
@@ -350,20 +428,29 @@ export default function DamageLostRecordScreen({ embedded = false }: { embedded?
   const [previewUri, setPreviewUri] = useState<string | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
   const [torchEnabled, setTorchEnabled] = useState(false);
+  const cameraRef = useRef<CameraView | null>(null);
 
   const [pickerTarget, setPickerTarget] = useState<'reason' | 'secondReason' | null>(null);
   const [retakeKey, setRetakeKey] = useState<DLRPhotoKey | null>(null);
 
   const [recordsModalVisible, setRecordsModalVisible] = useState(false);
-  const [allRecords, setAllRecords] = useState<DLRLocalRecord[]>([]);
-  const [isRefreshingRecords, setIsRefreshingRecords] = useState(false);
-  const [draftCount, setDraftCount] = useState(0);
+  const [supabaseRecords, setSupabaseRecords] = useState<SupabaseDLRRow[]>([]);
+  const [isLoadingSupabase, setIsLoadingSupabase] = useState(false);
+  const [supabaseError, setSupabaseError] = useState<string | null>(null);
+  const [recordsSearchQuery, setRecordsSearchQuery] = useState('');
+  const [recordsPage, setRecordsPage] = useState(1);
+  const RECORDS_PER_PAGE = 3;
+  const [previewPhotoUrl, setPreviewPhotoUrl] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [newRecordsBadge, setNewRecordsBadge] = useState<number>(0);
+  const [isOffline, setIsOffline] = useState(false);
+  const [isCheckingConnection, setIsCheckingConnection] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
   const [progressText, setProgressText] = useState('');
+  const [progressPercent, setProgressPercent] = useState<number | undefined>(undefined);
   const [submitted, setSubmitted] = useState(false);
-  const [offlineError, setOfflineError] = useState<string | null>(null);
-  const [pendingSyncCount, setPendingSyncCount] = useState(0);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [catalogStatus, setCatalogStatus] = useState<string>('');
 
   const [notification, setNotification] = useState<{
@@ -386,45 +473,135 @@ export default function DamageLostRecordScreen({ embedded = false }: { embedded?
     []
   );
 
-  const refreshPendingCount = useCallback(async () => {
-    const records = await loadDlrRecords();
-    setDraftCount(records.length);
-    const count = records.filter((r) => r.status === 'PENDING_SYNC').length;
-    setPendingSyncCount(count);
-    return count;
+  const loadSupabaseRecords = useCallback(async () => {
+    setIsLoadingSupabase(true);
+    setSupabaseError(null);
+    try {
+      const rows = await fetchSupabaseDlrRecords(100);
+      setSupabaseRecords(rows);
+      setIsOffline(false);
+    } catch (err) {
+      setSupabaseError(err instanceof Error ? err.message : 'Failed to fetch cloud records');
+      const msg = err instanceof Error ? err.message.toLowerCase() : '';
+      if (
+        msg.includes('network') ||
+        msg.includes('failed to fetch') ||
+        msg.includes('connection') ||
+        msg.includes('internet')
+      ) {
+        setIsOffline(true);
+      }
+    } finally {
+      setIsLoadingSupabase(false);
+    }
   }, []);
 
-  useFocusEffect(
-    useCallback(() => {
-      let active = true;
-      refreshPendingCount().then((count) => {
-        if (!active || count === 0) return;
-        processDlrSyncQueue()
-          .then((outcome) => {
-            if (!active) return;
-            refreshPendingCount();
-            if (outcome.syncedIds.length > 0) {
-              showNotification(
-                'success',
-                'SYNC COMPLETE',
-                `${outcome.syncedIds.length} offline record(s) uploaded successfully`
-              );
-            }
+  const checkConnectivity = useCallback(async () => {
+    setIsCheckingConnection(true);
+    try {
+      const state = await Network.getNetworkStateAsync();
+      const offline = state.isConnected === false || state.isInternetReachable === false;
+      setIsOffline(offline);
+      if (!offline) {
+        loadSupabaseRecords();
+        fetchCatalog(true)
+          .then((list) => {
+            setCatalogStatus(`${list.length.toLocaleString()} SKUs loaded (Online)`);
           })
-          .catch(() => {});
-      });
-      fetchCatalog()
-        .then((list) => {
-          if (active) setCatalogStatus(`${list.length.toLocaleString()} SKUs loaded`);
-        })
-        .catch(() => {
-          if (active) setCatalogStatus('Catalog offline — scan unavailable');
-        });
-      return () => {
-        active = false;
-      };
-    }, [refreshPendingCount, showNotification])
+          .catch(() => {
+            setCatalogStatus('Catalog error — Internet connection required');
+          });
+      }
+      return !offline;
+    } catch {
+      try {
+        const res = await fetch('https://clients3.google.com/generate_204', { method: 'HEAD' });
+        const online = res.status === 204 || res.ok;
+        setIsOffline(!online);
+        return online;
+      } catch {
+        setIsOffline(true);
+        return false;
+      }
+    } finally {
+      setIsCheckingConnection(false);
+    }
+  }, [loadSupabaseRecords]);
+
+  const handleDeleteRecord = useCallback(
+    (record: SupabaseDLRRow) => {
+      if (!record.id) return;
+      Alert.alert(
+        'Delete Record',
+        `Are you sure you want to permanently delete SKU ${record.SKU || record.UPC || 'Item'} (${record.Reason})?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: async () => {
+              setDeletingId(record.id);
+              try {
+                await deleteSupabaseDlrRecord(record.id);
+                feedback('success');
+                showNotification(
+                  'success',
+                  'RECORD DELETED',
+                  `SKU ${record.SKU || record.UPC || 'Record'} was deleted.`
+                );
+                setSupabaseRecords((prev) => prev.filter((r) => r.id !== record.id));
+              } catch (err) {
+                feedback('error');
+                showNotification(
+                  'error',
+                  'DELETE FAILED',
+                  err instanceof Error ? err.message : 'Could not delete record'
+                );
+              } finally {
+                setDeletingId(null);
+              }
+            },
+          },
+        ]
+      );
+    },
+    [showNotification]
   );
+
+  useEffect(() => {
+    let active = true;
+    checkConnectivity();
+    fetchCatalog()
+      .then((list) => {
+        if (active) {
+          setIsOffline(false);
+          setCatalogStatus(`${list.length.toLocaleString()} SKUs loaded (Online)`);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setCatalogStatus('Catalog error — Internet connection required');
+        }
+      });
+
+    let subscription: { remove: () => void } | null = null;
+    try {
+      subscription = Network.addNetworkStateListener((state) => {
+        const offline = state.isConnected === false || state.isInternetReachable === false;
+        if (active) {
+          setIsOffline(offline);
+          if (!offline) {
+            loadSupabaseRecords();
+          }
+        }
+      });
+    } catch {}
+
+    return () => {
+      active = false;
+      subscription?.remove();
+    };
+  }, [checkConnectivity, loadSupabaseRecords]);
 
   const resetFlow = useCallback(() => {
     setDraft(null);
@@ -433,7 +610,7 @@ export default function DamageLostRecordScreen({ embedded = false }: { embedded?
     setRetakeKey(null);
     setTorchEnabled(false);
     setSubmitted(false);
-    setOfflineError(null);
+    setSubmitError(null);
     setProgressText('');
     setSubmitting(false);
     setStep('SCAN');
@@ -463,8 +640,8 @@ export default function DamageLostRecordScreen({ embedded = false }: { embedded?
           photos: {},
           uploadedUrls: {},
         };
+        draftRef.current = record;
         setDraft(record);
-        await upsertDlrRecord(record);
         setStep('DETAILS');
         showNotification('success', 'ITEM MATCHED', product.description || product.sku || code);
       } catch (err) {
@@ -483,7 +660,14 @@ export default function DamageLostRecordScreen({ embedded = false }: { embedded?
 
   const onBarcodeScanned = useCallback(
     ({ data }: BarcodeScanningResult) => {
-      if (step !== 'SCAN' || isLookingUpRef.current) return;
+      if (!isScanActiveRef.current || step !== 'SCAN' || isLookingUpRef.current) return;
+      if (scanCooldown.current) return;
+      scanCooldown.current = true;
+      setTimeout(() => {
+        scanCooldown.current = false;
+      }, 1200);
+      setIsScanActive(false);
+      isScanActiveRef.current = false;
       handleLookup(data);
     },
     [step, handleLookup]
@@ -497,14 +681,13 @@ export default function DamageLostRecordScreen({ embedded = false }: { embedded?
     handleLookup(value);
   };
 
-  const updateDraft = useCallback(async (updater: (record: DLRLocalRecord) => DLRLocalRecord) => {
-    const current = draftRef.current;
-    if (!current) return null;
-    const updated = updater(current);
-    draftRef.current = updated;
-    setDraft(updated);
-    await upsertDlrRecord(updated);
-    return updated;
+  const updateDraft = useCallback((updater: (record: DLRLocalRecord) => DLRLocalRecord) => {
+    setDraft((prev) => {
+      if (!prev) return null;
+      const next = updater(prev);
+      draftRef.current = next;
+      return next;
+    });
   }, []);
 
   const confirmDetails = useCallback(async () => {
@@ -520,7 +703,7 @@ export default function DamageLostRecordScreen({ embedded = false }: { embedded?
       feedback('error');
       return;
     }
-    await updateDraft(() => ({ ...current }));
+    updateDraft((record) => ({ ...record }));
     feedback('success');
     setStep('PHOTOS');
   }, [showNotification, updateDraft]);
@@ -551,7 +734,7 @@ export default function DamageLostRecordScreen({ embedded = false }: { embedded?
     const current = draftRef.current;
     if (!previewUri || !current) return;
     const stepConfig = PHOTO_STEPS[photoIndex];
-    await updateDraft((record) => ({
+    updateDraft((record) => ({
       ...record,
       photos: { ...record.photos, [stepConfig.key]: previewUri },
     }));
@@ -572,14 +755,13 @@ export default function DamageLostRecordScreen({ embedded = false }: { embedded?
   const confirmRetake = useCallback(async () => {
     const key = retakeKey;
     if (!previewUri || !key) return;
-    await updateDraft((record) => {
+    updateDraft((record) => {
       const uploadedUrls = { ...(record.uploadedUrls ?? {}) };
       delete uploadedUrls[key];
       return {
         ...record,
         photos: { ...record.photos, [key]: previewUri },
         uploadedUrls,
-        status: record.status === 'DRAFT' ? 'DRAFT' : 'PENDING_SYNC',
         updatedAt: new Date().toISOString(),
       };
     });
@@ -597,7 +779,9 @@ export default function DamageLostRecordScreen({ embedded = false }: { embedded?
     }
 
     setSubmitting(true);
-    setOfflineError(null);
+    setSubmitError(null);
+    setProgressPercent(0.08);
+    setProgressText('Preparing photo assets…');
 
     try {
       const urls: Partial<Record<DLRPhotoKey, string>> = { ...(record.uploadedUrls ?? {}) };
@@ -609,29 +793,25 @@ export default function DamageLostRecordScreen({ embedded = false }: { embedded?
         if (!localUri) {
           throw new Error(`${stepConfig.title} is missing`);
         }
+        setProgressPercent(0.15 + (i * 0.24));
         setProgressText(`Optimizing ${stepConfig.title} (${i + 1}/${PHOTO_STEPS.length})…`);
         const compressedUri = await compressImage(localUri);
+        setProgressPercent(0.27 + (i * 0.24));
         setProgressText(`Uploading ${stepConfig.title} (${i + 1}/${PHOTO_STEPS.length})…`);
         urls[stepConfig.key] = await uploadToCloudinary(
           compressedUri,
           buildDlrImageName(record, stepConfig.key)
         );
 
-        const latest = draftRef.current;
-        if (latest) {
-          const updated: DLRLocalRecord = {
-            ...latest,
-            uploadedUrls: { ...urls },
-            status: 'PENDING_SYNC',
-            updatedAt: new Date().toISOString(),
-          };
-          draftRef.current = updated;
-          setDraft(updated);
-          await upsertDlrRecord(updated);
-        }
+        updateDraft((prev) => ({
+          ...prev,
+          uploadedUrls: { ...urls },
+          updatedAt: new Date().toISOString(),
+        }));
       }
 
-      setProgressText('Saving record to database…');
+      setProgressPercent(0.9);
+      setProgressText('Saving record to cloud database…');
       const finalRecord = draftRef.current ?? record;
       const payload = buildSupabasePayload({ ...finalRecord, uploadedUrls: urls });
       if (!payload) throw new Error('Record is incomplete');
@@ -639,154 +819,38 @@ export default function DamageLostRecordScreen({ embedded = false }: { embedded?
       const { error } = await supabase.from('dlr_records').insert([payload]);
       if (error) throw new Error(error.message);
 
-      const records = await loadDlrRecords();
-      await saveDlrRecords(records.filter((r) => r.id !== record.id));
-      await refreshPendingCount();
+      setProgressPercent(1.0);
       feedback('success');
       setSubmitted(true);
+      setNewRecordsBadge((prev) => prev + 1);
+      loadSupabaseRecords();
+      showNotification(
+        'success',
+        'RECORD SUBMITTED',
+        'DLR record uploaded and saved successfully'
+      );
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      const failed: DLRLocalRecord = {
-        ...(draftRef.current ?? record),
-        status: 'PENDING_SYNC',
-        lastError: message,
-        updatedAt: new Date().toISOString(),
-      };
-      draftRef.current = failed;
-      setDraft(failed);
-      await upsertDlrRecord(failed);
-      await refreshPendingCount();
       feedback('error');
-      setOfflineError(message);
-      showNotification('warning', 'SAVED OFFLINE', 'Record queued — will sync automatically');
+      setSubmitError(message);
+      showNotification(
+        'error',
+        'ONLINE SUBMISSION FAILED',
+        'Active internet connection is required. Please check your network and try again.'
+      );
     } finally {
       setSubmitting(false);
       setProgressText('');
+      setProgressPercent(undefined);
     }
-  }, [refreshPendingCount, showNotification, submitting]);
-
-  const manualSync = useCallback(async () => {
-    const count = await getPendingSyncCount();
-    if (count === 0) {
-      showNotification('info', 'NOTHING TO SYNC', 'No offline DLR records queued');
-      return;
-    }
-    showNotification('info', 'SYNCING', `Uploading ${count} queued record(s)…`);
-    try {
-      const outcome = await processDlrSyncQueue();
-      await refreshPendingCount();
-      if (outcome.syncedIds.length > 0) {
-        feedback('success');
-        showNotification(
-          'success',
-          'SYNC COMPLETE',
-          `${outcome.syncedIds.length} record(s) uploaded`
-        );
-      } else {
-        feedback('warning');
-        showNotification(
-          'warning',
-          'STILL OFFLINE',
-          `${outcome.failedCount} record(s) could not be uploaded yet`
-        );
-      }
-    } catch {
-      feedback('error');
-    }
-  }, [refreshPendingCount, showNotification]);
-
-  const loadAllRecords = useCallback(async () => {
-    setIsRefreshingRecords(true);
-    try {
-      setAllRecords(await loadDlrRecords());
-    } finally {
-      setIsRefreshingRecords(false);
-    }
-  }, []);
+  }, [loadSupabaseRecords, showNotification, submitting, updateDraft]);
 
   const openRecordsModal = useCallback(() => {
+    setNewRecordsBadge(0);
+    setRecordsPage(1);
     setRecordsModalVisible(true);
-    loadAllRecords();
-  }, [loadAllRecords]);
-
-  const syncAndReload = useCallback(async () => {
-    await manualSync();
-    await loadAllRecords();
-  }, [manualSync, loadAllRecords]);
-
-  const handleDeleteRecord = useCallback(
-    (record: DLRLocalRecord) => {
-      const label = record.product?.sku || record.scannedCode || 'this item';
-      Alert.alert('Delete Record', `Delete the saved record for ${label}? This cannot be undone.`, [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            const records = await loadDlrRecords();
-            const updated = records.filter((r) => r.id !== record.id);
-            await saveDlrRecords(updated);
-            if (draftRef.current?.id === record.id) {
-              resetFlow();
-            }
-            setAllRecords(updated);
-            await refreshPendingCount();
-            feedback('warning');
-          },
-        },
-      ]);
-    },
-    [refreshPendingCount, resetFlow]
-  );
-
-  const handleClearAll = useCallback(() => {
-    const removable = allRecords.filter((r) => r.id !== draftRef.current?.id);
-    if (removable.length === 0) {
-      showNotification('info', 'NOTHING TO CLEAR', 'The current in-progress draft is preserved');
-      return;
-    }
-    Alert.alert(
-      'Clear All Records',
-      `Delete ${removable.length} saved record(s)? Queued offline records will also be removed. The current in-progress draft is kept.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'CLEAR ALL',
-          style: 'destructive',
-          onPress: async () => {
-            const keepId = draftRef.current?.id;
-            const records = await loadDlrRecords();
-            const updated = keepId ? records.filter((r) => r.id === keepId) : [];
-            await saveDlrRecords(updated);
-            setAllRecords(updated);
-            await refreshPendingCount();
-            feedback('warning');
-            showNotification('success', 'CLEARED', `${removable.length} record(s) deleted`);
-          },
-        },
-      ]
-    );
-  }, [allRecords, refreshPendingCount, showNotification]);
-
-  const handleResumeRecord = useCallback((record: DLRLocalRecord) => {
-    const firstMissing = PHOTO_STEPS.findIndex((s) => !record.photos[s.key]);
-    const hasAllPhotos = firstMissing < 0;
-    draftRef.current = record;
-    setDraft(record);
-    setPhotoIndex(hasAllPhotos ? PHOTO_STEPS.length - 1 : firstMissing);
-    setPreviewUri(null);
-    setRetakeKey(null);
-    setTorchEnabled(false);
-    setSubmitted(false);
-    setOfflineError(null);
-    setProgressText('');
-    setSubmitting(false);
-    setStep(!record.reason ? 'DETAILS' : hasAllPhotos ? 'SUBMIT' : 'PHOTOS');
-    setRecordsModalVisible(false);
-    feedback('success');
-  }, []);
-
-  const cameraRef = useRef<CameraView | null>(null);
+    loadSupabaseRecords();
+  }, [loadSupabaseRecords]);
 
   const notificationColors: Record<string, string> = {
     success: '#22c55e',
@@ -797,6 +861,62 @@ export default function DamageLostRecordScreen({ embedded = false }: { embedded?
 
   const currentPhotoStep = PHOTO_STEPS[Math.min(photoIndex, PHOTO_STEPS.length - 1)];
   const capturedCount = draft ? PHOTO_STEPS.filter((s) => draft.photos[s.key]).length : 0;
+
+  const renderOfflineState = () => (
+    <View className="flex-1 items-center justify-center px-6 pb-12">
+      <View
+        className={`mb-6 items-center justify-center rounded-3xl p-6 ${
+          isDark ? 'bg-[#1f1f22]' : 'bg-[#ffffff]'
+        }`}
+        style={{
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.12,
+          shadowRadius: 16,
+          elevation: 4,
+        }}>
+        <Image
+          source={require('../assets/no-wifi.png')}
+          style={{ width: 140, height: 140 }}
+          resizeMode="contain"
+        />
+      </View>
+
+      <View className="mb-2.5 flex-row items-center gap-2 rounded-full border border-red-500/30 bg-red-500/10 px-3 py-1">
+        <View className="h-2 w-2 rounded-full bg-red-500" />
+        <Text className="font-jetbrains text-[10px] font-bold text-red-500">
+          OFFLINE MODE
+        </Text>
+      </View>
+
+      <Text className={`text-center font-hanken text-xl font-bold ${textPrimaryClass}`}>
+        No Internet Connection
+      </Text>
+      <Text className={`mt-2 max-w-[290px] text-center font-hanken text-xs leading-5 ${textSecondaryClass}`}>
+        {'Damage & Lost Record creation requires an active internet connection to verify items, upload evidence photos, and save records in real-time.'}
+      </Text>
+
+      <TouchableOpacity
+        onPress={() => {
+          try {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          } catch {}
+          checkConnectivity();
+        }}
+        disabled={isCheckingConnection}
+        activeOpacity={0.8}
+        className="mt-6 h-12 min-w-[200px] flex-row items-center justify-center gap-2 rounded-xl bg-[#e5005c] px-6 shadow-lg shadow-[#e5005c]/30">
+        {isCheckingConnection ? (
+          <ActivityIndicator size={16} color="#ffffff" />
+        ) : (
+          <RefreshCw color="#ffffff" size={16} />
+        )}
+        <Text className="font-jetbrains text-xs font-bold uppercase tracking-wider text-white">
+          {isCheckingConnection ? 'Checking…' : 'Check Connection'}
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
 
   const renderScanStep = () => {
     if (!permission || !permission.granted) {
@@ -825,52 +945,136 @@ export default function DamageLostRecordScreen({ embedded = false }: { embedded?
     }
 
     return (
-      <View className="mx-3 mb-3 flex-1 overflow-hidden rounded-xl border border-[#3f3f46]">
-        <CameraView
-          style={StyleSheet.absoluteFill}
-          onBarcodeScanned={onBarcodeScanned}
-          barcodeScannerSettings={{
-            barcodeTypes: [
-              'ean13',
-              'ean8',
-              'upc_a',
-              'upc_e',
-              'code39',
-              'code93',
-              'code128',
-              'codabar',
-              'itf14',
-              'qr',
-            ],
-          }}
-        />
-        <View pointerEvents="none" className="flex-1 items-center justify-center">
-          <View className="h-52 w-[78%] rounded-2xl border-2 border-[#e5005c]/80 opacity-90" />
-          <View className="mt-4 rounded-lg bg-black/60 px-4 py-2">
-            <Text className="font-jetbrains text-xs font-bold text-white">
-              {isLookingUp ? 'MATCHING ITEM…' : 'ALIGN BARCODE WITHIN FRAME'}
+      <View className="flex-1">
+        {/* Online-First Reminder Banner */}
+        <View className="mx-3 mb-2.5 flex-row items-center gap-2.5 rounded-xl border border-[#3b82f6]/30 bg-[#3b82f6]/10 px-3 py-2.5">
+          <Wifi color="#3b82f6" size={16} />
+          <View className="flex-1">
+            <Text className="font-jetbrains text-[10px] font-bold uppercase tracking-wider text-[#3b82f6]">
+              Online Connection Required
+            </Text>
+            <Text className={`font-hanken text-[10px] ${textSecondaryClass}`}>
+              You must be connected to the internet to look up items and sync records in real-time.
             </Text>
           </View>
-          {catalogStatus ? (
-            <View className="mt-2 rounded-lg bg-black/50 px-3 py-1">
-              <Text className="font-jetbrains text-[10px] text-[#a1a1aa]">{catalogStatus}</Text>
-            </View>
-          ) : null}
         </View>
 
-        <View className="absolute bottom-0 left-0 right-0 items-center pb-5">
-          {isLookingUp ? (
-            <View className="mb-3 flex-row items-center gap-2 rounded-full bg-black/70 px-4 py-2">
-              <ActivityIndicator size="small" color="#e5005c" />
-              <Text className="font-jetbrains text-xs font-bold text-white">Fetching catalog…</Text>
+        <View className="mx-3 mb-3 flex-1 overflow-hidden rounded-xl border border-[#3f3f46]">
+          <CameraView
+            style={StyleSheet.absoluteFill}
+            facing="back"
+            enableTorch={torchEnabled}
+            onBarcodeScanned={onBarcodeScanned}
+            barcodeScannerSettings={{
+              barcodeTypes: [
+                'ean13',
+                'ean8',
+                'upc_a',
+                'upc_e',
+                'code39',
+                'code93',
+                'code128',
+                'codabar',
+                'itf14',
+                'qr',
+              ],
+            }}
+          />
+          <View pointerEvents="none" className="flex-1 items-center justify-center">
+            <View
+              className={`h-52 w-[78%] rounded-2xl border-2 ${
+                isScanActive
+                  ? 'border-[#e5005c] bg-[#e5005c]/10'
+                  : 'border-[#a1a1aa]/40 bg-black/10'
+              }`}>
+              {isScanActive ? (
+                <View className="flex-1 items-center justify-center">
+                  <View className="h-0.5 w-[85%] bg-[#e5005c] shadow-lg shadow-[#e5005c]" />
+                </View>
+              ) : null}
             </View>
-          ) : null}
-          <TouchableOpacity
-            onPress={() => setManualModalVisible(true)}
-            className="flex-row items-center gap-2 rounded-full border border-white/30 bg-black/60 px-5 py-2.5">
-            <Search color="#ffffff" size={14} />
-            <Text className="font-jetbrains text-xs font-bold text-white">ENTER CODE MANUALLY</Text>
-          </TouchableOpacity>
+
+            <View className="mt-4 rounded-lg bg-black/70 px-4 py-2">
+              <Text className="font-jetbrains text-xs font-bold text-white">
+                {isLookingUp
+                  ? 'MATCHING ITEM…'
+                  : isScanActive
+                  ? '⚡ SCANNING ACTIVE — KEEP HOLDING'
+                  : 'HOLD BUTTON BELOW TO SCAN'}
+              </Text>
+            </View>
+            {catalogStatus ? (
+              <View className="mt-2 rounded-lg bg-black/50 px-3 py-1">
+                <Text className="font-jetbrains text-[10px] text-[#a1a1aa]">{catalogStatus}</Text>
+              </View>
+            ) : null}
+          </View>
+
+          <View className="absolute bottom-0 left-0 right-0 items-center px-4 pb-4">
+            {isLookingUp ? (
+              <View className="mb-3 w-56 items-center rounded-xl bg-black/80 px-4 py-2.5">
+                <Text className="mb-1.5 font-jetbrains text-xs font-bold text-white">
+                  Matching item in catalog…
+                </Text>
+                <LoadingBar height={3} color="#e5005c" />
+              </View>
+            ) : null}
+
+            {/* Hold to Scan Primary Button */}
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPressIn={() => {
+                setIsScanActive(true);
+                try {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                } catch {}
+              }}
+              onPressOut={() => {
+                setIsScanActive(false);
+              }}
+              disabled={isLookingUp}
+              className={`h-14 w-full flex-row items-center justify-center gap-2.5 rounded-2xl border ${
+                isScanActive
+                  ? 'border-[#e5005c] bg-[#e5005c]'
+                  : 'border-[#e5005c] bg-[#e5005c]/15'
+              }`}>
+              <Scan color={isScanActive ? '#ffffff' : '#e5005c'} size={20} />
+              <Text
+                className={`font-jetbrains text-xs font-bold uppercase tracking-wider ${
+                  isScanActive ? 'text-[#ffffff]' : 'text-[#e5005c]'
+                }`}>
+                {isScanActive ? 'SCANNING… KEEP HOLDING' : 'HOLD TO SCAN BARCODE'}
+              </Text>
+            </TouchableOpacity>
+
+            {/* Secondary Actions: Torch + Manual Entry */}
+            <View className="mt-2.5 w-full flex-row items-center justify-between gap-2.5">
+              <TouchableOpacity
+                onPress={() => setTorchEnabled(!torchEnabled)}
+                className={`h-10 flex-1 flex-row items-center justify-center gap-1.5 rounded-xl border ${
+                  torchEnabled
+                    ? 'border-[#f59e0b] bg-[#f59e0b]/25'
+                    : 'border-white/20 bg-black/60'
+                }`}>
+                <Flashlight color={torchEnabled ? '#f59e0b' : '#ffffff'} size={15} />
+                <Text
+                  className={`font-jetbrains text-[10px] font-bold ${
+                    torchEnabled ? 'text-[#f59e0b]' : 'text-white'
+                  }`}>
+                  {torchEnabled ? 'FLASH ON' : 'FLASH OFF'}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => setManualModalVisible(true)}
+                className="h-10 flex-1 flex-row items-center justify-center gap-1.5 rounded-xl border border-white/20 bg-black/60">
+                <Search color="#ffffff" size={14} />
+                <Text className="font-jetbrains text-[10px] font-bold text-white">
+                  MANUAL CODE
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
       </View>
     );
@@ -1264,21 +1468,6 @@ export default function DamageLostRecordScreen({ embedded = false }: { embedded?
 
     return (
       <ScrollView className="flex-1 px-3 pt-3" showsVerticalScrollIndicator={false}>
-        {offlineError ? (
-          <View className="mb-3 rounded-xl border border-[#f59e0b]/40 bg-[#f59e0b]/10 p-4">
-            <View className="mb-1 flex-row items-center gap-2">
-              <WifiOff color="#f59e0b" size={16} />
-              <Text className="font-jetbrains text-xs font-bold text-[#f59e0b]">
-                SAVED AS PENDING SYNC
-              </Text>
-            </View>
-            <Text className="font-hanken text-[11px] text-[#f59e0b]">{offlineError}</Text>
-            <Text className={`mt-1 font-hanken text-[11px] ${textSecondaryClass}`}>
-              The full payload and local images are stored on-device and will retry automatically.
-            </Text>
-          </View>
-        ) : null}
-
         {draft?.product ? <ProductCard product={draft.product} /> : null}
 
         <View className={`mt-4 rounded-xl border p-4 ${cardBgClass}`}>
@@ -1384,6 +1573,19 @@ export default function DamageLostRecordScreen({ embedded = false }: { embedded?
           ) : null}
         </View>
 
+        {/* Online-First Submission Notice */}
+        <View className="mt-3 flex-row items-center gap-2.5 rounded-xl border border-[#3b82f6]/30 bg-[#3b82f6]/10 p-3">
+          <Wifi color="#3b82f6" size={16} />
+          <View className="flex-1">
+            <Text className="font-jetbrains text-[10px] font-bold uppercase tracking-wider text-[#3b82f6]">
+              Direct Cloud Submission
+            </Text>
+            <Text className={`font-hanken text-[10px] ${textSecondaryClass}`}>
+              Photos and records are uploaded and synced directly in real-time.
+            </Text>
+          </View>
+        </View>
+
         {/* Central DLR Web Portal Reference Link */}
         <TouchableOpacity
           onPress={() => Linking.openURL('https://dlr-view.vercel.app/')}
@@ -1407,11 +1609,43 @@ export default function DamageLostRecordScreen({ embedded = false }: { embedded?
           <ExternalLink color={isDark ? '#a1a1aa' : '#71717a'} size={15} />
         </TouchableOpacity>
 
+        {/* Submit Error Card with Retry */}
+        {submitError ? (
+          <View className="mt-3 rounded-xl border border-[#ef4444]/40 bg-[#ef4444]/10 p-3.5">
+            <View className="flex-row items-center gap-2">
+              <AlertTriangle color="#ef4444" size={16} />
+              <Text className="font-jetbrains text-xs font-bold text-[#ef4444]">
+                ONLINE SUBMISSION FAILED
+              </Text>
+            </View>
+            <Text className="mt-1 font-hanken text-xs text-[#ef4444]">{submitError}</Text>
+            <Text className={`mt-1 font-hanken text-[10px] ${textSecondaryClass}`}>
+              You must have an active internet connection to create and submit DLR records.
+            </Text>
+            <TouchableOpacity
+              onPress={handleSubmit}
+              disabled={submitting}
+              className="mt-2.5 self-start rounded-lg bg-[#ef4444] px-3.5 py-1.5">
+              <Text className="font-jetbrains text-[10px] font-bold text-white">RETRY UPLOAD</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
+
         {submitting ? (
-          <View className="mt-4 flex-row items-center justify-center gap-2 rounded-xl border border-[#e5005c]/30 bg-[#e5005c]/10 py-3.5">
-            <ActivityIndicator size="small" color="#e5005c" />
-            <Text className="font-jetbrains text-xs font-bold text-[#e5005c]">
-              {progressText || 'Processing…'}
+          <View className={`mt-4 rounded-xl border p-4 ${cardBgClass}`}>
+            <View className="mb-2 flex-row items-center justify-between">
+              <Text className="font-jetbrains text-xs font-bold text-[#e5005c]">
+                {progressText || 'Processing submission…'}
+              </Text>
+              {progressPercent !== undefined ? (
+                <Text className="font-jetbrains text-xs font-bold text-[#e5005c]">
+                  {Math.round(progressPercent * 100)}%
+                </Text>
+              ) : null}
+            </View>
+            <LoadingBar progress={progressPercent} height={6} color="#e5005c" />
+            <Text className={`mt-2 font-hanken text-[10px] ${textSecondaryClass}`}>
+              Uploading photos and syncing in real-time…
             </Text>
           </View>
         ) : (
@@ -1437,13 +1671,13 @@ export default function DamageLostRecordScreen({ embedded = false }: { embedded?
 
   return (
     <SafeAreaView className={`flex-1 ${bgClass}`}>
-      <View className={`flex-row items-center gap-3 border-b px-4 py-3 ${headerBgClass}`}>
+      <View className={`flex-row items-center gap-2.5 border-b px-4 py-3 ${headerBgClass}`}>
         {!embedded ? (
           <TouchableOpacity
             onPress={() => {
               if (submitted) {
                 resetFlow();
-              } else {
+              } else if (navigation?.goBack) {
                 navigation.goBack();
               }
             }}>
@@ -1454,53 +1688,70 @@ export default function DamageLostRecordScreen({ embedded = false }: { embedded?
           <Text className={`font-hanken text-lg font-bold ${textPrimaryClass}`}>
             Damage Lost Record
           </Text>
-          <Text className={`font-jetbrains text-[9px] font-semibold ${textSecondaryClass}`}>
-            4 STEPS TO COMPLETE
+          <Text
+            className={`font-jetbrains text-[9px] font-semibold ${
+              isOffline ? 'text-[#ef4444]' : 'text-[#22c55e]'
+            }`}>
+            {isOffline ? 'OFFLINE · CONNECTION REQUIRED' : 'ONLINE FIRST · DIRECT CLOUD'}
           </Text>
         </View>
+
         <TouchableOpacity
           onPress={openRecordsModal}
-          className={`flex-row items-center gap-1.5 rounded-lg border px-2.5 py-1.5 ${
-            draftCount > 0
-              ? 'border-[#e5005c]/50 bg-[#e5005c]/10'
-              : 'border-[#3f3f46] bg-transparent'
-          }`}>
-          <ClipboardList color={draftCount > 0 ? '#e5005c' : '#a1a1aa'} size={13} />
-          {draftCount > 0 ? (
-            <Text className="font-jetbrains text-[10px] font-bold text-[#e5005c]">
-              {draftCount}
-            </Text>
-          ) : null}
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={manualSync}
-          className={`flex-row items-center gap-1.5 rounded-lg border px-2.5 py-1.5 ${
-            pendingSyncCount > 0
-              ? 'border-[#f59e0b]/50 bg-[#f59e0b]/10'
-              : 'border-[#3f3f46] bg-transparent'
-          }`}>
-          <RefreshCw color={pendingSyncCount > 0 ? '#f59e0b' : '#a1a1aa'} size={13} />
-          <Text
-            className={`font-jetbrains text-[10px] font-bold ${
-              pendingSyncCount > 0 ? 'text-[#f59e0b]' : '#a1a1aa'
-            }`}>
-            {pendingSyncCount > 0 ? `${pendingSyncCount} QUEUED` : 'SYNCED'}
+          activeOpacity={0.7}
+          className="relative flex-row items-center gap-1.5 rounded-lg border border-[#e5005c]/40 bg-[#e5005c]/10 px-2.5 py-1.5">
+          <Database color="#e5005c" size={13} />
+          <Text className="font-jetbrains text-[10px] font-bold text-[#e5005c]">
+            RECORDS ({supabaseRecords.length})
           </Text>
+          {newRecordsBadge > 0 ? (
+            <View
+              style={{
+                position: 'absolute',
+                top: -6,
+                right: -6,
+                minWidth: 18,
+                height: 18,
+                borderRadius: 9,
+                backgroundColor: '#e5005c',
+                alignItems: 'center',
+                justifyContent: 'center',
+                paddingHorizontal: 4,
+                borderWidth: 1.5,
+                borderColor: isDark ? '#131316' : '#ffffff',
+              }}>
+              <Text
+                style={{
+                  color: '#ffffff',
+                  fontSize: 8,
+                  fontFamily: 'JetBrains Mono',
+                  fontWeight: '800',
+                }}>
+                {newRecordsBadge > 9 ? '9+' : `+${newRecordsBadge}`}
+              </Text>
+            </View>
+          ) : null}
         </TouchableOpacity>
       </View>
 
-      {!submitted ? (
-        <StepIndicator
-          current={step}
-          textPrimaryClass={textPrimaryClass}
-          textSecondaryClass={textSecondaryClass}
-        />
-      ) : null}
+      {isOffline ? (
+        renderOfflineState()
+      ) : (
+        <>
+          {!submitted ? (
+            <StepIndicator
+              current={step}
+              textPrimaryClass={textPrimaryClass}
+              textSecondaryClass={textSecondaryClass}
+            />
+          ) : null}
 
-      {step === 'SCAN' && renderScanStep()}
-      {step === 'DETAILS' && renderDetailsStep()}
-      {step === 'PHOTOS' && renderPhotosStep()}
-      {step === 'SUBMIT' && renderSubmitStep()}
+          {step === 'SCAN' && renderScanStep()}
+          {step === 'DETAILS' && renderDetailsStep()}
+          {step === 'PHOTOS' && renderPhotosStep()}
+          {step === 'SUBMIT' && renderSubmitStep()}
+        </>
+      )}
 
       {notification ? (
         <View pointerEvents="none" className="absolute left-4 right-4 top-24 z-50">
@@ -1586,153 +1837,366 @@ export default function DamageLostRecordScreen({ embedded = false }: { embedded?
         onClose={() => setPickerTarget(null)}
       />
 
+      {/* Cloud Records Modal */}
       <Modal visible={recordsModalVisible} transparent animationType="slide">
         <View className="flex-1 justify-end bg-black/70">
-          <View className={`max-h-[85%] rounded-t-2xl border-t px-4 pb-8 pt-4 ${cardBgClass}`}>
+          <View className={`max-h-[90%] rounded-t-2xl border-t px-4 pb-8 pt-4 ${cardBgClass}`}>
+            {/* Header */}
             <View className="mb-3 flex-row items-center justify-between">
               <View className="flex-row items-center gap-2">
-                <ClipboardList color="#e5005c" size={18} />
+                <Database color="#e5005c" size={18} />
                 <Text className={`font-hanken text-base font-bold ${textPrimaryClass}`}>
-                  Saved Records
+                  Cloud Records
                 </Text>
                 <View className="rounded-full bg-[#e5005c]/15 px-2 py-0.5">
                   <Text className="font-jetbrains text-[10px] font-bold text-[#e5005c]">
-                    {allRecords.length}
+                    {supabaseRecords.length}
                   </Text>
                 </View>
               </View>
-              <TouchableOpacity onPress={() => setRecordsModalVisible(false)}>
-                <X color="#a1a1aa" size={20} />
-              </TouchableOpacity>
+              <View className="flex-row items-center gap-2">
+                <TouchableOpacity
+                  onPress={loadSupabaseRecords}
+                  disabled={isLoadingSupabase}
+                  className="rounded-full border border-[#3f3f46] p-1.5">
+                  <RefreshCw color={isLoadingSupabase ? '#e5005c' : '#a1a1aa'} size={14} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setRecordsModalVisible(false)}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                  className="rounded-full border border-[#3f3f46] p-1.5">
+                  <X color="#a1a1aa" size={14} />
+                </TouchableOpacity>
+              </View>
             </View>
 
-            {allRecords.length > 0 ? (
-              <View className="mb-3 flex-row items-center gap-2">
+            {/* Search filter input */}
+            <View
+              className={`mb-3 flex-row items-center rounded-lg border px-3 py-1.5 ${inputBgClass}`}>
+              <Search color="#a1a1aa" size={14} />
+              <TextInput
+                value={recordsSearchQuery}
+                onChangeText={(text) => {
+                  setRecordsSearchQuery(text);
+                  setRecordsPage(1);
+                }}
+                placeholder="Search SKU, reason, store…"
+                placeholderTextColor="#71717a"
+                className={`ml-2 flex-1 font-jetbrains text-xs ${textPrimaryClass}`}
+              />
+              {recordsSearchQuery ? (
                 <TouchableOpacity
-                  onPress={syncAndReload}
-                  disabled={pendingSyncCount === 0 || submitting}
-                  className="flex-1 flex-row items-center justify-center gap-1.5 rounded-lg border border-[#22c55e]/40 bg-[#22c55e]/10 py-2.5 disabled:opacity-40">
-                  <RefreshCw color="#22c55e" size={13} />
-                  <Text className="font-jetbrains text-[10px] font-bold text-[#22c55e]">
-                    SYNC ALL ({pendingSyncCount})
-                  </Text>
+                  onPress={() => {
+                    setRecordsSearchQuery('');
+                    setRecordsPage(1);
+                  }}>
+                  <X color="#a1a1aa" size={14} />
                 </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={handleClearAll}
-                  disabled={submitting}
-                  className="flex-row items-center justify-center gap-1.5 rounded-lg border border-[#ef4444]/40 bg-[#ef4444]/10 px-3 py-2.5">
-                  <Trash2 color="#ef4444" size={13} />
-                  <Text className="font-jetbrains text-[10px] font-bold text-[#ef4444]">
-                    CLEAR ALL
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            ) : null}
+              ) : null}
+            </View>
 
-            {allRecords.length === 0 && !isRefreshingRecords ? (
-              <View className="items-center py-14">
-                <ClipboardList color="#52525b" size={36} />
-                <Text className={`mt-3 font-hanken text-sm font-bold ${textPrimaryClass}`}>
-                  No saved records
+            {/* Records Content */}
+            {isLoadingSupabase ? (
+              <View className="items-center justify-center py-14 px-6">
+                <Text className={`mb-3 font-jetbrains text-xs font-bold ${textPrimaryClass}`}>
+                  Fetching records from cloud…
                 </Text>
-                <Text className={`mt-1 text-center font-hanken text-xs ${textSecondaryClass}`}>
-                  Scanned drafts and offline queue items will appear here.
+                <View className="w-full max-w-[240px]">
+                  <LoadingBar height={4} color="#e5005c" />
+                </View>
+                <Text className={`mt-2 font-hanken text-[10px] ${textSecondaryClass}`}>
+                  Connecting to cloud database
                 </Text>
+              </View>
+            ) : supabaseError ? (
+              <View className="my-6 items-center rounded-xl border border-[#ef4444]/30 bg-[#ef4444]/10 p-4">
+                <AlertTriangle color="#ef4444" size={24} />
+                <Text className="mt-2 text-center font-hanken text-xs font-bold text-[#ef4444]">
+                  {supabaseError}
+                </Text>
+                <Text className={`mt-1 text-center font-hanken text-[10px] ${textSecondaryClass}`}>
+                  Internet connection required to load database records.
+                </Text>
+                <TouchableOpacity
+                  onPress={loadSupabaseRecords}
+                  className="mt-3 rounded-lg bg-[#ef4444] px-4 py-2">
+                  <Text className="font-jetbrains text-[10px] font-bold text-white">RETRY</Text>
+                </TouchableOpacity>
               </View>
             ) : (
-              <ScrollView style={{ maxHeight: 520 }} showsVerticalScrollIndicator={false}>
-                {allRecords.map((record) => {
-                  const captured = PHOTO_STEPS.filter((s) => record.photos[s.key]).length;
+              <>
+                {(() => {
+                  const filtered = supabaseRecords.filter((r) => {
+                    if (!recordsSearchQuery.trim()) return true;
+                    const q = recordsSearchQuery.toLowerCase();
+                    return (
+                      (r.SKU && r.SKU.toLowerCase().includes(q)) ||
+                      (r.UPC && r.UPC.toLowerCase().includes(q)) ||
+                      (r.Description && r.Description.toLowerCase().includes(q)) ||
+                      (r.Reason && r.Reason.toLowerCase().includes(q)) ||
+                      (r.SecondReason && r.SecondReason.toLowerCase().includes(q)) ||
+                      (r['Store Code'] && r['Store Code'].toLowerCase().includes(q)) ||
+                      (r.Department && r.Department.toLowerCase().includes(q)) ||
+                      (r.SubDep && r.SubDep.toLowerCase().includes(q))
+                    );
+                  });
+
+                  if (filtered.length === 0) {
+                    return (
+                      <View className="items-center py-14">
+                        <Database color="#52525b" size={36} />
+                        <Text className={`mt-3 font-hanken text-sm font-bold ${textPrimaryClass}`}>
+                          {recordsSearchQuery
+                            ? 'No matching records'
+                            : 'No records found'}
+                        </Text>
+                        <Text
+                          className={`mt-1 text-center font-hanken text-xs ${textSecondaryClass}`}>
+                          {recordsSearchQuery
+                            ? 'Try refining your search keyword.'
+                            : 'Submitted records will appear here once saved.'}
+                        </Text>
+                      </View>
+                    );
+                  }
+
+                  const totalPages = Math.max(1, Math.ceil(filtered.length / RECORDS_PER_PAGE));
+                  const currentPage = Math.min(Math.max(1, recordsPage), totalPages);
+                  const startIndex = (currentPage - 1) * RECORDS_PER_PAGE;
+                  const paginated = filtered.slice(startIndex, startIndex + RECORDS_PER_PAGE);
+
                   return (
-                    <View
-                      key={record.id}
-                      className={`mb-2.5 rounded-xl border p-3 ${inputBgClass}`}>
-                      <View className="flex-row items-center justify-between">
-                        <View className="flex-1 flex-row items-center gap-2">
-                          <StatusBadge status={record.status} />
-                          <Text
-                            className={`font-jetbrains text-xs font-bold ${textPrimaryClass}`}
-                            numberOfLines={1}>
-                            {record.product?.sku || record.scannedCode || 'UNKNOWN'}
-                          </Text>
-                        </View>
-                        <TouchableOpacity
-                          onPress={() => handleDeleteRecord(record)}
-                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                          <Trash2 color="#ef4444" size={15} />
-                        </TouchableOpacity>
+                    <>
+                      {/* Records Summary Bar */}
+                      <View className="mb-2 flex-row items-center justify-between px-1">
+                        <Text className={`font-jetbrains text-[10px] ${textSecondaryClass}`}>
+                          Showing {startIndex + 1}–{Math.min(startIndex + RECORDS_PER_PAGE, filtered.length)} of {filtered.length} records
+                        </Text>
+                        <Text className="font-jetbrains text-[10px] font-bold text-[#e5005c]">
+                          Page {currentPage}/{totalPages}
+                        </Text>
                       </View>
 
-                      {record.product?.description ? (
-                        <Text
-                          className={`mt-1 font-hanken text-[11px] ${textSecondaryClass}`}
-                          numberOfLines={1}>
-                          {record.product.description}
-                        </Text>
-                      ) : null}
-                      <Text
-                        className={`mt-0.5 font-hanken text-[10px] ${textSecondaryClass}`}
-                        numberOfLines={1}>
-                        {record.reason || 'No reason selected'} ·{' '}
-                        {record.qty ? `Qty ${record.qty} · ` : ''}
-                        {formatRecordTime(record.createdAt)}
-                      </Text>
-                      {record.lastError ? (
-                        <Text
-                          className="mt-0.5 font-jetbrains text-[9px] text-[#ef4444]"
-                          numberOfLines={2}>
-                          ⚠ {record.lastError}
-                        </Text>
-                      ) : null}
+                      <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
+                        {paginated.map((record) => {
+                          const images = Array.isArray(record.image) ? record.image : [];
+                          const photoLabels = ['Qty Overview', 'Damage Detail', 'Barcode'];
 
-                      <View className="mt-2 flex-row items-center gap-1.5">
-                        {PHOTO_STEPS.map((s) => {
-                          const uri = record.photos[s.key];
                           return (
                             <View
-                              key={s.key}
-                              className={`h-11 w-11 items-center justify-center overflow-hidden rounded-md border ${
-                                uri ? 'border-[#22c55e]/50' : 'border-dashed border-[#3f3f46]'
-                              } ${isDark ? 'bg-[#131316]' : 'bg-[#fafafa]'}`}>
-                              {uri ? (
-                                <Image
-                                  source={{ uri }}
-                                  style={{ width: '100%', height: '100%' }}
-                                  resizeMode="cover"
-                                />
-                              ) : (
-                                <Camera color="#52525b" size={12} />
-                              )}
+                              key={record.id || `${record.SKU}_${record.created_at}`}
+                              className={`mb-3 rounded-xl border p-3.5 ${inputBgClass}`}>
+                              {/* Header Row */}
+                              <View className="flex-row items-center justify-between">
+                                <View className="flex-row items-center gap-2">
+                                  <View className="rounded bg-[#22c55e]/15 px-1.5 py-0.5">
+                                    <Text className="font-jetbrains text-[8px] font-bold text-[#22c55e]">
+                                      SYNCED
+                                    </Text>
+                                  </View>
+                                  <Text
+                                    className={`font-jetbrains text-xs font-bold ${textPrimaryClass}`}
+                                    numberOfLines={1}>
+                                    SKU {record.SKU || record.UPC || '—'}
+                                  </Text>
+                                  {record.Qty ? (
+                                    <View className="rounded bg-[#e5005c]/15 px-1.5 py-0.5">
+                                      <Text className="font-jetbrains text-[9px] font-bold text-[#e5005c]">
+                                        Qty {record.Qty}
+                                      </Text>
+                                    </View>
+                                  ) : null}
+                                </View>
+                                <View className="flex-row items-center gap-2">
+                                  <Text className={`font-jetbrains text-[9px] ${textSecondaryClass}`}>
+                                    {formatRecordTime(record.created_at)}
+                                  </Text>
+                                  <TouchableOpacity
+                                    onPress={() => handleDeleteRecord(record)}
+                                    disabled={deletingId === record.id}
+                                    activeOpacity={0.6}
+                                    className="rounded-md border border-red-500/20 bg-red-500/10 p-1.5">
+                                    {deletingId === record.id ? (
+                                      <ActivityIndicator size={12} color="#ef4444" />
+                                    ) : (
+                                      <Trash2 color="#ef4444" size={13} />
+                                    )}
+                                  </TouchableOpacity>
+                                </View>
+                              </View>
+
+                              {/* Description */}
+                              {record.Description ? (
+                                <Text
+                                  className={`mt-1 font-hanken text-xs font-semibold ${textPrimaryClass}`}
+                                  numberOfLines={2}>
+                                  {record.Description}
+                                </Text>
+                              ) : null}
+
+                              {/* Reasons & Store */}
+                              <View className="mt-2 flex-row flex-wrap items-center gap-1.5">
+                                <View className="rounded-md border border-[#e5005c]/40 bg-[#e5005c]/10 px-2 py-0.5">
+                                  <Text className="font-jetbrains text-[9px] font-bold text-[#e5005c]">
+                                    {record.Reason}
+                                  </Text>
+                                </View>
+                                {record.SecondReason ? (
+                                  <View className="rounded-md border border-[#a1a1aa]/30 bg-[#a1a1aa]/10 px-2 py-0.5">
+                                    <Text
+                                      className={`font-jetbrains text-[9px] font-medium ${textSecondaryClass}`}>
+                                      {record.SecondReason}
+                                    </Text>
+                                  </View>
+                                ) : null}
+                                {record['Store Code'] ? (
+                                  <View className="ml-auto flex-row items-center gap-1 rounded bg-[#3f3f46]/25 px-2 py-0.5">
+                                    <Building2 color="#a1a1aa" size={10} />
+                                    <Text
+                                      className={`max-w-[150px] font-jetbrains text-[9px] ${textSecondaryClass}`}
+                                      numberOfLines={1}>
+                                      {record['Store Code']}
+                                    </Text>
+                                  </View>
+                                ) : null}
+                              </View>
+
+                              {/* Department & Pricing */}
+                              {record.Department || record.SubDep || record.Price || record.Cost ? (
+                                <View className="mt-2 flex-row flex-wrap items-center justify-between border-t border-[#3f3f46]/20 pt-1.5">
+                                  <Text
+                                    className={`font-hanken text-[10px] ${textSecondaryClass}`}
+                                    numberOfLines={1}>
+                                    {[record.Department, record.SubDep].filter(Boolean).join(' · ')}
+                                  </Text>
+                                  <Text
+                                    className={`font-jetbrains text-[10px] ${textSecondaryClass}`}>
+                                    {record.Price ? `₱${record.Price}` : ''}
+                                    {record.Cost ? ` · Cost ₱${record.Cost}` : ''}
+                                  </Text>
+                                </View>
+                              ) : null}
+
+                              {/* Image Thumbnails */}
+                              {images.length > 0 ? (
+                                <View className="mt-2.5 flex-row items-center gap-2">
+                                  {images.map((imgUrl, imgIdx) => (
+                                    <TouchableOpacity
+                                      key={imgIdx}
+                                      onPress={() => setPreviewPhotoUrl(imgUrl)}
+                                      activeOpacity={0.8}
+                                      className={`h-14 flex-1 items-center justify-center overflow-hidden rounded-lg border border-[#3f3f46]/60 ${
+                                        isDark ? 'bg-[#131316]' : 'bg-[#fafafa]'
+                                      }`}>
+                                      <Image
+                                        source={{ uri: imgUrl }}
+                                        style={{ width: '100%', height: '100%' }}
+                                        resizeMode="cover"
+                                      />
+                                      <View className="absolute bottom-0 left-0 right-0 bg-black/60 py-0.5">
+                                        <Text className="text-center font-jetbrains text-[8px] font-bold text-white">
+                                          {photoLabels[imgIdx] || `Photo ${imgIdx + 1}`}
+                                        </Text>
+                                      </View>
+                                    </TouchableOpacity>
+                                  ))}
+                                </View>
+                              ) : null}
                             </View>
                           );
                         })}
-                        <View className="ml-auto items-end">
-                          <Text className={`font-jetbrains text-[9px] ${textSecondaryClass}`}>
-                            {captured}/3 photos
-                          </Text>
-                          {record.storeName || record.storeCode ? (
-                            <Text
-                              className={`max-w-[140px] text-right font-jetbrains text-[9px] ${textSecondaryClass}`}
-                              numberOfLines={1}>
-                              {record.storeName || `Store ${record.storeCode}`}
-                            </Text>
-                          ) : null}
-                        </View>
-                      </View>
+                      </ScrollView>
 
-                      <TouchableOpacity
-                        onPress={() => handleResumeRecord(record)}
-                        className="mt-2.5 items-center justify-center rounded-lg border border-[#e5005c]/40 bg-[#e5005c]/10 py-2">
-                        <Text className="font-jetbrains text-[10px] font-bold text-[#e5005c]">
-                          RESUME RECORD
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
+                      {/* Pagination Controls */}
+                      {totalPages > 1 ? (
+                        <View className={`mt-3 flex-row items-center justify-between rounded-xl border p-2 ${cardBgClass}`}>
+                          <TouchableOpacity
+                            onPress={() => {
+                              setRecordsPage((p) => Math.max(1, p - 1));
+                              Haptics.selectionAsync();
+                            }}
+                            disabled={currentPage === 1}
+                            className={`flex-row items-center gap-1 rounded-lg border px-3 py-2 ${
+                              currentPage === 1
+                                ? 'border-[#3f3f46]/40 opacity-30'
+                                : 'border-[#e5005c]/40 bg-[#e5005c]/10'
+                            }`}>
+                            <ChevronLeft
+                              color={currentPage === 1 ? '#a1a1aa' : '#e5005c'}
+                              size={14}
+                            />
+                            <Text
+                              className={`font-jetbrains text-xs font-bold ${
+                                currentPage === 1 ? textSecondaryClass : 'text-[#e5005c]'
+                              }`}>
+                              PREV
+                            </Text>
+                          </TouchableOpacity>
+
+                          <View className="items-center">
+                            <Text className={`font-jetbrains text-xs font-bold ${textPrimaryClass}`}>
+                              Page {currentPage} of {totalPages}
+                            </Text>
+                            <Text className={`font-jetbrains text-[9px] ${textSecondaryClass}`}>
+                              {RECORDS_PER_PAGE} items / page
+                            </Text>
+                          </View>
+
+                          <TouchableOpacity
+                            onPress={() => {
+                              setRecordsPage((p) => Math.min(totalPages, p + 1));
+                              Haptics.selectionAsync();
+                            }}
+                            disabled={currentPage === totalPages}
+                            className={`flex-row items-center gap-1 rounded-lg border px-3 py-2 ${
+                              currentPage === totalPages
+                                ? 'border-[#3f3f46]/40 opacity-30'
+                                : 'border-[#e5005c]/40 bg-[#e5005c]/10'
+                            }`}>
+                            <Text
+                              className={`font-jetbrains text-xs font-bold ${
+                                currentPage === totalPages ? textSecondaryClass : 'text-[#e5005c]'
+                              }`}>
+                              NEXT
+                            </Text>
+                            <ChevronRight
+                              color={currentPage === totalPages ? '#a1a1aa' : '#e5005c'}
+                              size={14}
+                            />
+                          </TouchableOpacity>
+                        </View>
+                      ) : null}
+                    </>
                   );
-                })}
-              </ScrollView>
+                })()}
+              </>
             )}
+
+            {/* Bottom Close Action */}
+            <TouchableOpacity
+              onPress={() => setRecordsModalVisible(false)}
+              className={`mt-3 items-center justify-center rounded-xl border py-2.5 ${inputBgClass}`}>
+              <Text className={`font-jetbrains text-xs font-bold ${textSecondaryClass}`}>CLOSE</Text>
+            </TouchableOpacity>
           </View>
+        </View>
+      </Modal>
+
+      {/* Fullscreen Photo Viewer Modal */}
+      <Modal visible={Boolean(previewPhotoUrl)} transparent animationType="fade">
+        <View className="flex-1 items-center justify-center bg-black/90 p-4">
+          <TouchableOpacity
+            onPress={() => setPreviewPhotoUrl(null)}
+            className="absolute right-4 top-12 z-50 rounded-full border border-white/20 bg-black/70 p-2.5">
+            <X color="#ffffff" size={20} />
+          </TouchableOpacity>
+          {previewPhotoUrl ? (
+            <Image
+              source={{ uri: previewPhotoUrl }}
+              style={{ width: '100%', height: '75%' }}
+              resizeMode="contain"
+            />
+          ) : null}
         </View>
       </Modal>
     </SafeAreaView>
