@@ -48,9 +48,7 @@ try {
   hasNativeImage = false;
 }
 
-const DAIZO_LOADING_ASSET = hasNativeImage
-  ? require('../assets/daizo-no-wifi.webp')
-  : require('../assets/daizo-no-wifi.png');
+const DAIZO_LOADING_ASSET = require('../assets/daizo-no-wifi.webp');
 
 // Module-scoped in-flight fetch promise to prevent concurrent duplicate fetching
 let inFlightFetchPromise: Promise<DaizoDataset> | null = null;
