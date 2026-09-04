@@ -200,7 +200,10 @@ export default function LoginScreen() {
         <View className="mt-8 items-center">
           <Text
             className={`font-jetbrains text-[9px] uppercase tracking-wider ${textSecondaryClass}`}>
-            System v5.0.0 • Connected to Manifest Server
+            System v6.0.0
+          </Text>
+          <Text className="mt-1.5 font-jetbrains text-[10px] font-semibold text-[#e5005c]">
+            Made by Kym Rhys Mallari
           </Text>
         </View>
       </ScrollView>

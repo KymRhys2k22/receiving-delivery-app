@@ -72,6 +72,7 @@ export interface SupabaseDLRRow {
   SubDep?: string;
   'Store Code'?: string;
   image: string[];
+  'dlr-number'?: string | null;
 }
 
 export async function fetchSupabaseDlrRecords(limit = 100): Promise<SupabaseDLRRow[]> {

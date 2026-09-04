@@ -1,6 +1,6 @@
 {
   "name": "receiving-scanner-app",
-  "version": "5.0.0",
+  "version": "6.0.0",
   "scripts": {
     "android": "expo run:android",
     "ios": "expo run:ios",
@@ -19,6 +19,7 @@
     "@react-navigation/stack": "^7.4.8",
     "@supabase/supabase-js": "^2.112.4",
     "expo": "~56.0.4",
+    "expo-application": "~56.0.3",
     "expo-camera": "~56.0.8",
     "expo-document-picker": "~56.0.4",
     "expo-file-system": "~56.0.8",
@@ -26,6 +27,7 @@
     "expo-haptics": "~56.0.3",
     "expo-image-manipulator": "~56.0.0",
     "expo-network": "~56.0.5",
+    "expo-notifications": "~56.0.25",
     "expo-sharing": "~56.0.25",
     "expo-splash-screen": "~56.0.10",
     "expo-status-bar": "~56.0.4",

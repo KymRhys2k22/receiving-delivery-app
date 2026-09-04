@@ -9,6 +9,11 @@ export const ITEM_EXPIRY_DATES_KEY = 'item_expiry_dates';
 export const SCAN_HISTORY_KEY = 'scan_history';
 
 // Shared Interfaces
+export interface BoxManifestRecord {
+  cid: string;
+  trf?: string;
+}
+
 export interface ItemManifestRecord {
   id: string;
   cid: string;
@@ -27,8 +32,8 @@ export interface HistorySessionRecord {
   fileName: string;
   totalCount: number;
   scannedCount: number;
-  manifestData: any; // string[] for box or ItemManifestRecord[] for item
-  scannedData: any; // string[] for box or Record<string, number> for item
+  manifestData: any; // BoxManifestRecord[] | string[] for box or ItemManifestRecord[] for item
+  scannedData: any; // BoxManifestRecord[] | string[] for box or Record<string, number> for item
 }
 
 /** Helper function to add a new session into history */

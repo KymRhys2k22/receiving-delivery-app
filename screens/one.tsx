@@ -34,6 +34,7 @@ import {
   SCANNED_ITEMS_KEY,
   SCAN_HISTORY_KEY,
   type ItemManifestRecord,
+  type BoxManifestRecord,
   saveSessionToHistory,
 } from '../utils/storage';
 
@@ -44,6 +45,7 @@ export {
   SCANNED_ITEMS_KEY,
   SCAN_HISTORY_KEY,
   type ItemManifestRecord,
+  type BoxManifestRecord,
 };
 
 interface Item {
@@ -238,14 +240,17 @@ export default function TabOneScreen({ navigation: propNavigation }: { navigatio
         const storedScanned = await AsyncStorage.getItem(SCANNED_CIDS_KEY);
 
         if (storedManifest) {
-          const allCids = JSON.parse(storedManifest) as string[];
-          const scannedCids = storedScanned ? (JSON.parse(storedScanned) as string[]) : [];
+          const rawManifest = JSON.parse(storedManifest) as any[];
+          const rawScanned = storedScanned ? (JSON.parse(storedScanned) as any[]) : [];
+
+          const getCidStr = (item: any) =>
+            (typeof item === 'string' ? item : item?.cid || '').trim();
 
           const uniqueManifest = Array.from(
-            new Set(allCids.map((c) => c.trim()).filter(Boolean))
+            new Set((Array.isArray(rawManifest) ? rawManifest : []).map(getCidStr).filter(Boolean))
           );
           const uniqueScanned = Array.from(
-            new Set(scannedCids.map((c) => c.trim()).filter(Boolean))
+            new Set((Array.isArray(rawScanned) ? rawScanned : []).map(getCidStr).filter(Boolean))
           );
 
           setSavedProgress({
@@ -321,21 +326,36 @@ export default function TabOneScreen({ navigation: propNavigation }: { navigatio
           return;
         }
 
-        // Extract the "CID NO" column (trim whitespace and deduplicate case-insensitively)
+        // Extract the "CID NO" (1st column) and "TRF NO" (2nd column)
         const seenCids = new Set<string>();
-        const cidList: string[] = [];
+        const boxList: BoxManifestRecord[] = [];
 
         parsed.data.forEach((row) => {
-          const key = Object.keys(row).find((k) => k.trim() === 'CID NO');
-          const val = key ? row[key].trim() : '';
-          const upper = val.toUpperCase();
-          if (val && !seenCids.has(upper)) {
-            seenCids.add(upper);
-            cidList.push(val);
+          const getRowVal = (r: Record<string, string>, targets: string[]) => {
+            const k = Object.keys(r).find((key) =>
+              targets.some((t) => t.toUpperCase() === key.trim().toUpperCase())
+            );
+            return k ? r[k].trim() : '';
+          };
+
+          const cid =
+            getRowVal(row, ['CID NO', 'CID', 'CID_NO', 'CIDNO', 'BOX CID', 'BOX CID NO']) ||
+            (parsed.meta.fields && parsed.meta.fields[0] ? (row[parsed.meta.fields[0]] || '').trim() : '');
+
+          const trf =
+            getRowVal(row, ['TRF NO', 'TRF', 'TRF_NO', 'TRFNO', 'TRANSFER NO', 'TRANSFER']) ||
+            (parsed.meta.fields && parsed.meta.fields.length > 1 ? (row[parsed.meta.fields[1]] || '').trim() : '');
+
+          if (cid) {
+            const upper = cid.toUpperCase();
+            if (!seenCids.has(upper)) {
+              seenCids.add(upper);
+              boxList.push({ cid, trf });
+            }
           }
         });
 
-        if (cidList.length === 0) {
+        if (boxList.length === 0) {
           setIsUploading(false);
           showToast('No "CID NO" column found in CSV', 'error');
           return;
@@ -343,15 +363,15 @@ export default function TabOneScreen({ navigation: propNavigation }: { navigatio
 
         // Reset scanned CIDs and persist new manifest to AsyncStorage
         await AsyncStorage.removeItem(SCANNED_CIDS_KEY);
-        await AsyncStorage.setItem(MANIFEST_CIDS_KEY, JSON.stringify(cidList));
+        await AsyncStorage.setItem(MANIFEST_CIDS_KEY, JSON.stringify(boxList));
 
         // Save session to History (for History tab grouped by date)
         await saveSessionToHistory({
           type: 'box',
           fileName: asset.name,
-          totalCount: cidList.length,
+          totalCount: boxList.length,
           scannedCount: 0,
-          manifestData: cidList,
+          manifestData: boxList,
           scannedData: [],
         });
 
@@ -365,7 +385,7 @@ export default function TabOneScreen({ navigation: propNavigation }: { navigatio
         );
 
         setIsUploading(false);
-        showToast(`Box manifest uploaded: ${cidList.length} CIDs from ${asset.name}`, 'success');
+        showToast(`Box manifest uploaded: ${boxList.length} boxes from ${asset.name}`, 'success');
 
         // Navigate to ScanningBox so the user can start scanning immediately
         navigation.navigate('ScanningBox' as never);
@@ -710,7 +730,7 @@ export default function TabOneScreen({ navigation: propNavigation }: { navigatio
                 <Text
                   className={`mt-0.5 font-hanken text-[11px] ${textSecondaryClass}`}
                   numberOfLines={1}>
-                  CID NO column · Box-level receiving
+                  CID NO, TRF NO columns · Box-level receiving
                 </Text>
               </View>
               <View className="h-8 w-8 items-center justify-center rounded-full bg-[#ff80ab]/15">

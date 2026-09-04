@@ -20,6 +20,7 @@ import * as Haptics from 'expo-haptics';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../context/auth';
 import { useTheme, type ThemeMode } from '../context/theme';
+import { checkForAppUpdate } from '../services/appUpdateService';
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
@@ -34,6 +35,13 @@ export default function SettingsScreen() {
   const { operatorId, storeCode, storeName, loginDate, signOut } = useAuth();
   const { themeMode, setThemeMode, isDark } = useTheme();
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleCheckUpdate = async () => {
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      await checkForAppUpdate({ isManual: true, force: true });
+    } catch {}
+  };
 
   const handleThemeChange = (mode: ThemeMode) => {
     setThemeMode(mode);
@@ -52,7 +60,7 @@ export default function SettingsScreen() {
       try {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } catch {}
-      Alert.alert('Database Synced', 'Manifest records are up to date.');
+      Alert.alert('Storage Refreshed', 'Local records are up to date.');
     }, 800);
   };
 
@@ -223,8 +231,8 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        {/* Terminal Status & Manifest Database */}
-        <SectionLabel>Terminal Status & Database</SectionLabel>
+        {/* Terminal Status & Storage */}
+        <SectionLabel>Terminal System & Storage</SectionLabel>
 
         <View className={`mb-6 rounded-xl border p-4 ${cardBgClass}`}>
           <View className="mb-3 flex-row items-center justify-between border-b border-[#3f3f46]/30 pb-3">
@@ -234,12 +242,12 @@ export default function SettingsScreen() {
               </View>
               <View>
                 <Text className={`font-hanken text-xs font-bold ${textPrimaryClass}`}>
-                  Central Sync Status
+                  Local Storage Status
                 </Text>
                 <View className="mt-0.5 flex-row items-center gap-1.5">
                   <View className="h-1.5 w-1.5 rounded-full bg-[#22c55e]" />
                   <Text className="font-jetbrains text-[10px] font-bold text-[#22c55e]">
-                    CONNECTED & AUTHENTICATED
+                    READY & ACTIVE
                   </Text>
                 </View>
               </View>
@@ -251,7 +259,7 @@ export default function SettingsScreen() {
               className="flex-row items-center gap-1.5 rounded-lg border border-[#3f3f46] bg-[#2a2a2d] px-3 py-1.5 active:bg-[#3f3f46]">
               <RefreshCw color="#fafafa" size={14} />
               <Text className="font-jetbrains text-xs font-bold text-[#fafafa]">
-                {isRefreshing ? 'SYNCING…' : 'SYNC'}
+                {isRefreshing ? 'REFRESHING…' : 'REFRESH'}
               </Text>
             </TouchableOpacity>
           </View>
@@ -262,7 +270,7 @@ export default function SettingsScreen() {
                 className={`font-jetbrains text-[8px] font-bold uppercase tracking-wider ${textSecondaryClass}`}>
                 Scanner Engine
               </Text>
-              <Text className="mt-0.5 font-jetbrains text-xs font-bold text-[#e5005c]">v5.0.0</Text>
+              <Text className="mt-0.5 font-jetbrains text-xs font-bold text-[#e5005c]">v6.0.0</Text>
             </View>
             <View className={`flex-1 rounded-lg px-2.5 py-2 ${innerRowBgClass}`}>
               <Text
@@ -274,6 +282,27 @@ export default function SettingsScreen() {
               </Text>
             </View>
           </View>
+
+          {/* Credits */}
+          <View className={`mt-2 rounded-lg px-2.5 py-2 ${innerRowBgClass}`}>
+            <Text
+              className={`font-jetbrains text-[8px] font-bold uppercase tracking-wider ${textSecondaryClass}`}>
+              Author & Engineering
+            </Text>
+            <Text className="mt-0.5 font-jetbrains text-xs font-bold text-[#e5005c]">
+              Made by Kym Rhys Mallari
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            onPress={handleCheckUpdate}
+            activeOpacity={0.8}
+            className="mt-3 flex-row items-center justify-center gap-2 rounded-lg border border-[#e5005c]/50 bg-[#e5005c]/10 py-2.5 active:bg-[#e5005c]/20">
+            <RefreshCw color="#e5005c" size={13} />
+            <Text className="font-jetbrains text-xs font-bold text-[#e5005c]">
+              CHECK FOR UPDATES
+            </Text>
+          </TouchableOpacity>
         </View>
 
         {/* Damage Lost Record (DLR) Intake */}
@@ -326,7 +355,7 @@ export default function SettingsScreen() {
             );
           }}
           activeOpacity={0.8}
-          className="mb-10 flex-row items-center justify-center gap-2.5 rounded-xl border border-[#ef4444]/40 bg-[#ef4444]/15 py-3.5 active:bg-[#ef4444]/25">
+          className="mb-8 flex-row items-center justify-center gap-2.5 rounded-xl border border-[#ef4444]/40 bg-[#ef4444]/15 py-3.5 active:bg-[#ef4444]/25">
           <View className="h-7 w-7 items-center justify-center rounded-full bg-[#ef4444]/20">
             <LogOut color="#ef4444" size={14} />
           </View>
@@ -334,6 +363,20 @@ export default function SettingsScreen() {
             TERMINATE SESSION (LOG OUT)
           </Text>
         </TouchableOpacity>
+
+        {/* App Footer Credits */}
+        <View className="mb-12 items-center justify-center">
+          <Text
+            className={`font-jetbrains text-[10px] font-medium tracking-wider ${textSecondaryClass}`}>
+            RECEIVING SCANNER APP
+          </Text>
+          <Text className="mt-1 font-jetbrains text-xs font-bold text-[#e5005c]">
+            Made by Kym Rhys Mallari
+          </Text>
+          <Text className={`mt-0.5 font-jetbrains text-[9px] ${textSecondaryClass}`}>
+            Version 6.0.0 · All Rights Reserved
+          </Text>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );

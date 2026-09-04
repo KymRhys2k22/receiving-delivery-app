@@ -3,7 +3,7 @@
   "1": "dlr.ts",
   "2": "expo",
   "3": "devDependencies",
-  "4": "expo",
+  "4": "expo-document-picker",
   "5": "Industrial Verification Logic Design System",
   "6": "ScreenContent.tsx",
   "7": "dependencies",

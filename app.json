@@ -2,7 +2,7 @@
   "expo": {
     "name": "Receiving Scanner",
     "slug": "receiving-scanner-app",
-    "version": "5.0.0",
+    "version": "6.0.0",
     "web": {
       "favicon": "./assets/favicon.png"
     },
@@ -29,7 +29,8 @@
           "cameraPermission": "Allow receiving-scanner-app to access your camera to scan barcodes and QR codes."
         }
       ],
-      "expo-sharing"
+      "expo-sharing",
+      "expo-notifications"
     ],
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -40,6 +41,7 @@
       "bundleIdentifier": "com.kymrhys.receivingscannerapp"
     },
     "android": {
+      "versionCode": 6,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -50,7 +52,11 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.kymrhys.receivingscannerapp",
-      "permissions": ["android.permission.CAMERA", "android.permission.VIBRATE"]
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.VIBRATE",
+        "android.permission.POST_NOTIFICATIONS"
+      ]
     },
     "extra": {
       "eas": {

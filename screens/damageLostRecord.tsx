@@ -12,6 +12,8 @@ import {
   StyleSheet,
   Linking,
   Animated,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -40,6 +42,7 @@ import {
   Globe,
   Database,
   Building2,
+  FileText,
 } from 'lucide-react-native';
 import { NavigationContext } from '@react-navigation/native';
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
@@ -443,6 +446,7 @@ export default function DamageLostRecordScreen({
   const [previewPhotoUrl, setPreviewPhotoUrl] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [newRecordsBadge, setNewRecordsBadge] = useState<number>(0);
+  const [dlrFilterMode, setDlrFilterMode] = useState<'ALL' | 'WITH_DLR' | 'WITHOUT_DLR'>('ALL');
   const [isOffline, setIsOffline] = useState(false);
   const [isCheckingConnection, setIsCheckingConnection] = useState(false);
 
@@ -793,10 +797,10 @@ export default function DamageLostRecordScreen({
         if (!localUri) {
           throw new Error(`${stepConfig.title} is missing`);
         }
-        setProgressPercent(0.15 + (i * 0.24));
+        setProgressPercent(0.15 + i * 0.24);
         setProgressText(`Optimizing ${stepConfig.title} (${i + 1}/${PHOTO_STEPS.length})…`);
         const compressedUri = await compressImage(localUri);
-        setProgressPercent(0.27 + (i * 0.24));
+        setProgressPercent(0.27 + i * 0.24);
         setProgressText(`Uploading ${stepConfig.title} (${i + 1}/${PHOTO_STEPS.length})…`);
         urls[stepConfig.key] = await uploadToCloudinary(
           compressedUri,
@@ -824,11 +828,7 @@ export default function DamageLostRecordScreen({
       setSubmitted(true);
       setNewRecordsBadge((prev) => prev + 1);
       loadSupabaseRecords();
-      showNotification(
-        'success',
-        'RECORD SUBMITTED',
-        'DLR record uploaded and saved successfully'
-      );
+      showNotification('success', 'RECORD SUBMITTED', 'DLR record uploaded and saved successfully');
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       feedback('error');
@@ -884,16 +884,17 @@ export default function DamageLostRecordScreen({
 
       <View className="mb-2.5 flex-row items-center gap-2 rounded-full border border-red-500/30 bg-red-500/10 px-3 py-1">
         <View className="h-2 w-2 rounded-full bg-red-500" />
-        <Text className="font-jetbrains text-[10px] font-bold text-red-500">
-          OFFLINE MODE
-        </Text>
+        <Text className="font-jetbrains text-[10px] font-bold text-red-500">OFFLINE MODE</Text>
       </View>
 
       <Text className={`text-center font-hanken text-xl font-bold ${textPrimaryClass}`}>
         No Internet Connection
       </Text>
-      <Text className={`mt-2 max-w-[290px] text-center font-hanken text-xs leading-5 ${textSecondaryClass}`}>
-        {'Damage & Lost Record creation requires an active internet connection to verify items, upload evidence photos, and save records in real-time.'}
+      <Text
+        className={`mt-2 max-w-[290px] text-center font-hanken text-xs leading-5 ${textSecondaryClass}`}>
+        {
+          'Damage & Lost Record creation requires an active internet connection to verify items, upload evidence photos, and save records in real-time.'
+        }
       </Text>
 
       <TouchableOpacity
@@ -999,8 +1000,8 @@ export default function DamageLostRecordScreen({
                 {isLookingUp
                   ? 'MATCHING ITEM…'
                   : isScanActive
-                  ? '⚡ SCANNING ACTIVE — KEEP HOLDING'
-                  : 'HOLD BUTTON BELOW TO SCAN'}
+                    ? '⚡ SCANNING ACTIVE — KEEP HOLDING'
+                    : 'HOLD BUTTON BELOW TO SCAN'}
               </Text>
             </View>
             {catalogStatus ? (
@@ -1034,9 +1035,7 @@ export default function DamageLostRecordScreen({
               }}
               disabled={isLookingUp}
               className={`h-14 w-full flex-row items-center justify-center gap-2.5 rounded-2xl border ${
-                isScanActive
-                  ? 'border-[#e5005c] bg-[#e5005c]'
-                  : 'border-[#e5005c] bg-[#e5005c]/15'
+                isScanActive ? 'border-[#e5005c] bg-[#e5005c]' : 'border-[#e5005c] bg-[#e5005c]/15'
               }`}>
               <Scan color={isScanActive ? '#ffffff' : '#e5005c'} size={20} />
               <Text
@@ -1052,9 +1051,7 @@ export default function DamageLostRecordScreen({
               <TouchableOpacity
                 onPress={() => setTorchEnabled(!torchEnabled)}
                 className={`h-10 flex-1 flex-row items-center justify-center gap-1.5 rounded-xl border ${
-                  torchEnabled
-                    ? 'border-[#f59e0b] bg-[#f59e0b]/25'
-                    : 'border-white/20 bg-black/60'
+                  torchEnabled ? 'border-[#f59e0b] bg-[#f59e0b]/25' : 'border-white/20 bg-black/60'
                 }`}>
                 <Flashlight color={torchEnabled ? '#f59e0b' : '#ffffff'} size={15} />
                 <Text
@@ -1069,9 +1066,7 @@ export default function DamageLostRecordScreen({
                 onPress={() => setManualModalVisible(true)}
                 className="h-10 flex-1 flex-row items-center justify-center gap-1.5 rounded-xl border border-white/20 bg-black/60">
                 <Search color="#ffffff" size={14} />
-                <Text className="font-jetbrains text-[10px] font-bold text-white">
-                  MANUAL CODE
-                </Text>
+                <Text className="font-jetbrains text-[10px] font-bold text-white">MANUAL CODE</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1895,9 +1890,66 @@ export default function DamageLostRecordScreen({
               ) : null}
             </View>
 
+            {/* Filter Chips by DLR Number */}
+            <View className="mb-3 flex-row items-center gap-1.5">
+              <TouchableOpacity
+                onPress={() => {
+                  setDlrFilterMode('ALL');
+                  setRecordsPage(1);
+                }}
+                className={`flex-1 items-center justify-center rounded-lg border px-1 py-1.5 ${
+                  dlrFilterMode === 'ALL'
+                    ? 'border-[#e5005c] bg-[#e5005c]/15'
+                    : 'border-[#3f3f46]/40 bg-[#3f3f46]/10'
+                }`}>
+                <Text
+                  className={`font-jetbrains text-[9px] font-bold ${
+                    dlrFilterMode === 'ALL' ? 'text-[#e5005c]' : textSecondaryClass
+                  }`}>
+                  ALL ({supabaseRecords.length})
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => {
+                  setDlrFilterMode('WITH_DLR');
+                  setRecordsPage(1);
+                }}
+                className={`flex-1 items-center justify-center rounded-lg border px-1 py-1.5 ${
+                  dlrFilterMode === 'WITH_DLR'
+                    ? 'border-[#3b82f6] bg-[#3b82f6]/15'
+                    : 'border-[#3f3f46]/40 bg-[#3f3f46]/10'
+                }`}>
+                <Text
+                  className={`font-jetbrains text-[9px] font-bold ${
+                    dlrFilterMode === 'WITH_DLR' ? 'text-[#3b82f6]' : textSecondaryClass
+                  }`}>
+                  WITH DLR # ({supabaseRecords.filter((r) => r['dlr-number']).length})
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => {
+                  setDlrFilterMode('WITHOUT_DLR');
+                  setRecordsPage(1);
+                }}
+                className={`flex-1 items-center justify-center rounded-lg border px-1 py-1.5 ${
+                  dlrFilterMode === 'WITHOUT_DLR'
+                    ? 'border-[#f59e0b] bg-[#f59e0b]/15'
+                    : 'border-[#3f3f46]/40 bg-[#3f3f46]/10'
+                }`}>
+                <Text
+                  className={`font-jetbrains text-[9px] font-bold ${
+                    dlrFilterMode === 'WITHOUT_DLR' ? 'text-[#f59e0b]' : textSecondaryClass
+                  }`}>
+                  NO DLR # ({supabaseRecords.filter((r) => !r['dlr-number']).length})
+                </Text>
+              </TouchableOpacity>
+            </View>
+
             {/* Records Content */}
             {isLoadingSupabase ? (
-              <View className="items-center justify-center py-14 px-6">
+              <View className="items-center justify-center px-6 py-14">
                 <Text className={`mb-3 font-jetbrains text-xs font-bold ${textPrimaryClass}`}>
                   Fetching records from cloud…
                 </Text>
@@ -1927,9 +1979,13 @@ export default function DamageLostRecordScreen({
               <>
                 {(() => {
                   const filtered = supabaseRecords.filter((r) => {
+                    if (dlrFilterMode === 'WITH_DLR' && !r['dlr-number']) return false;
+                    if (dlrFilterMode === 'WITHOUT_DLR' && r['dlr-number']) return false;
+
                     if (!recordsSearchQuery.trim()) return true;
                     const q = recordsSearchQuery.toLowerCase();
                     return (
+                      (r['dlr-number'] && r['dlr-number'].toLowerCase().includes(q)) ||
                       (r.SKU && r.SKU.toLowerCase().includes(q)) ||
                       (r.UPC && r.UPC.toLowerCase().includes(q)) ||
                       (r.Description && r.Description.toLowerCase().includes(q)) ||
@@ -1946,9 +2002,7 @@ export default function DamageLostRecordScreen({
                       <View className="items-center py-14">
                         <Database color="#52525b" size={36} />
                         <Text className={`mt-3 font-hanken text-sm font-bold ${textPrimaryClass}`}>
-                          {recordsSearchQuery
-                            ? 'No matching records'
-                            : 'No records found'}
+                          {recordsSearchQuery ? 'No matching records' : 'No records found'}
                         </Text>
                         <Text
                           className={`mt-1 text-center font-hanken text-xs ${textSecondaryClass}`}>
@@ -1970,7 +2024,9 @@ export default function DamageLostRecordScreen({
                       {/* Records Summary Bar */}
                       <View className="mb-2 flex-row items-center justify-between px-1">
                         <Text className={`font-jetbrains text-[10px] ${textSecondaryClass}`}>
-                          Showing {startIndex + 1}–{Math.min(startIndex + RECORDS_PER_PAGE, filtered.length)} of {filtered.length} records
+                          Showing {startIndex + 1}–
+                          {Math.min(startIndex + RECORDS_PER_PAGE, filtered.length)} of{' '}
+                          {filtered.length} records
                         </Text>
                         <Text className="font-jetbrains text-[10px] font-bold text-[#e5005c]">
                           Page {currentPage}/{totalPages}
@@ -2008,7 +2064,8 @@ export default function DamageLostRecordScreen({
                                   ) : null}
                                 </View>
                                 <View className="flex-row items-center gap-2">
-                                  <Text className={`font-jetbrains text-[9px] ${textSecondaryClass}`}>
+                                  <Text
+                                    className={`font-jetbrains text-[9px] ${textSecondaryClass}`}>
                                     {formatRecordTime(record.created_at)}
                                   </Text>
                                   <TouchableOpacity
@@ -2023,6 +2080,46 @@ export default function DamageLostRecordScreen({
                                     )}
                                   </TouchableOpacity>
                                 </View>
+                              </View>
+
+                              {/* DLR Number Row (View-Only, Managed via Web Portal) */}
+                              <View className="mt-2 flex-row items-center justify-between rounded-lg border border-[#3f3f46]/40 bg-[#3f3f46]/15 px-2.5 py-1.5">
+                                <View className="mr-2 flex-1 flex-row items-center gap-1.5">
+                                  <FileText
+                                    color={record['dlr-number'] ? '#3b82f6' : '#a1a1aa'}
+                                    size={12}
+                                  />
+                                  <Text
+                                    className={`font-jetbrains text-[9px] font-bold ${textSecondaryClass}`}>
+                                    DLR NO:
+                                  </Text>
+                                  {record['dlr-number'] ? (
+                                    <TouchableOpacity
+                                      onPress={() => {
+                                        setRecordsSearchQuery(record['dlr-number'] || '');
+                                        setRecordsPage(1);
+                                      }}
+                                      activeOpacity={0.7}
+                                      className="rounded border border-[#3b82f6]/40 bg-[#3b82f6]/15 px-1.5 py-0.5">
+                                      <Text className="font-jetbrains text-[10px] font-bold text-[#3b82f6]">
+                                        {record['dlr-number']}
+                                      </Text>
+                                    </TouchableOpacity>
+                                  ) : (
+                                    <Text
+                                      className={`font-jetbrains text-[9px] italic ${textSecondaryClass}`}>
+                                      Pending web assignment
+                                    </Text>
+                                  )}
+                                </View>
+
+                                {record['dlr-number'] ? (
+                                  <View className="rounded bg-[#3b82f6]/15 px-1.5 py-0.5">
+                                    <Text className="font-jetbrains text-[8px] font-bold text-[#3b82f6]">
+                                      WEB DLR
+                                    </Text>
+                                  </View>
+                                ) : null}
                               </View>
 
                               {/* Description */}
@@ -2109,7 +2206,8 @@ export default function DamageLostRecordScreen({
 
                       {/* Pagination Controls */}
                       {totalPages > 1 ? (
-                        <View className={`mt-3 flex-row items-center justify-between rounded-xl border p-2 ${cardBgClass}`}>
+                        <View
+                          className={`mt-3 flex-row items-center justify-between rounded-xl border p-2 ${cardBgClass}`}>
                           <TouchableOpacity
                             onPress={() => {
                               setRecordsPage((p) => Math.max(1, p - 1));
@@ -2134,7 +2232,8 @@ export default function DamageLostRecordScreen({
                           </TouchableOpacity>
 
                           <View className="items-center">
-                            <Text className={`font-jetbrains text-xs font-bold ${textPrimaryClass}`}>
+                            <Text
+                              className={`font-jetbrains text-xs font-bold ${textPrimaryClass}`}>
                               Page {currentPage} of {totalPages}
                             </Text>
                             <Text className={`font-jetbrains text-[9px] ${textSecondaryClass}`}>
@@ -2176,7 +2275,9 @@ export default function DamageLostRecordScreen({
             <TouchableOpacity
               onPress={() => setRecordsModalVisible(false)}
               className={`mt-3 items-center justify-center rounded-xl border py-2.5 ${inputBgClass}`}>
-              <Text className={`font-jetbrains text-xs font-bold ${textSecondaryClass}`}>CLOSE</Text>
+              <Text className={`font-jetbrains text-xs font-bold ${textSecondaryClass}`}>
+                CLOSE
+              </Text>
             </TouchableOpacity>
           </View>
         </View>

@@ -28,7 +28,7 @@ import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'ex
 import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../context/theme';
-import { MANIFEST_CIDS_KEY, SCANNED_CIDS_KEY } from '../utils/storage';
+import { MANIFEST_CIDS_KEY, SCANNED_CIDS_KEY, type BoxManifestRecord } from '../utils/storage';
 
 const playScanFeedback = async (type: 'success' | 'warning' | 'error') => {
   // 1. Tactile Haptic Vibration Feedback
@@ -125,12 +125,12 @@ export default function ScanningBoxScreen({ navigation: propNavigation }: { navi
   const footerBgClass = isDark ? 'bg-[#131316] border-[#3f3f46]' : 'bg-[#ffffff] border-[#e4e4e7]';
   const [permission, requestPermission] = useCameraPermissions();
   const [activeTab, setActiveTab] = useState<'unscanned' | 'scanned'>('unscanned');
-  const [unscannedBoxes, setUnscannedBoxes] = useState<string[]>([]);
-  const [scannedBoxes, setScannedBoxes] = useState<string[]>([]);
+  const [unscannedBoxes, setUnscannedBoxes] = useState<BoxManifestRecord[]>([]);
+  const [scannedBoxes, setScannedBoxes] = useState<BoxManifestRecord[]>([]);
   const [lastScanned, setLastScanned] = useState<string | null>(null);
   const [showManual, setShowManual] = useState(false);
   const [manualInput, setManualInput] = useState('');
-  const [confirmCidModal, setConfirmCidModal] = useState<string | null>(null);
+  const [confirmCidModal, setConfirmCidModal] = useState<BoxManifestRecord | null>(null);
 
   // Full screen tabs mode (covers camera when swiped up)
   const [isFullScreenTabs, setIsFullScreenTabs] = useState(false);
@@ -207,9 +207,9 @@ export default function ScanningBoxScreen({ navigation: propNavigation }: { navi
   } | null>(null);
 
   // Keep live refs to avoid stale closure issues during fast camera scanning
-  const unscannedRef = useRef<string[]>([]);
-  const scannedRef = useRef<string[]>([]);
-  const masterCidsRef = useRef<string[]>([]);
+  const unscannedRef = useRef<BoxManifestRecord[]>([]);
+  const scannedRef = useRef<BoxManifestRecord[]>([]);
+  const masterCidsRef = useRef<BoxManifestRecord[]>([]);
 
   useEffect(() => {
     unscannedRef.current = unscannedBoxes;
@@ -281,19 +281,30 @@ export default function ScanningBoxScreen({ navigation: propNavigation }: { navi
     };
   }, [isHoldScanning, laserAnim]);
 
-  /** Deduplicate CIDs (case-insensitive) so duplicate rows are merged into one */
-  const deduplicateCids = (cids: string[]): string[] => {
-    const seen = new Set<string>();
-    const unique: string[] = [];
-    for (const c of cids) {
-      const trimmed = c.trim();
-      const upper = trimmed.toUpperCase();
-      if (trimmed && !seen.has(upper)) {
-        seen.add(upper);
-        unique.push(trimmed);
+  const normalizeBox = (item: any): BoxManifestRecord => {
+    if (typeof item === 'string') {
+      return { cid: item.trim(), trf: '' };
+    }
+    return {
+      cid: (item?.cid || '').trim(),
+      trf: (item?.trf || '').trim(),
+    };
+  };
+
+  /** Deduplicate Boxes (case-insensitive by CID) so duplicate rows are merged into one */
+  const deduplicateBoxes = (boxes: any[]): BoxManifestRecord[] => {
+    const map = new Map<string, BoxManifestRecord>();
+    for (const b of boxes) {
+      const normalized = normalizeBox(b);
+      if (!normalized.cid) continue;
+      const upper = normalized.cid.toUpperCase();
+      if (!map.has(upper)) {
+        map.set(upper, normalized);
+      } else if (normalized.trf && !map.get(upper)!.trf) {
+        map.set(upper, normalized);
       }
     }
-    return unique;
+    return Array.from(map.values());
   };
 
   // Reload manifest and saved scanned CIDs from AsyncStorage
@@ -304,17 +315,16 @@ export default function ScanningBoxScreen({ navigation: propNavigation }: { navi
         const storedScanned = await AsyncStorage.getItem(SCANNED_CIDS_KEY);
 
         if (storedManifest) {
-          const allCids = JSON.parse(storedManifest) as string[];
-          const uniqueCids = deduplicateCids(allCids);
-          masterCidsRef.current = uniqueCids;
+          const rawManifest = JSON.parse(storedManifest) as any[];
+          const uniqueBoxes = deduplicateBoxes(Array.isArray(rawManifest) ? rawManifest : []);
+          masterCidsRef.current = uniqueBoxes;
 
-          const scannedCids = storedScanned
-            ? deduplicateCids(JSON.parse(storedScanned) as string[])
-            : [];
-          setScannedBoxes(scannedCids);
+          const rawScanned = storedScanned ? (JSON.parse(storedScanned) as any[]) : [];
+          const scannedList = deduplicateBoxes(Array.isArray(rawScanned) ? rawScanned : []);
+          setScannedBoxes(scannedList);
 
-          const scannedSet = new Set(scannedCids.map((s) => s.toUpperCase()));
-          const remainingUnscanned = uniqueCids.filter((c) => !scannedSet.has(c.toUpperCase()));
+          const scannedSet = new Set(scannedList.map((s) => s.cid.toUpperCase()));
+          const remainingUnscanned = uniqueBoxes.filter((c) => !scannedSet.has(c.cid.toUpperCase()));
           setUnscannedBoxes(remainingUnscanned);
         }
       } catch {
@@ -327,24 +337,32 @@ export default function ScanningBoxScreen({ navigation: propNavigation }: { navi
   const totalBoxes = unscannedBoxes.length + scannedBoxes.length;
   const progressPct = totalBoxes > 0 ? Math.round((scannedBoxes.length / totalBoxes) * 100) : 0;
 
-  /** Secure, exact case-insensitive CID matcher (prevents partial prefix false matches) */
-  const findMatchingCid = (input: string, list: string[]): string | null => {
+  /** Secure, exact case-insensitive matcher by CID NO or TRF NO */
+  const findMatchingCid = (input: string, list: BoxManifestRecord[]): BoxManifestRecord | null => {
     const raw = input.trim();
     if (!raw) return null;
     const cleanUpper = raw.toUpperCase();
 
-    // 1. Exact match
-    const exact = list.find((c) => c.trim() === raw);
+    // 1. Exact match on CID or TRF
+    const exact = list.find((c) => c.cid.trim() === raw || (c.trf && c.trf.trim() === raw));
     if (exact) return exact;
 
-    // 2. Case-insensitive exact match
-    const caseInsensitive = list.find((c) => c.trim().toUpperCase() === cleanUpper);
+    // 2. Case-insensitive exact match on CID or TRF
+    const caseInsensitive = list.find(
+      (c) =>
+        c.cid.trim().toUpperCase() === cleanUpper ||
+        (c.trf && c.trf.trim().toUpperCase() === cleanUpper)
+    );
     if (caseInsensitive) return caseInsensitive;
 
     // 3. URL query parameter or prefixed string exact token extraction (e.g. "CID:112PK0000" or "?cid=112PK0000")
     if (raw.includes(':') || raw.includes('=') || raw.includes('/')) {
       const tokens = raw.split(/[:=/?#&]+/).map((t) => t.trim().toUpperCase());
-      const tokenMatch = list.find((c) => tokens.includes(c.trim().toUpperCase()));
+      const tokenMatch = list.find(
+        (c) =>
+          tokens.includes(c.cid.trim().toUpperCase()) ||
+          (c.trf && tokens.includes(c.trf.trim().toUpperCase()))
+      );
       if (tokenMatch) return tokenMatch;
     }
 
@@ -353,8 +371,8 @@ export default function ScanningBoxScreen({ navigation: propNavigation }: { navi
 
   /** Move a CID from unscanned → scanned, or notify if already scanned / missing */
   const handleScan = useCallback(
-    (cid: string) => {
-      const raw = cid.trim();
+    (code: string) => {
+      const raw = code.trim();
       if (!raw) return;
 
       const currentUnscanned = unscannedRef.current;
@@ -364,17 +382,17 @@ export default function ScanningBoxScreen({ navigation: propNavigation }: { navi
       // 1. Check unscanned list (First time scan)
       const unscannedMatch = findMatchingCid(raw, currentUnscanned);
       if (unscannedMatch) {
-        setUnscannedBoxes((prev) => prev.filter((c) => c !== unscannedMatch));
+        setUnscannedBoxes((prev) => prev.filter((c) => c.cid !== unscannedMatch.cid));
         setScannedBoxes((prev) => {
-          const updated = prev.includes(unscannedMatch) ? prev : [unscannedMatch, ...prev];
+          const updated = prev.some((c) => c.cid === unscannedMatch.cid) ? prev : [unscannedMatch, ...prev];
           AsyncStorage.setItem(SCANNED_CIDS_KEY, JSON.stringify(updated)).catch(() => {});
           return updated;
         });
-        setLastScanned(unscannedMatch);
+        setLastScanned(unscannedMatch.cid);
         showNotification(
           'success',
           '✓ SCANNED SUCCESSFULLY',
-          `Box CID ${unscannedMatch} moved to Scanned`
+          `Box CID ${unscannedMatch.cid}${unscannedMatch.trf ? ` (TRF: ${unscannedMatch.trf})` : ''} moved to Scanned`
         );
         playScanFeedback('success');
         return;
@@ -386,7 +404,7 @@ export default function ScanningBoxScreen({ navigation: propNavigation }: { navi
         showNotification(
           'warning',
           '⚠️ ALREADY SCANNED',
-          `Box CID "${scannedMatch}" has ALREADY been scanned!`
+          `Box CID "${scannedMatch.cid}"${scannedMatch.trf ? ` (TRF: ${scannedMatch.trf})` : ''} has ALREADY been scanned!`
         );
         playScanFeedback('warning');
         return;
@@ -527,7 +545,7 @@ export default function ScanningBoxScreen({ navigation: propNavigation }: { navi
             <TextInput
               value={manualInput}
               onChangeText={setManualInput}
-              placeholder="Enter CID NO..."
+              placeholder="Enter CID NO or TRF NO..."
               placeholderTextColor={isDark ? '#71717a' : '#a1a1aa'}
               autoFocus
               autoCapitalize="characters"
@@ -568,11 +586,11 @@ export default function ScanningBoxScreen({ navigation: propNavigation }: { navi
             </View>
 
             <Text className={`mb-3 font-hanken text-xs ${textSecondaryClass}`}>
-              Do you want to add this CID NO. to the scanned list?
+              Do you want to add this box to the scanned list?
             </Text>
 
             <View
-              className={`mb-5 items-center justify-center rounded-lg border p-3 ${
+              className={`mb-5 rounded-lg border p-3 ${
                 isDark
                   ? 'border-[#ff80ab]/30 bg-[#ff80ab]/10'
                   : 'border-[#e5005c]/30 bg-[#e5005c]/10'
@@ -581,8 +599,16 @@ export default function ScanningBoxScreen({ navigation: propNavigation }: { navi
                 className={`font-jetbrains text-sm font-bold ${
                   isDark ? 'text-[#ffb2c3]' : 'text-[#e5005c]'
                 }`}>
-                CID NO. : {confirmCidModal}
+                CID NO. : {confirmCidModal?.cid}
               </Text>
+              {confirmCidModal?.trf ? (
+                <Text
+                  className={`mt-1 font-jetbrains text-xs font-semibold ${
+                    isDark ? 'text-[#e4e4e7]' : 'text-[#3f3f46]'
+                  }`}>
+                  TRF NO. : {confirmCidModal.trf}
+                </Text>
+              ) : null}
             </View>
 
             <View className="flex-row items-center gap-3">
@@ -604,9 +630,9 @@ export default function ScanningBoxScreen({ navigation: propNavigation }: { navi
               <TouchableOpacity
                 onPress={() => {
                   if (confirmCidModal) {
-                    const targetCid = confirmCidModal;
+                    const target = confirmCidModal;
                     setConfirmCidModal(null);
-                    handleScan(targetCid);
+                    handleScan(target.cid);
                     refocusBluetoothInput();
                   }
                 }}
@@ -911,7 +937,7 @@ export default function ScanningBoxScreen({ navigation: propNavigation }: { navi
                 ref={bluetoothInputRef}
                 value={bluetoothInput}
                 onChangeText={handleBluetoothTextChange}
-                placeholder="Scan or type Box CID NO..."
+                placeholder="Scan or type Box CID NO or TRF NO..."
                 placeholderTextColor={isDark ? '#71717a' : '#a1a1aa'}
                 autoCapitalize="characters"
                 autoCorrect={false}
@@ -950,7 +976,7 @@ export default function ScanningBoxScreen({ navigation: propNavigation }: { navi
           <Text className={`mt-1.5 font-hanken text-[10px] ${textSecondaryClass}`}>
             {isBuffering
               ? `⏳ Streaming barcode (${bluetoothInput.length} chars received)... Processing in 0.5s or tap SCAN.`
-              : 'Scan Box CIDs with your Bluetooth scanner. 0.5s buffer captures all digits quickly and accurately.'}
+              : 'Scan Box CID NO or TRF NO with your Bluetooth scanner. 0.5s buffer captures all digits quickly and accurately.'}
           </Text>
         </View>
       )}
@@ -994,7 +1020,7 @@ export default function ScanningBoxScreen({ navigation: propNavigation }: { navi
       ) : (
         <FlatList
           data={displayBoxes}
-          keyExtractor={(item, index) => `${item}_${index}`}
+          keyExtractor={(item, index) => `${item.cid}_${item.trf || ''}_${index}`}
           className={`flex-1 px-4 py-4 ${bgClass}`}
           showsVerticalScrollIndicator={false}
           initialNumToRender={20}
@@ -1007,16 +1033,23 @@ export default function ScanningBoxScreen({ navigation: propNavigation }: { navi
               </Text>
             </View>
           }
-          renderItem={({ item: cid }) => (
+          renderItem={({ item: box }) => (
             <TouchableOpacity
-              onPress={() => activeTab === 'unscanned' && setConfirmCidModal(cid)}
+              onPress={() => activeTab === 'unscanned' && setConfirmCidModal(box)}
               activeOpacity={activeTab === 'unscanned' ? 0.6 : 1}
               className={`mb-3 flex-row items-center justify-between rounded-lg border p-4 ${
                 activeTab === 'scanned' ? 'border-[#22c55e]/40 bg-[#22c55e]/5' : cardBgClass
               }`}>
-              <Text className="font-jetbrains text-sm font-semibold text-[#ff80ab]">
-                CID NO. : {cid}
-              </Text>
+              <View className="flex-1 pr-2">
+                <Text className="font-jetbrains text-sm font-semibold text-[#ff80ab]">
+                  CID NO. : {box.cid}
+                </Text>
+                {box.trf ? (
+                  <Text className={`mt-1 font-jetbrains text-xs ${textSecondaryClass}`}>
+                    TRF NO. : <Text className={`font-semibold ${textPrimaryClass}`}>{box.trf}</Text>
+                  </Text>
+                ) : null}
+              </View>
               {activeTab === 'scanned' && <CheckCircle color="#22c55e" size={18} />}
               {activeTab === 'unscanned' && (
                 <View className="rounded border border-[#ff80ab]/30 bg-[#ff80ab]/10 px-2 py-0.5">

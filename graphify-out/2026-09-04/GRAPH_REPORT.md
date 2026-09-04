@@ -1,11 +1,11 @@
 # Graph Report - receiving-delivery-app  (2026-09-04)
 
 ## Corpus Check
-- 42 files · ~84,747 words
+- 41 files · ~84,483 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 452 nodes · 599 edges · 62 communities (27 shown, 35 thin omitted)
+- 451 nodes · 596 edges · 62 communities (27 shown, 35 thin omitted)
 - Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 17 edges (avg confidence: 0.78)
 - Token cost: 0 input · 0 output
 
@@ -19,7 +19,7 @@
 - dlr.ts
 - expo
 - devDependencies
-- expo
+- expo-document-picker
 - Industrial Verification Logic Design System
 - ScreenContent.tsx
 - dependencies
@@ -109,7 +109,7 @@
 
 ### Community 0 - "useTheme"
 Cohesion: 0.08
-Nodes (45): AppContent(), AuthContext, AuthContextType, AuthProvider(), useAuth(), ThemeContext, ThemeContextType, ThemeMode (+37 more)
+Nodes (44): AppContent(), AuthContext, AuthContextType, AuthProvider(), useAuth(), ThemeContext, ThemeContextType, ThemeMode (+36 more)
 
 ### Community 1 - "dlr.ts"
 Cohesion: 0.08
@@ -133,7 +133,7 @@ Nodes (7): EditScreenInfo(), EditScreenInfoProps, styles, ScreenContent(), Scree
 
 ### Community 7 - "dependencies"
 Cohesion: 0.22
-Nodes (9): expo-application, expo-document-picker, expo-image-manipulator, expo-splash-screen, dependencies, expo-application, expo-document-picker, expo-image-manipulator (+1 more)
+Nodes (9): expo, expo-application, expo-image-manipulator, expo-splash-screen, dependencies, expo, expo-application, expo-image-manipulator (+1 more)
 
 ### Community 8 - "tsconfig.json"
 Cohesion: 0.33
@@ -201,12 +201,12 @@ _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `New session - 2026-08-26T06:38:56.026Z` connect `New session - 2026-08-26T06:38:56.026Z` to `session-ses_fc33.md`?**
   _High betweenness centrality (0.042) - this node is a cross-community bridge._
-- **Why does `dependencies` connect `dependencies` to `expo`, `expo-file-system`, `expo-camera`, `expo-haptics`, `scripts`, `expo-sharing`, `expo-status-bar`, `@expo/vector-icons`, `expo-network`, `nativewind`, `react`, `@react-native-async-storage/async-storage`, `react-native-gesture-handler`, `react-native-reanimated`, `react-native-safe-area-context`, `react-native-svg`, `react-native-worklets`, `@react-navigation/bottom-tabs`, `@react-navigation/native`, `@react-navigation/stack`, `@supabase/supabase-js`, `xlsx`, `expo-font`, `react-native-screens`, `expo-notifications`, `lucide-react-native`, `papaparse`, `react-native`?**
+- **Why does `dependencies` connect `dependencies` to `expo-document-picker`, `expo-file-system`, `expo-camera`, `expo-haptics`, `scripts`, `expo-sharing`, `expo-status-bar`, `@expo/vector-icons`, `expo-network`, `nativewind`, `react`, `@react-native-async-storage/async-storage`, `react-native-gesture-handler`, `react-native-reanimated`, `react-native-safe-area-context`, `react-native-svg`, `react-native-worklets`, `@react-navigation/bottom-tabs`, `@react-navigation/native`, `@react-navigation/stack`, `@supabase/supabase-js`, `xlsx`, `expo-font`, `react-native-screens`, `expo-notifications`, `lucide-react-native`, `papaparse`, `react-native`?**
   _High betweenness centrality (0.041) - this node is a cross-community bridge._
 - **What connects `name`, `slug`, `version` to the rest of the system?**
   _240 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `useTheme` be split into smaller, more focused modules?**
-  _Cohesion score 0.07688492063492064 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.07782898105478751 - nodes in this community are weakly interconnected._
 - **Should `dlr.ts` be split into smaller, more focused modules?**
   _Cohesion score 0.07993197278911565 - nodes in this community are weakly interconnected._
 - **Should `expo` be split into smaller, more focused modules?**

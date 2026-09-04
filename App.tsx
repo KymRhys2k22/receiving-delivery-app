@@ -4,11 +4,12 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { LogBox } from 'react-native';
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 
 import Navigation from './navigation';
 import { AuthProvider } from './context/auth';
 import { ThemeProvider, useTheme } from './context/theme';
+import { initAppUpdateChecker } from './services/appUpdateService';
 
 // Ignore the deprecated InteractionManager warning from React Native 0.85+ internals
 LogBox.ignoreLogs(['InteractionManager has been deprecated']);
@@ -16,6 +17,13 @@ LogBox.ignoreLogs(['InteractionManager has been deprecated']);
 function AppContent() {
   const { isDark } = useTheme();
   const theme = useMemo(() => (isDark ? DarkTheme : DefaultTheme), [isDark]);
+
+  useEffect(() => {
+    const cleanup = initAppUpdateChecker();
+    return () => {
+      cleanup();
+    };
+  }, []);
 
   return (
     <AuthProvider>
