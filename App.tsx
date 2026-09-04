@@ -9,6 +9,7 @@ import { useMemo, useEffect } from 'react';
 import Navigation from './navigation';
 import { AuthProvider } from './context/auth';
 import { ThemeProvider, useTheme } from './context/theme';
+import { AiAssistantProvider } from './context/aiAssistant';
 import { initAppUpdateChecker } from './services/appUpdateService';
 
 // Ignore the deprecated InteractionManager warning from React Native 0.85+ internals
@@ -27,7 +28,9 @@ function AppContent() {
 
   return (
     <AuthProvider>
-      <Navigation theme={theme} />
+      <AiAssistantProvider>
+        <Navigation theme={theme} />
+      </AiAssistantProvider>
     </AuthProvider>
   );
 }

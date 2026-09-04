@@ -1,16 +1,20 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { LogIn, History, Settings, FileWarning } from 'lucide-react-native';
-import { View, Text } from 'react-native';
+import { LogIn, History, Settings, FileWarning, Bot } from 'lucide-react-native';
+import { View, Text, TouchableOpacity, Image } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import One from '../screens/one';
 import Three from '../screens/three';
 import Two from '../screens/two';
 import DamageLostRecordScreen from '../screens/damageLostRecord';
 import { useTheme } from '../context/theme';
-
-
+import { useAiAssistant } from '../context/aiAssistant';
 
 function DamageLostRecordTab(props: any) {
   return <DamageLostRecordScreen {...props} embedded />;
+}
+
+function EmptyScreen() {
+  return null;
 }
 
 function TabBarIcon({
@@ -34,7 +38,7 @@ function TabBarIcon({
         justifyContent: 'center',
         backgroundColor: focused ? activeBg : 'transparent',
         borderRadius: 10,
-        width: 72,
+        width: 62,
         height: 48,
         borderWidth: focused ? 1 : 0,
         borderColor: focused ? '#e5005c55' : 'transparent',
@@ -51,6 +55,55 @@ function TabBarIcon({
         }}>
         {label}
       </Text>
+    </View>
+  );
+}
+
+function CenterAiTabButton() {
+  const { openAssistant } = useAiAssistant();
+  const { isDark } = useTheme();
+
+  const handlePress = () => {
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    } catch {}
+    openAssistant();
+  };
+
+  return (
+    <View
+      style={{
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}>
+      <TouchableOpacity
+        onPress={handlePress}
+        activeOpacity={0.85}
+        accessibilityLabel="Daizo"
+        accessibilityRole="button"
+        style={{
+          top: -14,
+          width: 58,
+          height: 58,
+          borderRadius: 29,
+          backgroundColor: '#e5005c',
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderWidth: 3.5,
+          borderColor: isDark ? '#131316' : '#ffffff',
+          shadowColor: '#e5005c',
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.5,
+          shadowRadius: 8,
+          elevation: 8,
+        }}>
+        <Image
+          source={require('../assets/DaizoChatBot.jpeg')}
+          style={{ width: 50, height: 50, borderRadius: 25 }}
+          resizeMode="cover"
+        />
+      </TouchableOpacity>
     </View>
   );
 }
@@ -91,6 +144,14 @@ const Tab = createBottomTabNavigator({
         tabBarIcon: ({ focused }) => (
           <TabBarIcon focused={focused} icon={History} label="History" />
         ),
+      },
+    },
+    AiAssistant: {
+      screen: EmptyScreen,
+      options: {
+        title: 'AI Bot',
+        headerShown: false,
+        tabBarButton: () => <CenterAiTabButton />,
       },
     },
     DamageLostRecordTab: {

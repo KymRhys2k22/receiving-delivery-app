@@ -876,7 +876,7 @@ export default function DamageLostRecordScreen({
           elevation: 4,
         }}>
         <Image
-          source={require('../assets/no-wifi.png')}
+          source={require('../assets/daizo-no-wifi.webp')}
           style={{ width: 140, height: 140 }}
           resizeMode="contain"
         />

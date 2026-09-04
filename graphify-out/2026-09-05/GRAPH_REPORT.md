@@ -1,7 +1,7 @@
-# Graph Report - receiving-delivery-app  (2026-09-05)
+# Graph Report - receiving-delivery-app  (2026-09-04)
 
 ## Corpus Check
-- 48 files · ~140,921 words
+- 48 files · ~140,418 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
