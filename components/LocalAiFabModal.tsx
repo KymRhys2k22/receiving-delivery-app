@@ -12,11 +12,13 @@ import {
   Dimensions,
   Image,
   Animated,
+  KeyboardAvoidingView,
 } from 'react-native';
 import Markdown from 'react-native-markdown-display';
 import { X, Send, Sparkles, RefreshCw } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../context/theme';
+import { useAuth } from '../context/auth';
 import { useLlamaModel } from '../hooks/useLlamaModel';
 import {
   askLocalHybridAssistant,
@@ -35,7 +37,6 @@ try {
   // @ts-ignore
   hasNativeImage = !!(global?.expo?.modules?.ExpoImage || global?.ExpoModules?.ExpoImage);
   if (hasNativeImage) {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const ExpoImageModule = require('expo-image');
     if (ExpoImageModule?.Image) {
       SafeExpoImage = ExpoImageModule.Image;
@@ -162,6 +163,7 @@ export function LocalAiFabModal({
   hideFab = false,
 }: LocalAiFabModalProps) {
   const { isDark } = useTheme();
+  const { storeCode, storeName } = useAuth();
   const [internalIsOpen, setInternalIsOpen] = useState(false);
   const isOpen = isOpenControlled !== undefined ? isOpenControlled : internalIsOpen;
   const [inputText, setInputText] = useState('');
@@ -169,7 +171,7 @@ export function LocalAiFabModal({
     {
       id: 'welcome',
       sender: 'assistant',
-      text: "Konnichiwa! Kamusta po! Ako si Daizo, ang iyong assistant para sa receiving & inventory dito sa Daiso Japan. Tanungin mo ako tungkol sa uploaded Manifest CSV (CID, TRF, SKU, UPC, QTY), Product Catalog, o Item DLR records! Ano ang maitutulong ko sa inyo ngayon?",
+      text: 'Konnichiwa! Kamusta po! Ako si Daizo, ang iyong assistant para sa receiving & inventory dito sa Daiso Japan. Tanungin mo ako tungkol sa uploaded Manifest CSV (CID, TRF, SKU, UPC, QTY), Product Catalog, o Item DLR records! Ano ang maitutulong ko sa inyo ngayon?',
     },
   ]);
   const [isInferencing, setIsInferencing] = useState(false);
@@ -182,44 +184,47 @@ export function LocalAiFabModal({
   const [dataLoadingStatus, setDataLoadingStatus] = useState('Syncing records...');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
-  const windowHeight = Dimensions.get('window').height;
-
   // Fetch all datasets once per app session (or when user manually taps refresh)
-  const loadAllData = useCallback(async (isManualRefresh = false) => {
-    // If not a manual refresh and we already have cached data in memory for this session, reuse immediately
-    const existingCache = getCachedDaizoDataset();
-    if (!isManualRefresh && existingCache) {
-      setDataset(existingCache);
-      setIsLoadingData(false);
-      return;
-    }
-
-    try {
-      setIsLoadingData(true);
-      if (isManualRefresh) {
-        setIsRefreshing(true);
+  const loadAllData = useCallback(
+    async (isManualRefresh = false) => {
+      // If not a manual refresh and we already have cached data in memory for this session, reuse immediately
+      const existingCache = getCachedDaizoDataset();
+      if (!isManualRefresh && existingCache) {
+        setDataset(existingCache);
+        setIsLoadingData(false);
+        return;
       }
 
-      if (!inFlightFetchPromise || isManualRefresh) {
-        inFlightFetchPromise = fetchDaizoFullDataset((status) => {
-          setDataLoadingStatus(status);
-        });
-      }
+      try {
+        setIsLoadingData(true);
+        if (isManualRefresh) {
+          setIsRefreshing(true);
+        }
 
-      const [freshData] = await Promise.all([
-        inFlightFetchPromise,
-        isManualRefresh ? new Promise((resolve) => setTimeout(resolve, 1200)) : Promise.resolve(),
-      ]);
-      setDataset(freshData);
-    } catch (err) {
-      console.warn('[LocalAiFabModal] Error loading datasets:', err);
-    } finally {
-      inFlightFetchPromise = null;
-      setIsLoadingData(false);
-      setIsRefreshing(false);
-    }
-  }, []);
+        if (!inFlightFetchPromise || isManualRefresh) {
+          inFlightFetchPromise = fetchDaizoFullDataset(
+            (status) => {
+              setDataLoadingStatus(status);
+            },
+            { storeCode, storeName }
+          );
+        }
+
+        const [freshData] = await Promise.all([
+          inFlightFetchPromise,
+          isManualRefresh ? new Promise((resolve) => setTimeout(resolve, 1200)) : Promise.resolve(),
+        ]);
+        setDataset(freshData);
+      } catch (err) {
+        console.warn('[LocalAiFabModal] Error loading datasets:', err);
+      } finally {
+        inFlightFetchPromise = null;
+        setIsLoadingData(false);
+        setIsRefreshing(false);
+      }
+    },
+    [storeCode, storeName]
+  );
 
   useEffect(() => {
     if (isOpen) {
@@ -231,24 +236,19 @@ export function LocalAiFabModal({
         loadAllData(false);
       }
     }
-  }, [isOpen, loadAllData]);
+  }, [isOpen, storeCode, storeName, loadAllData]);
 
   useEffect(() => {
     const showSub = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      (e) => {
-        setKeyboardHeight(e?.endCoordinates?.height || 0);
-      }
-    );
-    const hideSub = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
       () => {
-        setKeyboardHeight(0);
+        setTimeout(() => {
+          flatListRef.current?.scrollToEnd({ animated: true });
+        }, 120);
       }
     );
     return () => {
       showSub.remove();
-      hideSub.remove();
     };
   }, []);
 
@@ -258,7 +258,7 @@ export function LocalAiFabModal({
         flatListRef.current?.scrollToEnd({ animated: true });
       }, 100);
     }
-  }, [messages, isInferencing, keyboardHeight]);
+  }, [messages, isInferencing]);
 
   const handleOpen = () => {
     try {
@@ -304,6 +304,7 @@ export function LocalAiFabModal({
         supabaseFields: selectFields,
         localStorageKeys,
         dataset: dataset || getCachedDaizoDataset(),
+        storeFilter: { storeCode, storeName },
         onStreamToken: (token) => {
           accumulated += token;
         },
@@ -495,25 +496,19 @@ export function LocalAiFabModal({
         visible={isOpen}
         statusBarTranslucent
         onRequestClose={handleClose}>
-        <View style={{ paddingBottom: keyboardHeight }} className="flex-1 justify-end bg-black/60">
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          className="flex-1 justify-end bg-black/60">
           <TouchableOpacity
             activeOpacity={1}
             onPress={() => {
-              if (keyboardHeight > 0) {
-                Keyboard.dismiss();
-              } else {
-                handleClose();
-              }
+              Keyboard.dismiss();
+              handleClose();
             }}
             className="flex-1"
           />
           <View
-            style={{
-              height:
-                keyboardHeight > 0
-                  ? Math.min(windowHeight * 0.58, Math.max(280, windowHeight - keyboardHeight - 50))
-                  : windowHeight * 0.78,
-            }}
+            style={{ height: '82%', maxHeight: '85%' }}
             className={`w-full rounded-t-3xl border-t ${borderClass} ${modalBgClass} p-4 shadow-2xl`}>
             {/* Header */}
             <View
@@ -529,13 +524,20 @@ export function LocalAiFabModal({
                 <View>
                   <View className="flex-row items-center gap-1.5">
                     <Text className={`font-jetbrains text-base font-bold ${textPrimaryClass}`}>
-                      Daizo
+                      Daizo Assistant
                     </Text>
                     <View className="py-0.2 rounded border border-[#22c55e]/40 bg-[#22c55e]/10 px-1.5">
                       <Text className="font-jetbrains text-[8px] font-extrabold text-[#22c55e]">
                         ONLINE
                       </Text>
                     </View>
+                    {storeCode ? (
+                      <View className="py-0.2 rounded border border-[#e5005c]/30 bg-[#e5005c]/10 px-1.5">
+                        <Text className="font-jetbrains text-[8px] font-extrabold text-[#e5005c]">
+                          STORE {storeCode}
+                        </Text>
+                      </View>
+                    ) : null}
                   </View>
                   <Text className={`font-jetbrains text-xs ${textSecondaryClass}`}>
                     {dataset
@@ -605,8 +607,8 @@ export function LocalAiFabModal({
                 </View>
                 <Text
                   className={`max-w-[280px] text-center font-jetbrains text-[10px] leading-relaxed ${textSecondaryClass}`}>
-                  Loading uploaded Manifest CSV (CID, TRF, SKU, UPC, QTY), Product Catalog, and
-                  Item DLR records...
+                  Loading uploaded Manifest CSV (CID, TRF, SKU, UPC, QTY), Product Catalog, and Item
+                  DLR records...
                 </Text>
               </View>
             ) : (
@@ -628,7 +630,8 @@ export function LocalAiFabModal({
                         onPress={() => handleSend(prompt)}
                         className={`flex-row items-center gap-1.5 rounded-xl border px-3 py-2 ${cardBgClass} ${borderClass} active:opacity-70`}>
                         <Sparkles color="#e5005c" size={12} />
-                        <Text className={`font-jetbrains text-xs font-medium ${textSecondaryClass}`}>
+                        <Text
+                          className={`font-jetbrains text-xs font-medium ${textSecondaryClass}`}>
                           {prompt}
                         </Text>
                       </TouchableOpacity>
@@ -717,7 +720,7 @@ export function LocalAiFabModal({
               </>
             )}
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </>
   );

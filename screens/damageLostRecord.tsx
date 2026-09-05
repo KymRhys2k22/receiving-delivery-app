@@ -8,13 +8,13 @@ import {
   Modal,
   ActivityIndicator,
   ScrollView,
-  Image,
   StyleSheet,
   Linking,
   Animated,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   ArrowLeft,
@@ -61,6 +61,7 @@ import {
   fetchSupabaseDlrRecords,
   deleteSupabaseDlrRecord,
   lookupProduct,
+  matchRecordStore,
   supabase,
   uploadToCloudinary,
   type DLRLocalRecord,
@@ -481,8 +482,11 @@ export default function DamageLostRecordScreen({
     setIsLoadingSupabase(true);
     setSupabaseError(null);
     try {
-      const rows = await fetchSupabaseDlrRecords(100);
-      setSupabaseRecords(rows);
+      const rows = await fetchSupabaseDlrRecords(200, { storeCode, storeName });
+      const storeFilteredRows = rows.filter((r) =>
+        matchRecordStore(r['Store Code'], storeCode, storeName)
+      );
+      setSupabaseRecords(storeFilteredRows);
       setIsOffline(false);
     } catch (err) {
       setSupabaseError(err instanceof Error ? err.message : 'Failed to fetch cloud records');
@@ -498,7 +502,7 @@ export default function DamageLostRecordScreen({
     } finally {
       setIsLoadingSupabase(false);
     }
-  }, []);
+  }, [storeCode, storeName]);
 
   const checkConnectivity = useCallback(async () => {
     setIsCheckingConnection(true);
@@ -1776,7 +1780,9 @@ export default function DamageLostRecordScreen({
       ) : null}
 
       <Modal visible={manualModalVisible} transparent animationType="fade">
-        <View className="flex-1 items-center justify-center bg-black/70 px-6">
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          className="flex-1 items-center justify-center bg-black/70 px-6">
           <View className={`w-full rounded-xl border p-5 ${cardBgClass}`}>
             <View className="mb-4 flex-row items-center justify-between">
               <Text className={`font-hanken text-base font-bold ${textPrimaryClass}`}>
@@ -1806,7 +1812,7 @@ export default function DamageLostRecordScreen({
               <Text className="font-jetbrains text-sm font-bold text-white">LOOK UP ITEM</Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       <ReasonPickerModal
@@ -1834,7 +1840,9 @@ export default function DamageLostRecordScreen({
 
       {/* Cloud Records Modal */}
       <Modal visible={recordsModalVisible} transparent animationType="slide">
-        <View className="flex-1 justify-end bg-black/70">
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          className="flex-1 justify-end bg-black/70">
           <View className={`max-h-[90%] rounded-t-2xl border-t px-4 pb-8 pt-4 ${cardBgClass}`}>
             {/* Header */}
             <View className="mb-3 flex-row items-center justify-between">
@@ -1848,6 +1856,13 @@ export default function DamageLostRecordScreen({
                     {supabaseRecords.length}
                   </Text>
                 </View>
+                {storeCode ? (
+                  <View className="rounded border border-[#e5005c]/25 bg-[#e5005c]/10 px-2 py-0.5">
+                    <Text className="font-jetbrains text-[9px] font-bold text-[#e5005c]">
+                      STORE {storeCode}
+                    </Text>
+                  </View>
+                ) : null}
               </View>
               <View className="flex-row items-center gap-2">
                 <TouchableOpacity
@@ -1979,6 +1994,7 @@ export default function DamageLostRecordScreen({
               <>
                 {(() => {
                   const filtered = supabaseRecords.filter((r) => {
+                    if (!matchRecordStore(r['Store Code'], storeCode, storeName)) return false;
                     if (dlrFilterMode === 'WITH_DLR' && !r['dlr-number']) return false;
                     if (dlrFilterMode === 'WITHOUT_DLR' && r['dlr-number']) return false;
 
@@ -2280,7 +2296,7 @@ export default function DamageLostRecordScreen({
               </Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Fullscreen Photo Viewer Modal */}

@@ -12,8 +12,12 @@ import { ThemeProvider, useTheme } from './context/theme';
 import { AiAssistantProvider } from './context/aiAssistant';
 import { initAppUpdateChecker } from './services/appUpdateService';
 
-// Ignore the deprecated InteractionManager warning from React Native 0.85+ internals
-LogBox.ignoreLogs(['InteractionManager has been deprecated']);
+// Ignore specific development warnings
+LogBox.ignoreLogs([
+  'InteractionManager has been deprecated',
+  '[useLlamaModel] initLlama unavailable in current APK:',
+  'Cannot read property \'install\' of null',
+]);
 
 function AppContent() {
   const { isDark } = useTheme();

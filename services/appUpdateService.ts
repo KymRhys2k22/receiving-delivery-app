@@ -62,6 +62,16 @@ function getApplication(): any {
  * 2. In Expo Go or development, falls back to app.json configuration.
  */
 export function getCurrentAppVersion(): AppVersionInfo {
+  // In development, prioritize app.json so code updates are reflected immediately
+  if (__DEV__) {
+    const configCode = appConfig?.expo?.android?.versionCode;
+    const configVersion = appConfig?.expo?.version;
+    return {
+      versionCode: typeof configCode === 'number' ? configCode : 8,
+      versionName: configVersion || '7.1',
+    };
+  }
+
   let versionCode = 0;
 
   const Application = getApplication();
@@ -189,6 +199,82 @@ export function setupNotificationListeners(): () => void {
   };
 }
 
+/**
+ * Splits a version string or number into numeric segments for semver comparison.
+ * Examples:
+ *   "v7.2" -> [7, 2, 0]
+ *   "7.1" -> [7, 1, 0]
+ *   7.2 -> [7, 2, 0]
+ *   "v7.0.0" -> [7, 0, 0]
+ */
+export function parseVersionSegments(v: string | number | null | undefined): number[] {
+  if (typeof v === 'number') {
+    v = String(v);
+  }
+  if (!v || typeof v !== 'string') {
+    return [0, 0, 0];
+  }
+  const cleaned = v.trim().replace(/^[vV]/, '').split('-')[0];
+  const parts = cleaned.split('.').map((p) => {
+    const num = parseInt(p, 10);
+    return isNaN(num) ? 0 : num;
+  });
+  while (parts.length < 3) {
+    parts.push(0);
+  }
+  return parts;
+}
+
+/**
+ * Compares two semantic version strings/numbers.
+ * Returns:
+ *   1 if v1 > v2
+ *  -1 if v1 < v2
+ *   0 if v1 === v2
+ */
+export function compareSemver(
+  v1: string | number | null | undefined,
+  v2: string | number | null | undefined
+): number {
+  const p1 = parseVersionSegments(v1);
+  const p2 = parseVersionSegments(v2);
+  const maxLen = Math.max(p1.length, p2.length);
+  for (let i = 0; i < maxLen; i++) {
+    const num1 = p1[i] || 0;
+    const num2 = p2[i] || 0;
+    if (num1 > num2) return 1;
+    if (num1 < num2) return -1;
+  }
+  return 0;
+}
+
+/**
+ * Determines whether a remote release is newer than the locally installed app.
+ * 1. Checks semantic version of version_name first (e.g. v7.2 > 7.1).
+ * 2. If semantic versions match, checks numeric build versionCode (e.g. 9 > 8).
+ */
+export function isUpdateAvailable(
+  current: AppVersionInfo,
+  latest: AppUpdateRecord
+): boolean {
+  if (!latest) return false;
+
+  const semverDiff = compareSemver(latest.version_name, current.versionName);
+  if (semverDiff > 0) {
+    return true;
+  }
+  if (semverDiff < 0) {
+    return false;
+  }
+
+  // If semantic versions match (or version_name is omitted), compare versionCode
+  const latestCode =
+    typeof latest.version_code === 'number'
+      ? latest.version_code
+      : parseFloat(String(latest.version_code || 0));
+  return (latestCode || 0) > current.versionCode;
+}
+
 export interface CheckUpdateOptions {
   isManual?: boolean;
   force?: boolean;
@@ -214,13 +300,12 @@ export async function checkForAppUpdate(options?: CheckUpdateOptions): Promise<v
     const current = getCurrentAppVersion();
     console.log('[appUpdateService] Checking updates. Current installed:', current);
 
-    // Query Supabase for the highest version_code release
-    const { data: latestRelease, error } = await supabase
+    // Query Supabase for recent releases from app_updates table
+    const { data: releases, error } = await supabase
       .from('app_updates')
       .select('*')
-      .order('version_code', { ascending: false })
-      .limit(1)
-      .maybeSingle<AppUpdateRecord>();
+      .order('created_at', { ascending: false })
+      .limit(20);
 
     if (error) {
       console.warn('[appUpdateService] Supabase query failed:', error.message);
@@ -233,7 +318,7 @@ export async function checkForAppUpdate(options?: CheckUpdateOptions): Promise<v
       return;
     }
 
-    if (!latestRelease || typeof latestRelease.version_code !== 'number') {
+    if (!releases || releases.length === 0) {
       console.log('[appUpdateService] No releases found in app_updates table');
       if (isManual) {
         Alert.alert(
@@ -244,36 +329,71 @@ export async function checkForAppUpdate(options?: CheckUpdateOptions): Promise<v
       return;
     }
 
-    console.log('[appUpdateService] Latest release in Supabase:', latestRelease);
+    // Sort releases by version descending (highest semver first, then highest version_code)
+    const sortedReleases = releases.slice().sort((a, b) => {
+      const semverDiff = compareSemver(b.version_name, a.version_name);
+      if (semverDiff !== 0) return semverDiff;
+      const codeA =
+        typeof a.version_code === 'number'
+          ? a.version_code
+          : parseFloat(String(a.version_code || 0));
+      const codeB =
+        typeof b.version_code === 'number'
+          ? b.version_code
+          : parseFloat(String(b.version_code || 0));
+      return (codeB || 0) - (codeA || 0);
+    });
 
-    // Compare numerically: latest.version_code > current.version_code
-    if (latestRelease.version_code <= current.versionCode) {
+    const latestRelease = sortedReleases[0];
+    console.log('[appUpdateService] Highest release in Supabase:', latestRelease);
+
+    // Format version labels nicely for logging (e.g. "v7.1" vs "v7.2")
+    const formatVer = (verName?: string | null, verCode?: number) => {
+      if (verName) {
+        return verName.toLowerCase().startsWith('v') ? verName : `v${verName}`;
+      }
+      return `v${verCode}`;
+    };
+
+    const currentLabel = formatVer(current.versionName, current.versionCode);
+    const latestLabel = formatVer(latestRelease.version_name, latestRelease.version_code);
+
+    const updateAvailable = isUpdateAvailable(current, latestRelease);
+
+    if (!updateAvailable) {
       console.log(
-        `[appUpdateService] App is up to date (${current.versionCode} >= ${latestRelease.version_code})`
+        `[appUpdateService] App is up to date (${currentLabel} >= ${latestLabel})`
       );
       // ONLY alert if the user explicitly clicked the "CHECK FOR UPDATES" button in Settings!
       if (isManual) {
         Alert.alert(
           'App Up to Date',
-          `You are running the latest version (${current.versionName}).`
+          `You are running the latest version (${currentLabel}).`
         );
       }
       return;
     }
 
+    console.log(
+      `[appUpdateService] Update available: ${latestLabel} > ${currentLabel} (remote: ${latestRelease.version_name || ''} / build ${latestRelease.version_code}, current: ${current.versionName} / build ${current.versionCode})`
+    );
+
     // Check duplicate prevention: avoid spamming if we already notified for this version
     const lastNotifiedStr = await AsyncStorage.getItem(LAST_NOTIFIED_VERSION_KEY);
-    const lastNotifiedCode = lastNotifiedStr ? parseInt(lastNotifiedStr, 10) : 0;
-    if (lastNotifiedCode >= latestRelease.version_code && !force && !isManual) {
-      console.log(`[appUpdateService] Already notified for version ${lastNotifiedCode}`);
+    const targetVersionId = `${latestRelease.version_name || ''}_${latestRelease.version_code}`;
+    if (lastNotifiedStr === targetVersionId && !force && !isManual) {
+      console.log(`[appUpdateService] Already notified for version ${targetVersionId}`);
       return;
     }
 
     const messageText =
       latestRelease.message?.trim() || 'New version available. Click to download.';
+    const releaseTitle = latestRelease.version_name
+      ? formatVer(latestRelease.version_name)
+      : `Build ${latestRelease.version_code}`;
 
     // Show immediate on-screen prompt (works in ALL environments including Expo Go)
-    Alert.alert(`App Update Available (${latestRelease.version_name})`, messageText, [
+    Alert.alert(`App Update Available (${releaseTitle})`, messageText, [
       { text: 'Later', style: 'cancel' },
       {
         text: 'Download',
@@ -312,7 +432,7 @@ export async function checkForAppUpdate(options?: CheckUpdateOptions): Promise<v
         if (granted) {
           await Notifications.scheduleNotificationAsync({
             content: {
-              title: `App Update Available (${latestRelease.version_name})`,
+              title: `App Update Available (${releaseTitle})`,
               body: messageText,
               data: {
                 download_url: latestRelease.download_url,
@@ -333,7 +453,7 @@ export async function checkForAppUpdate(options?: CheckUpdateOptions): Promise<v
     }
 
     // Mark version as notified to prevent duplicate spam
-    await AsyncStorage.setItem(LAST_NOTIFIED_VERSION_KEY, String(latestRelease.version_code));
+    await AsyncStorage.setItem(LAST_NOTIFIED_VERSION_KEY, targetVersionId);
   } catch (err) {
     console.warn('[appUpdateService] Update check failed gracefully:', err);
   }

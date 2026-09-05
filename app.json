@@ -2,7 +2,7 @@
   "expo": {
     "name": "Receiving Scanner",
     "slug": "receiving-scanner-app",
-    "version": "7.0.0",
+    "version": "7.1",
     "web": {
       "favicon": "./assets/favicon.png"
     },
@@ -63,7 +63,7 @@
       "bundleIdentifier": "com.kymrhys.receivingscannerapp"
     },
     "android": {
-      "versionCode": 7,
+      "versionCode": 8,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"

@@ -4,6 +4,9 @@ import {
   supabase,
   fetchCatalog,
   fetchSupabaseDlrRecords,
+  matchRecordStore,
+  codesMatch,
+  type StoreFilter,
   type ProductItem,
   type SupabaseDLRRow,
   OPEN_SHEET_URL,
@@ -43,7 +46,8 @@ export function setCachedDaizoDataset(data: DaizoDataset): void {
  * 3. Item DLR records from Supabase (with offline AsyncStorage fallback)
  */
 export async function fetchDaizoFullDataset(
-  onProgress?: (status: string) => void
+  onProgress?: (status: string) => void,
+  storeFilter?: StoreFilter
 ): Promise<DaizoDataset> {
   onProgress?.('Loading Manifest CSV records...');
 
@@ -108,19 +112,23 @@ export async function fetchDaizoFullDataset(
     } catch {}
   }
 
-  // 3. Fetch Supabase DLR Records
+  // 3. Fetch Supabase DLR Records (filtered by user's active store)
   onProgress?.('Fetching Item DLR records...');
   let dlrRecords: SupabaseDLRRow[] = [];
+  const cacheKey = storeFilter?.storeCode
+    ? `cached_supabase_dlr_records_${storeFilter.storeCode}`
+    : 'cached_supabase_dlr_records';
+
   try {
-    dlrRecords = await fetchSupabaseDlrRecords(200);
+    dlrRecords = await fetchSupabaseDlrRecords(200, storeFilter);
     // Cache for offline usage
     if (dlrRecords.length > 0) {
-      AsyncStorage.setItem('cached_supabase_dlr_records', JSON.stringify(dlrRecords)).catch(() => {});
+      AsyncStorage.setItem(cacheKey, JSON.stringify(dlrRecords)).catch(() => {});
     }
   } catch (supaErr) {
     console.warn('[localAiService] Supabase fetch failed, checking offline cache:', supaErr);
     try {
-      const cached = await AsyncStorage.getItem('cached_supabase_dlr_records');
+      const cached = await AsyncStorage.getItem(cacheKey);
       if (cached) {
         dlrRecords = JSON.parse(cached) || [];
       }
@@ -148,6 +156,7 @@ export interface QueryOptions {
   supabaseLimit?: number;
   localStorageKeys?: string[];
   dataset?: DaizoDataset | null;
+  storeFilter?: StoreFilter;
   onStreamToken?: (token: string) => void;
 }
 
@@ -159,15 +168,15 @@ export async function askLocalHybridAssistant(
   llamaContext?: LlamaContext | null,
   options?: QueryOptions
 ): Promise<string> {
-  const { onStreamToken } = options || {};
+  const { onStreamToken, storeFilter } = options || {};
 
   // Ensure dataset is available
   let dataset = options?.dataset || activeDaizoDataset;
   if (!dataset) {
-    dataset = await fetchDaizoFullDataset();
+    dataset = await fetchDaizoFullDataset(undefined, storeFilter);
   }
 
-  const {
+  let {
     manifestItems = [],
     manifestCids = [],
     scannedItems = {},
@@ -176,12 +185,23 @@ export async function askLocalHybridAssistant(
     dlrRecords = [],
   } = dataset;
 
+  // Filter DLR records by user's active store
+  if (storeFilter && (storeFilter.storeCode || storeFilter.storeName)) {
+    dlrRecords = dlrRecords.filter((d) =>
+      matchRecordStore(d['Store Code'], storeFilter.storeCode, storeFilter.storeName)
+    );
+  }
+
   // 1. If native llama context is active, run SmolLM2 on-device inference with scoped data
   if (llamaContext) {
     // Find relevant context slices to keep prompt bounded under context window
     const qLower = question.toLowerCase();
+    const codeMatchPrompt = question.match(/\b(\d{4,16})\b/);
+    const pCode = codeMatchPrompt ? codeMatchPrompt[1] : null;
+
     const relevantManifest = manifestItems.filter(
       (m) =>
+        (pCode && (codesMatch(m.sku, pCode) || codesMatch(m.upc, pCode))) ||
         (m.cid && qLower.includes(m.cid.toLowerCase())) ||
         (m.sku && qLower.includes(m.sku.toLowerCase())) ||
         (m.upc && qLower.includes(m.upc.toLowerCase())) ||
@@ -191,6 +211,7 @@ export async function askLocalHybridAssistant(
 
     const relevantCatalog = catalog.filter(
       (c) =>
+        (pCode && (codesMatch(c.sku, pCode) || codesMatch(c.upc, pCode))) ||
         (c.sku && qLower.includes(c.sku.toLowerCase())) ||
         (c.upc && qLower.includes(c.upc.toLowerCase())) ||
         (c.description && qLower.includes(c.description.toLowerCase().slice(0, 5)))
@@ -198,10 +219,31 @@ export async function askLocalHybridAssistant(
 
     const relevantDlr = dlrRecords.filter(
       (d) =>
+        (pCode && (codesMatch(d.SKU, pCode) || codesMatch(d.UPC, pCode))) ||
         (d.SKU && qLower.includes(d.SKU.toLowerCase())) ||
         (d.Reason && qLower.includes(d.Reason.toLowerCase())) ||
         (d['Store Code'] && qLower.includes(String(d['Store Code']).toLowerCase()))
     ).slice(0, 8);
+
+    const sanitizedCatalog = relevantCatalog.slice(0, 5).map((c) => ({
+      sku: c.sku,
+      upc: c.upc,
+      description: c.description,
+      price: c.price,
+      department: c.departmentName || c.departmentCode,
+      subDepartment: c.subDepartmentName || '',
+    }));
+
+    const sanitizedDlr = relevantDlr.slice(0, 5).map((d) => ({
+      SKU: d.SKU,
+      UPC: d.UPC,
+      Description: d.Description,
+      Price: d.Price,
+      Reason: d.Reason,
+      SecondReason: d.SecondReason,
+      'Store Code': d['Store Code'],
+      Qty: d.Qty,
+    }));
 
     const prompt = `<|im_start|>system
 You are Daizo, the friendly and polite AI assistant for Daiso Japan store receiving, delivery, and inventory.
@@ -209,6 +251,7 @@ You understand English, Tagalog, and Taglish.
 Rules:
 - Speak in friendly, polite Taglish (Tagalog-English mix) or English matching the user's message.
 - When greeted, reply warmly: "Konnichiwa! Kamusta po! Ako si Daizo. Ano po ang maitutulong ko sa inyo dito sa Daiso Japan?"
+- When asked for the SKU of a UPC or UPC of a SKU (e.g. "Anong SKU nito UPC...", "Anong UPC nito SKU..."), answer directly with the requested code first, followed by full details (SKU, UPC, Description, Price SRP, Department/Category, Manifest status, and DLR status). NEVER include or disclose internal Cost.
 - Give concise, direct answers with markdown bullet points.
 - Cross-reference Manifest CSV, Product Catalog, and Item DLR records when relevant.
 - If data is not found in records, reply warmly and naturally in Taglish: "Konnichiwa! Pasensya na po, hindi ko nahanap ang record sa ating system. Baka may kaunting typo sa SKU, UPC, o CID? Ano po ang maitutulong ko sa inyo sa Daiso Japan?"
@@ -222,11 +265,11 @@ ${JSON.stringify(
   2
 )}
 
---- PRODUCT CATALOG (Price, Cost, Dept) ---
-${JSON.stringify(relevantCatalog.slice(0, 5), null, 2)}
+--- PRODUCT CATALOG (Price SRP, Dept) ---
+${JSON.stringify(sanitizedCatalog, null, 2)}
 
 --- ITEM DLR RECORDS (Damage/Loss Reports) ---
-${JSON.stringify(relevantDlr.slice(0, 5), null, 2)}
+${JSON.stringify(sanitizedDlr, null, 2)}
 <|im_end|>
 <|im_start|>user
 ${question}<|im_end|>
@@ -256,7 +299,11 @@ ${question}<|im_end|>
   }
 
   // 2. Comprehensive Hybrid Processor (Instant, deterministic, and accurate)
-  const answer = processHybridDaizoQuery(question, dataset);
+  const scopedDataset: DaizoDataset = {
+    ...dataset,
+    dlrRecords,
+  };
+  const answer = processHybridDaizoQuery(question, scopedDataset, storeFilter);
 
   // Stream tokens for snappy responsive UX
   const words = answer.split(' ');
@@ -275,7 +322,11 @@ ${question}<|im_end|>
  * Deterministic multi-source query analyzer across Manifest CSV, Catalog, and DLR
  * Fully supports Tagalog, Filipino, Taglish, and English inquiries.
  */
-function processHybridDaizoQuery(query: string, dataset: DaizoDataset): string {
+function processHybridDaizoQuery(
+  query: string,
+  dataset: DaizoDataset,
+  storeFilter?: StoreFilter
+): string {
   const {
     manifestItems = [],
     manifestCids = [],
@@ -408,67 +459,161 @@ ${itemsListStr}${extraCount}`;
   }
 
   // ----------------------------------------------------
-  // D. Check for SKU, UPC, Price, or Cost lookup (e.g. "magkano", "presyo", "sku", "upc")
+  // D. Check for SKU, UPC, Price, or Cost lookup (e.g. "Anong SKU nito UPC...", "Anong UPC nito SKU...", "magkano", "presyo")
   // ----------------------------------------------------
-  const isPriceQuery =
+  const upcRegexMatch = qTrim.match(/\b(?:upc|barcode)\s*[:#-]?\s*(\d{4,16})\b/i);
+  const skuRegexMatch = qTrim.match(/\bsku\s*[:#-]?\s*(\d{4,16})\b/i);
+  const genericCodeMatch = qTrim.match(/\b(\d{4,16})\b/);
+
+  let targetCode: string | null = null;
+  let codeSourceType: 'UPC' | 'SKU' | 'UNKNOWN' = 'UNKNOWN';
+
+  if (upcRegexMatch) {
+    targetCode = upcRegexMatch[1];
+    codeSourceType = 'UPC';
+  } else if (skuRegexMatch) {
+    targetCode = skuRegexMatch[1];
+    codeSourceType = 'SKU';
+  } else if (genericCodeMatch) {
+    targetCode = genericCodeMatch[1];
+    if (targetCode.length >= 11) {
+      codeSourceType = 'UPC';
+    } else {
+      codeSourceType = 'SKU';
+    }
+  }
+
+  const isExplicitSkuQuery =
+    /\b(anong\s+sku|ano\s+ang\s+sku|what\s+is\s+the\s+sku|sku\s+nito|sku\s+ng|hanapin\s+ang\s+sku)\b/i.test(qTrim) ||
+    (qLower.includes('sku') && codeSourceType === 'UPC');
+
+  const isExplicitUpcQuery =
+    /\b(anong\s+upc|ano\s+ang\s+upc|what\s+is\s+the\s+upc|upc\s+nito|upc\s+ng|anong\s+barcode|ano\s+ang\s+barcode|barcode\s+nito|barcode\s+ng)\b/i.test(qTrim) ||
+    ((qLower.includes('upc') || qLower.includes('barcode')) && codeSourceType === 'SKU');
+
+  const isGeneralItemOrPriceQuery =
     qLower.includes('sku') ||
     qLower.includes('upc') ||
+    qLower.includes('barcode') ||
     qLower.includes('price') ||
     qLower.includes('cost') ||
     qLower.includes('magkano') ||
     qLower.includes('presyo') ||
     qLower.includes('halaga') ||
-    qLower.includes('kano');
+    qLower.includes('kano') ||
+    qLower.includes('detalye') ||
+    qLower.includes('tingnan') ||
+    qLower.includes('check');
 
-  const codeMatch = qTrim.match(/\b(\d{5,14})\b/);
-  const potentialCode = codeMatch ? codeMatch[1] : null;
+  if (targetCode && (isExplicitSkuQuery || isExplicitUpcQuery || isGeneralItemOrPriceQuery || genericCodeMatch)) {
+    // 1. Search Product Catalog
+    const inCatalog = catalog.find(
+      (c) => codesMatch(c.sku, targetCode) || codesMatch(c.upc, targetCode)
+    );
 
-  if (potentialCode || isPriceQuery) {
-    const targetCode = potentialCode || qTrim.replace(/[^0-9]/g, '');
+    // 2. Search Manifest CSV
+    const inManifest = manifestItems.filter(
+      (it) => codesMatch(it.sku, targetCode) || codesMatch(it.upc, targetCode)
+    );
 
-    if (targetCode && targetCode.length >= 4) {
-      // 1. Search Manifest CSV
-      const inManifest = manifestItems.filter(
-        (it) => it.sku === targetCode || it.upc === targetCode
-      );
+    // 3. Search Item DLR Records
+    const inDlr = dlrRecords.filter(
+      (d) => codesMatch(d.SKU, targetCode) || codesMatch(d.UPC, targetCode)
+    );
 
-      // 2. Search Product Catalog
-      const inCatalog = catalog.find(
-        (c) => c.sku === targetCode || c.upc === targetCode
-      );
+    if (inCatalog || inManifest.length > 0 || inDlr.length > 0) {
+      const resolvedSku = (inCatalog?.sku || inManifest[0]?.sku || inDlr[0]?.SKU || '').trim();
+      const resolvedUpc = (inCatalog?.upc || inManifest[0]?.upc || inDlr[0]?.UPC || '').trim();
+      const resolvedDesc = (
+        inCatalog?.description ||
+        inManifest[0]?.description ||
+        inDlr[0]?.Description ||
+        'N/A'
+      ).trim();
+      const rawPrice = (inCatalog?.price || inDlr[0]?.Price || '').trim();
+      const price = rawPrice ? (rawPrice.startsWith('₱') ? rawPrice : `₱${rawPrice}`) : 'N/A';
+      const deptName = inCatalog?.departmentName || inCatalog?.departmentCode || '';
+      const subDeptName = inCatalog?.subDepartmentName || '';
 
-      // 3. Search Item DLR Records
-      const inDlr = dlrRecords.filter(
-        (d) => d.SKU === targetCode || d.UPC === targetCode
-      );
+      let headerText = '';
+      if (isExplicitSkuQuery && resolvedSku) {
+        headerText = `🎯 Ang **SKU** para sa UPC \`${resolvedUpc || targetCode}\` ay: **\`${resolvedSku}\`**\n\n`;
+      } else if (isExplicitUpcQuery && resolvedUpc) {
+        headerText = `🎯 Ang **UPC (Barcode)** para sa SKU \`${resolvedSku || targetCode}\` ay: **\`${resolvedUpc}\`**\n\n`;
+      } else if (resolvedSku && resolvedUpc) {
+        headerText = `🎯 **Item Details (SKU: \`${resolvedSku}\` · UPC: \`${resolvedUpc}\`)**\n\n`;
+      } else {
+        headerText = `🎯 **Item Details (\`${targetCode}\`)**\n\n`;
+      }
 
-      if (inManifest.length > 0 || inCatalog || inDlr.length > 0) {
-        let result = `### 🔍 Item Lookup: \`${targetCode}\`\n`;
+      let result = `${headerText}### 🏷️ Detalye ng Item
+- **SKU:** \`${resolvedSku || 'N/A'}\`
+- **UPC / Barcode:** \`${resolvedUpc || 'N/A'}\`
+- **Description / Pangalan:** *${resolvedDesc}*
+- **Presyo (SRP):** \`${price}\``;
 
-        // Catalog Details
-        if (inCatalog) {
-          result += `\n#### 📋 Product Catalog\n- **Description:** *${inCatalog.description}*\n- **Presyo (SRP):** \`₱${inCatalog.price || 'N/A'}\` | **Cost:** \`₱${inCatalog.cost || 'N/A'}\`\n- **Dept:** ${inCatalog.departmentName || inCatalog.departmentCode || 'N/A'}${inCatalog.subDepartmentName ? ` *(${inCatalog.subDepartmentName})*` : ''}\n`;
+      if (deptName) {
+        result += `\n- **Department / Kategorya:** ${deptName}${subDeptName ? ` *(${subDeptName})*` : ''}`;
+      }
+
+      // Manifest Section
+      if (inManifest.length > 0) {
+        const totalQty = inManifest.reduce((sum, it) => sum + (Number(it.qty) || 1), 0);
+        const cids = Array.from(new Set(inManifest.map((it) => it.cid))).join('`, `');
+        const scannedCount =
+          scannedItems[resolvedSku] ||
+          scannedItems[resolvedUpc] ||
+          scannedItems[targetCode] ||
+          0;
+        result += `\n\n#### 📦 Uploaded Manifest CSV
+- **Kabuuang Manifest Qty:** **${totalQty}** units
+- **Na-scan na:** **${scannedCount}** units ${
+          scannedCount >= totalQty ? '✅ *(Kumpleto na)*' : '⏳ *(May kulang pa)*'
         }
+- **Nasa CID Box:** \`${cids}\`
+- **TRF No:** \`${inManifest[0].trf || 'N/A'}\``;
+      } else {
+        result += `\n\n#### 📦 Uploaded Manifest CSV
+> *Wala sa kasalukuyang uploaded manifest items.*`;
+      }
 
-        // Manifest Details
-        if (inManifest.length > 0) {
-          const totalQty = inManifest.reduce((sum, it) => sum + (Number(it.qty) || 1), 0);
-          const cids = Array.from(new Set(inManifest.map((it) => it.cid))).join('`, `');
-          const scannedCount = scannedItems[targetCode] || 0;
-          result += `\n#### 📦 Uploaded Manifest CSV\n- **Description:** *${inManifest[0].description}*\n- **Kabuuang Manifest Qty:** **${totalQty}** units\n- **Na-scan na:** **${scannedCount}** units\n- **Nasa CID(s):** \`${cids}\`\n- **TRF:** \`${inManifest[0].trf || 'N/A'}\`\n`;
-        } else {
-          result += `\n#### 📦 Uploaded Manifest CSV\n> Hindi nakita sa active manifest items.\n`;
-        }
+      // DLR Section
+      if (inDlr.length > 0) {
+        result += `\n\n#### ⚠️ Item DLR Records (${inDlr.length} naka-log)\n`;
+        inDlr.slice(0, 3).forEach((d, i) => {
+          result += `- **${i + 1}.** Dahilan: \`${d.Reason || 'Reported'}\` | Qty: **${d.Qty || 1}**${
+            d['Store Code'] ? ` | Store: \`${d['Store Code']}\`` : ''
+          }\n`;
+        });
+      } else {
+        result += `\n\n#### ⚠️ Item DLR Records
+> *Walang naka-log na defect o damage record para sa item na ito.*`;
+      }
 
-        // DLR Details
-        if (inDlr.length > 0) {
-          result += `\n#### ⚠️ Item DLR Records (${inDlr.length} naka-log)\n`;
-          inDlr.slice(0, 3).forEach((d, i) => {
-            result += `- **${i + 1}.** Dahilan: \`${d.Reason || 'Reported'}\` | Qty: **${d.Qty}** | Store: \`${d['Store Code'] || 'N/A'}\`\n`;
-          });
-        }
+      return result.trim();
+    } else {
+      if (isExplicitSkuQuery) {
+        return `Pasensya na po, **hindi nahanap ang SKU** para sa UPC \`${targetCode}\` sa ating Product Catalog, Manifest CSV, o DLR records.
 
-        return result.trim();
+💡 **Maaaring subukan:**
+- Paki-check kung tama ang mga numero ng UPC barcode (karaniwang 12 o 13 digits).
+- Paki-tap ang **Refresh Data** icon sa itaas upang masiguradong updated ang Product Catalog mula sa OpenSheet.`;
+      }
+
+      if (isExplicitUpcQuery) {
+        return `Pasensya na po, **hindi nahanap ang UPC** para sa SKU \`${targetCode}\` sa ating Product Catalog, Manifest CSV, o DLR records.
+
+💡 **Maaaring subukan:**
+- Paki-check kung tama ang SKU code (karaniwang 6 na digit).
+- Paki-tap ang **Refresh Data** icon sa itaas upang masiguradong updated ang Product Catalog mula sa OpenSheet.`;
+      }
+
+      if (isGeneralItemOrPriceQuery) {
+        return `Pasensya na po, **hindi nahanap ang record** para sa code \`${targetCode}\` sa ating Product Catalog, Manifest CSV, o DLR records.
+
+💡 **Maaaring subukan:**
+- Paki-check kung may typo o kulang na digit sa code.
+- Paki-tap ang **Refresh Data** icon sa itaas upang masiguradong updated ang Product Catalog.`;
       }
     }
   }
@@ -534,8 +679,14 @@ ${itemsListStr}${extraCount}`;
     qLower.includes('tapon')
   ) {
     const totalDlr = dlrRecords.length;
+    const storeLabel = storeFilter?.storeCode
+      ? `Store ${storeFilter.storeCode}${
+          storeFilter.storeName ? ` (${storeFilter.storeName.replace(/^RDSI\s*[-–]\s*/i, '')})` : ''
+        }`
+      : '';
+
     if (totalDlr === 0) {
-      return `### ⚠️ Item DLR Records\n> Walang naka-log na DLR records sa table \`dlr_records\`.`;
+      return `### ⚠️ Item DLR Records ${storeLabel ? `(${storeLabel})` : ''}\n> Walang naka-log na DLR records ${storeLabel ? `para sa **${storeLabel}** ` : ''}sa table \`dlr_records\`.`;
     }
 
     // Tally by reason
@@ -553,11 +704,16 @@ ${itemsListStr}${extraCount}`;
 
     const recentSamples = dlrRecords
       .slice(0, 3)
-      .map((r, i) => `- **${i + 1}.** SKU \`${r.SKU}\` (\`${r.Reason}\`) — Store \`${r['Store Code'] || 'N/A'}\``)
+      .map(
+        (r, i) =>
+          `- **${i + 1}.** SKU \`${r.SKU}\` (\`${r.Reason}\`) — Qty: \`${r.Qty || 1}\`${
+            r['Store Code'] ? ` · \`${r['Store Code']}\`` : ''
+          }`
+      )
       .join('\n');
 
-    return `### ⚠️ Item DLR Summary
-- **Kabuuang DLR Entries:** **${totalDlr}** records
+    return `### ⚠️ Item DLR Summary ${storeLabel ? `(${storeLabel})` : ''}
+- **Kabuuang DLR Entries${storeLabel ? ` para sa ${storeLabel}` : ''}:** **${totalDlr}** records
 
 #### 🚨 Nangungunang Defect Reasons
 ${topReasons}

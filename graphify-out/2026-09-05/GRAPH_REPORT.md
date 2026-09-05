@@ -1,16 +1,16 @@
-# Graph Report - receiving-delivery-app  (2026-09-04)
+# Graph Report - receiving-delivery-app  (2026-09-05)
 
 ## Corpus Check
-- 48 files · ~140,418 words
+- 49 files · ~136,631 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 498 nodes · 681 edges · 69 communities (29 shown, 40 thin omitted)
-- Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 18 edges (avg confidence: 0.76)
+- 519 nodes · 720 edges · 71 communities (31 shown, 40 thin omitted)
+- Extraction: 98% EXTRACTED · 2% INFERRED · 0% AMBIGUOUS · INFERRED: 18 edges (avg confidence: 0.76)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `6a067e97`
+- Built from commit: `97b4c60c`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -41,7 +41,7 @@
 - dependencies
 - New session - 2026-08-26T06:38:56.026Z
 - appUpdateService.ts
-- localAiService.ts
+- expo-application
 - expo-image
 - expo-sharing
 - App Releases, Supabase Updates & Notifications Guidelines
@@ -56,7 +56,7 @@
 - react-native-safe-area-context
 - expo-haptics
 - react-native-worklets
-- expo-build-properties
+- expo-font
 - @react-navigation/native
 - nativewind
 - @supabase/supabase-js
@@ -65,9 +65,9 @@
 - session-ses_fc33.md
 - rules/graphify.md
 - workflows/graphify.md
-- expo-font
+- expo-build-properties
 - react-native-screens
-- expo-notifications
+- localAiService.ts
 - lucide-react-native
 - papaparse
 - react-native
@@ -75,21 +75,23 @@
 - expo-image-manipulator
 - expo-splash-screen
 - llama.rn
-- expo-application
+- expo-notifications
 - react-native-markdown-display
 - @react-navigation/stack
+- scripts
+- 🚀 What's New in v7.1
 
 ## God Nodes (most connected - your core abstractions)
 1. `New session - 2026-08-26T06:38:56.026Z` - 90 edges
 2. `useTheme()` - 28 edges
-3. `useAuth()` - 16 edges
-4. `DamageLostRecordScreen()` - 16 edges
+3. `useAuth()` - 18 edges
+4. `DamageLostRecordScreen()` - 17 edges
 5. `expo` - 15 edges
 6. `scripts` - 10 edges
 7. `processDlrSyncQueue()` - 9 edges
-8. `LocalAiFabModal()` - 7 edges
-9. `fetchCatalog()` - 7 edges
-10. `android` - 6 edges
+8. `LocalAiFabModal()` - 8 edges
+9. `checkForAppUpdate()` - 8 edges
+10. `askLocalHybridAssistant()` - 7 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `ProductCard()` --calls--> `useTheme()`  [EXTRACTED]
@@ -98,10 +100,10 @@
   screens/damageLostRecord.tsx → context/theme.tsx
 - `Damage Lost Record (DLR) Multi-Step Flow` --conceptually_related_to--> `Verification Component Patterns`  [INFERRED]
   session-ses_fc33.md → DESIGN.md
-- `LocalAiFabModal()` --calls--> `useTheme()`  [EXTRACTED]
-  components/LocalAiFabModal.tsx → context/theme.tsx
-- `useIsNotSignedIn()` --calls--> `useAuth()`  [EXTRACTED]
-  navigation/index.tsx → context/auth.tsx
+- `AppContent()` --calls--> `useTheme()`  [EXTRACTED]
+  App.tsx → context/theme.tsx
+- `LocalAiFabModal()` --calls--> `useAuth()`  [EXTRACTED]
+  components/LocalAiFabModal.tsx → context/auth.tsx
 
 ## Import Cycles
 - None detected.
@@ -112,27 +114,27 @@
 - **App Branding and Mascot Design** — assets_icon_app_icon, assets_icon_delivery_elephant_mascot, assets_icon_branding_visual_identity [INFERRED 0.85]
 - **Splash Screen and Mascot Visual Identity** — assets_splash_png_splash_screen, assets_splash_png_delivery_elephant_mascot, assets_splash_png_branding_visual_identity [INFERRED 0.85]
 
-## Communities (69 total, 40 thin omitted)
+## Communities (71 total, 40 thin omitted)
 
 ### Community 0 - "useTheme"
 Cohesion: 0.07
-Nodes (50): AppContent(), AiAssistantContext, AiAssistantContextType, AiAssistantProvider(), useAiAssistant(), AuthContext, AuthContextType, AuthProvider() (+42 more)
+Nodes (46): AiAssistantContext, AiAssistantContextType, AiAssistantProvider(), useAiAssistant(), AuthContext, AuthContextType, AuthProvider(), useAuth() (+38 more)
 
 ### Community 1 - "dlr.ts"
 Cohesion: 0.09
-Nodes (41): DamageLostRecordScreen(), feedback(), formatRecordTime(), ProductCard(), ReasonPickerModal(), Step, STEP_LIST, buildDlrImageName() (+33 more)
+Nodes (42): DamageLostRecordScreen(), feedback(), formatRecordTime(), ProductCard(), ReasonPickerModal(), Step, STEP_LIST, buildDlrImageName() (+34 more)
 
 ### Community 2 - "expo"
 Cohesion: 0.06
 Nodes (37): backgroundColor, foregroundImage, adaptiveIcon, package, permissions, splash, versionCode, projectId (+29 more)
 
 ### Community 3 - "devDependencies"
-Cohesion: 0.05
-Nodes (37): @babel/core, babel-preset-expo, eslint, eslint-config-expo, eslint-config-prettier, devDependencies, @babel/core, babel-preset-expo (+29 more)
+Cohesion: 0.08
+Nodes (25): @babel/core, babel-preset-expo, eslint, eslint-config-expo, eslint-config-prettier, devDependencies, @babel/core, babel-preset-expo (+17 more)
 
 ### Community 4 - "patch-llama-rn.js"
-Cohesion: 0.40
-Nodes (4): fs, path, pluginPath, withLlamaRNPath
+Cohesion: 0.25
+Nodes (7): downloadScript, { execSync }, fs, jniLibsDir, path, pluginPath, withLlamaRNPath
 
 ### Community 5 - "Industrial Verification Logic Design System"
 Cohesion: 0.24
@@ -183,12 +185,8 @@ Cohesion: 0.02
 Nodes (90): Assistant (Build · Ox Alpha Free (Unlimited) · 10.0s), Assistant (Build · Ox Alpha Free (Unlimited) · 10.3s), Assistant (Build · Ox Alpha Free (Unlimited) · 10.4s), Assistant (Build · Ox Alpha Free (Unlimited) · 10.5s), Assistant (Build · Ox Alpha Free (Unlimited) · 10.7s), Assistant (Build · Ox Alpha Free (Unlimited) · 116.2s), Assistant (Build · Ox Alpha Free (Unlimited) · 117.9s), Assistant (Build · Ox Alpha Free (Unlimited) · 1189.1s) (+82 more)
 
 ### Community 25 - "appUpdateService.ts"
-Cohesion: 0.21
-Nodes (12): AppUpdateRecord, AppVersionInfo, CheckUpdateOptions, getApplication(), getCurrentAppVersion(), getNotifications(), LAST_NOTIFIED_VERSION_KEY, NOTE: "App Up to Date" alerts are ONLY shown if isManual === true (user clicked… (+4 more)
-
-### Community 26 - "localAiService.ts"
-Cohesion: 0.19
-Nodes (14): LocalAiFabModal(), LocalAiFabModalProps, Message, useLlamaModel(), askLocalHybridAssistant(), DaizoDataset, fetchDaizoFullDataset(), getCachedDaizoDataset() (+6 more)
+Cohesion: 0.18
+Nodes (18): AppContent(), AppUpdateRecord, AppVersionInfo, checkForAppUpdate(), CheckUpdateOptions, compareSemver(), getApplication(), getCurrentAppVersion() (+10 more)
 
 ### Community 29 - "App Releases, Supabase Updates & Notifications Guidelines"
 Cohesion: 0.40
@@ -206,25 +204,37 @@ Nodes (12): Brand & Style, Buttons, Cards & List Items, Chips & Badges, Colors, 
 Cohesion: 0.50
 Nodes (3): 1. Cloudinary: replace YOUR_PRESET first. Success = JSON with "secure_url", 2. Supabase read: table exists? (empty [] is fine, error = table missing), 3. Supabase insert: tests schema + RLS exactly like the app does
 
+### Community 58 - "localAiService.ts"
+Cohesion: 0.15
+Nodes (18): DAIZO_LOADING_ASSET, LocalAiFabModal(), LocalAiFabModalProps, Message, useLlamaModel(), askLocalHybridAssistant(), DaizoDataset, fetchDaizoFullDataset() (+10 more)
+
+### Community 69 - "scripts"
+Cohesion: 0.13
+Nodes (14): main, name, private, scripts, android, eas-build-pre-install, format, ios (+6 more)
+
+### Community 70 - "🚀 What's New in v7.1"
+Cohesion: 0.22
+Nodes (8): 🏪 1. Multi-Store Isolation for Damage Lost Record (DLR), 🔍 2. Intelligent Bidirectional SKU ↔ UPC Lookup, 📱 3. KeyboardAvoidingView & Modal UI Fix, 🎨 4. Assistant Branding & UI Polish, Receiving Scanner App — Release v7.1 (Build 8), 📦 Supabase `app_updates` Release Checklist, 🛠️ Verification & Commit Details, 🚀 What's New in v7.1
+
 ## Knowledge Gaps
-- **261 isolated node(s):** `name`, `slug`, `version`, `favicon`, `tsconfigPaths` (+256 more)
+- **271 isolated node(s):** `name`, `slug`, `version`, `favicon`, `tsconfigPaths` (+266 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 - **40 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `dependencies` connect `dependencies` to `devDependencies`, `expo-document-picker`, `expo-file-system`, `expo-image`, `expo-sharing`, `expo-status-bar`, `@expo/vector-icons`, `expo-network`, `react`, `@react-native-async-storage/async-storage`, `react-native-gesture-handler`, `react-native-reanimated`, `react-native-safe-area-context`, `expo-haptics`, `react-native-worklets`, `expo-build-properties`, `@react-navigation/native`, `nativewind`, `@supabase/supabase-js`, `xlsx`, `expo-font`, `react-native-screens`, `expo-notifications`, `lucide-react-native`, `papaparse`, `react-native`, `@expo/ui`, `expo-image-manipulator`, `expo-splash-screen`, `llama.rn`, `expo-application`, `react-native-markdown-display`, `@react-navigation/stack`?**
-  _High betweenness centrality (0.043) - this node is a cross-community bridge._
+- **Why does `dependencies` connect `dependencies` to `expo-document-picker`, `expo-file-system`, `expo-application`, `expo-image`, `expo-sharing`, `expo-status-bar`, `@expo/vector-icons`, `expo-network`, `react`, `@react-native-async-storage/async-storage`, `react-native-gesture-handler`, `react-native-reanimated`, `react-native-safe-area-context`, `expo-haptics`, `react-native-worklets`, `expo-font`, `@react-navigation/native`, `nativewind`, `@supabase/supabase-js`, `xlsx`, `expo-build-properties`, `react-native-screens`, `lucide-react-native`, `papaparse`, `react-native`, `@expo/ui`, `expo-image-manipulator`, `expo-splash-screen`, `llama.rn`, `expo-notifications`, `react-native-markdown-display`, `@react-navigation/stack`, `scripts`?**
+  _High betweenness centrality (0.040) - this node is a cross-community bridge._
 - **Why does `New session - 2026-08-26T06:38:56.026Z` connect `New session - 2026-08-26T06:38:56.026Z` to `session-ses_fc33.md`?**
-  _High betweenness centrality (0.035) - this node is a cross-community bridge._
+  _High betweenness centrality (0.032) - this node is a cross-community bridge._
 - **What connects `name`, `slug`, `version` to the rest of the system?**
-  _261 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _271 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `useTheme` be split into smaller, more focused modules?**
-  _Cohesion score 0.06720321931589537 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.07055630936227951 - nodes in this community are weakly interconnected._
 - **Should `dlr.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.08686868686868687 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.08888888888888889 - nodes in this community are weakly interconnected._
 - **Should `expo` be split into smaller, more focused modules?**
   _Cohesion score 0.05689900426742532 - nodes in this community are weakly interconnected._
 - **Should `devDependencies` be split into smaller, more focused modules?**
-  _Cohesion score 0.05263157894736842 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.08 - nodes in this community are weakly interconnected._

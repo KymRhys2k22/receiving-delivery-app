@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as FileSystem from 'expo-file-system/legacy';
+import storeData from '../store.json';
 
 const SUPABASE_URL =
   process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://dxncgchzwmfbbgqpnurq.supabase.co';
@@ -19,6 +20,73 @@ export const OPEN_SHEET_URL =
   'https://opensheet.elk.sh/1PSUBDTCxL6joS0kRJ0dxjCpWUSebLmt-njH16yDHfbQ/1';
 
 export const DLR_RECORDS_KEY = 'dlr_records';
+
+export interface StoreFilter {
+  storeCode?: string;
+  storeName?: string;
+}
+
+export function getStoreIdentifiers(
+  storeCode?: string,
+  storeName?: string
+): {
+  code: string;
+  name: string;
+  candidates: string[];
+} {
+  const cleanCode = (storeCode || '').trim();
+  const cleanName = (storeName || '').trim();
+  let resolvedName = cleanName;
+  let resolvedCode = cleanCode;
+
+  if (cleanCode || cleanName) {
+    const storeNum = parseInt(cleanCode, 10);
+    const matched = (storeData as { store: number; name: string }[]).find(
+      (s) =>
+        (cleanCode && (s.store === storeNum || String(s.store) === cleanCode)) ||
+        (cleanName && s.name.toLowerCase() === cleanName.toLowerCase())
+    );
+    if (matched) {
+      resolvedCode = resolvedCode || String(matched.store);
+      resolvedName = resolvedName || matched.name;
+    }
+  }
+
+  const candidates = Array.from(
+    new Set([cleanCode, resolvedCode, cleanName, resolvedName].filter(Boolean))
+  );
+  return { code: resolvedCode, name: resolvedName, candidates };
+}
+
+export function matchRecordStore(
+  recordStore: string | undefined | null,
+  storeCode?: string,
+  storeName?: string
+): boolean {
+  if (!storeCode && !storeName) return true;
+  if (!recordStore) return false;
+
+  const { code, name, candidates } = getStoreIdentifiers(storeCode, storeName);
+  const val = recordStore.trim().toLowerCase();
+
+  // 1. Direct candidate match (case-insensitive)
+  if (candidates.some((c) => c.toLowerCase() === val)) return true;
+
+  // 2. Standalone or boundary code match (e.g. "202" in "202 - RDSI - PAVILLION")
+  if (code) {
+    const codeRegex = new RegExp(`(^|[^0-9])${code}([^0-9]|$)`, 'i');
+    if (codeRegex.test(recordStore)) return true;
+  }
+
+  // 3. Store/branch name match (e.g. "PAVILLION" in "RDSI - PAVILLION")
+  if (name) {
+    if (val.includes(name.toLowerCase())) return true;
+    const branchName = name.replace(/^RDSI\s*[-–]\s*/i, '').trim().toLowerCase();
+    if (branchName && val.includes(branchName)) return true;
+  }
+
+  return false;
+}
 
 export interface RawSheetItem {
   SKU?: string;
@@ -75,17 +143,35 @@ export interface SupabaseDLRRow {
   'dlr-number'?: string | null;
 }
 
-export async function fetchSupabaseDlrRecords(limit = 100): Promise<SupabaseDLRRow[]> {
-  const { data, error } = await supabase
+export async function fetchSupabaseDlrRecords(
+  limit = 100,
+  storeFilter?: StoreFilter
+): Promise<SupabaseDLRRow[]> {
+  let query = supabase
     .from('dlr_records')
     .select('*')
-    .order('created_at', { ascending: false })
-    .limit(limit);
+    .order('created_at', { ascending: false });
+
+  const hasStoreFilter = Boolean(storeFilter && (storeFilter.storeCode || storeFilter.storeName));
+  if (hasStoreFilter) {
+    const { candidates } = getStoreIdentifiers(storeFilter?.storeCode, storeFilter?.storeName);
+    if (candidates.length > 0) {
+      query = query.in('Store Code', candidates);
+    }
+  }
+
+  const { data, error } = await query.limit(limit);
 
   if (error) {
     throw new Error(error.message);
   }
-  return (data as SupabaseDLRRow[]) || [];
+  const rows = (data as SupabaseDLRRow[]) || [];
+  if (hasStoreFilter) {
+    return rows.filter((r) =>
+      matchRecordStore(r['Store Code'], storeFilter?.storeCode, storeFilter?.storeName)
+    );
+  }
+  return rows;
 }
 
 export async function deleteSupabaseDlrRecord(id: string): Promise<void> {
@@ -163,7 +249,8 @@ function stripLeadingZeros(value: string): string {
   return value.replace(/^0+/, '');
 }
 
-function codesMatch(a: string, b: string): boolean {
+export function codesMatch(a?: string | null, b?: string | null): boolean {
+  if (!a || !b) return false;
   const x = a.trim().toUpperCase();
   const y = b.trim().toUpperCase();
   if (!x || !y) return false;

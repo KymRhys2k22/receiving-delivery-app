@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import * as FileSystem from 'expo-file-system/legacy';
+import { isRunningInExpoGo } from 'expo';
 import type { LlamaContext } from 'llama.rn';
 
 const MODEL_DOWNLOAD_URL =
@@ -41,6 +42,11 @@ export function useLlamaModel() {
 
         if (!isMounted) return;
 
+        if (isRunningInExpoGo()) {
+          setStatusMessage('Native engine requires standalone APK build');
+          return;
+        }
+
         setStatusMessage('Initializing engine...');
         let llamaInstance: any = null;
         try {
@@ -53,7 +59,7 @@ export function useLlamaModel() {
             use_mlock: true,
           });
         } catch (llamaErr: any) {
-          console.warn('[useLlamaModel] initLlama unavailable in current APK:', llamaErr);
+          console.info('[useLlamaModel] initLlama unavailable in current APK:', llamaErr);
           if (isMounted) {
             setStatusMessage('Native engine requires new APK build');
           }
