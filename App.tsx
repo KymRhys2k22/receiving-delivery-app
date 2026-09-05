@@ -17,6 +17,7 @@ LogBox.ignoreLogs([
   'InteractionManager has been deprecated',
   '[useLlamaModel] initLlama unavailable in current APK:',
   'Cannot read property \'install\' of null',
+  "Can't perform a React state update on a component that hasn't mounted yet",
 ]);
 
 function AppContent() {

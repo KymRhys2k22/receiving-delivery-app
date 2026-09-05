@@ -25,7 +25,7 @@
   "23": "dependencies",
   "24": "New session - 2026-08-26T06:38:56.026Z",
   "25": "appUpdateService.ts",
-  "26": "expo-application",
+  "26": "expo-camera",
   "27": "expo-image",
   "28": "expo-sharing",
   "29": "App Releases, Supabase Updates & Notifications Guidelines",
@@ -55,9 +55,8 @@
   "53": "rules/graphify.md",
   "54": "workflows/graphify.md",
   "55": "expo-build-properties",
-  "56": "README.md",
+  "56": "Receiving & Delivery Scanner App (Daizo)",
   "57": "react-native-screens",
-  "58": "localAiService.ts",
   "59": "lucide-react-native",
   "60": "papaparse",
   "61": "react-native",
@@ -68,6 +67,5 @@
   "66": "expo-notifications",
   "67": "react-native-markdown-display",
   "68": "@react-navigation/stack",
-  "69": "scripts",
   "70": "🚀 What's New in v7.1"
 }

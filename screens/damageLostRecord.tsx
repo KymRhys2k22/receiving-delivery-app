@@ -994,7 +994,7 @@ export default function DamageLostRecordScreen({
               }`}>
               {isScanActive ? (
                 <View className="flex-1 items-center justify-center">
-                  <View className="h-0.5 w-[85%] bg-[#e5005c] shadow-lg shadow-[#e5005c]" />
+                  <View className="h-0.5 w-[85%] bg-[#e5005c] shadow-lg shadow-[#e5005c]/50" />
                 </View>
               ) : null}
             </View>

@@ -22,21 +22,24 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [themeMode, setThemeModeState] = useState<ThemeMode>('light');
 
   useEffect(() => {
+    let isMounted = true;
     const loadTheme = async () => {
       try {
         const savedMode = await AsyncStorage.getItem(THEME_STORAGE_KEY);
+        if (!isMounted) return;
         if (savedMode === 'dark' || savedMode === 'light' || savedMode === 'system') {
           setThemeModeState(savedMode);
           const effectiveMode =
             savedMode === 'system' ? (systemColorScheme === 'dark' ? 'dark' : 'light') : savedMode;
           setColorScheme(effectiveMode);
-        } else {
-          setColorScheme('light');
         }
       } catch {}
     };
     loadTheme();
-  }, [setColorScheme, systemColorScheme]);
+    return () => {
+      isMounted = false;
+    };
+  }, [systemColorScheme]);
 
   const setThemeMode = async (mode: ThemeMode) => {
     setThemeModeState(mode);

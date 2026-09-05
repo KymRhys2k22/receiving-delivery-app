@@ -9,7 +9,6 @@ import {
   ActivityIndicator,
   Platform,
   Keyboard,
-  Dimensions,
   Image,
   Animated,
   KeyboardAvoidingView,
@@ -268,6 +267,7 @@ export function LocalAiFabModal({
   };
 
   const handleClose = () => {
+    Keyboard.dismiss();
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } catch {}
@@ -494,7 +494,6 @@ export function LocalAiFabModal({
         animationType="slide"
         transparent
         visible={isOpen}
-        statusBarTranslucent
         onRequestClose={handleClose}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -696,6 +695,11 @@ export function LocalAiFabModal({
                     value={inputText}
                     onChangeText={setInputText}
                     onSubmitEditing={() => handleSend()}
+                    onFocus={() => {
+                      setTimeout(() => {
+                        flatListRef.current?.scrollToEnd({ animated: true });
+                      }, 120);
+                    }}
                     placeholder="Magtanong kay Daizo (presyo, box, DLR)..."
                     placeholderTextColor={isDark ? '#71717a' : '#a1a1aa'}
                     className={`h-12 flex-1 rounded-xl border px-4 font-jetbrains text-base ${cardBgClass} ${borderClass} ${textPrimaryClass}`}

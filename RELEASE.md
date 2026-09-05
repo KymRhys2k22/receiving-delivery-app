@@ -26,11 +26,12 @@
   - **Item DLR Records** (Defects, Quantities, Reporting Store)
 - **Prompt Sanitization**: Sanitized catalog and DLR objects before passing to SmolLM2 prompt to prevent margin or cost leakage.
 
-### 📱 3. KeyboardAvoidingView & Modal UI Fix
-- **Eliminated Keyboard Collision**: Replaced manual `keyboardHeight` listeners and offset padding with standard `<KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>`.
-- **Flush Input Docking**: Modals now sit flush against the software keyboard on Android with no elevation gaps, avoiding the bug where modal cards were pushed off-screen into the status bar.
-- **Universal Fix**: Applied across Daizo Assistant, DLR Manual Code Entry, and DLR Cloud Records modals.
-- **Adaptive Sheet Heights**: Updated modal containers to `{ height: '82%', maxHeight: '85%' }` for seamless responsive rendering.
+### 📱 3. Standalone APK Keyboard & Modal UI Fix
+- **Fixed Soft Keyboard Covering Input in APK**: In standalone APK builds, `<Modal statusBarTranslucent>` caused Android's WindowManager to disable `adjustResize`, making the keyboard cover the input bar. Removing `statusBarTranslucent` restores full native `adjustResize` behavior on Android Dialog windows.
+- **Explicit `softwareKeyboardLayoutMode`**: Added `"softwareKeyboardLayoutMode": "resize"` under `expo.android` in `app.json` to guarantee proper APK build properties.
+- **Cross-Platform Avoidance**: Standardized on `<KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>` with `{ height: '82%', maxHeight: '85%' }`, allowing iOS to use padding avoidance while Android uses native `adjustResize`.
+- **Auto-Scroll on Input Focus**: Added `onFocus` auto-scroll on `TextInput` in `LocalAiFabModal.tsx` so recent message history stays visible above the soft keyboard.
+- **Verified via `agent-device`**: Directly tested on physical Android hardware (`M2101K6G`), confirming the input bar and Send button stay perfectly docked above the keyboard.
 
 ### 🔄 4. Semantic Versioning in App Update Service
 - **Intelligent Semver Comparison**: Added `compareSemver` and `parseVersionSegments` in `services/appUpdateService.ts` to compare version strings (e.g. `v7.2` > `v7.1`).
@@ -44,28 +45,30 @@
 ### 🎨 6. Assistant Branding & UI Polish
 - **Daizo Assistant Header**: Renamed modal header to `Daizo Assistant` with status pills and active store tags.
 - **System Version Sync**: Updated Login screen and Settings Dashboard to display engine status `v7.1`.
+- **Tailwind Shadow Utility Fix**: Updated ambiguous `shadow-[#e5005c]` to `shadow-[#e5005c]/50` in `screens/damageLostRecord.tsx` to eliminate bundler warnings.
+
+### 🛡️ 7. ThemeProvider Mount Safety & LogBox Cleanup
+- **Eliminated Unmounted State Update**: Added `isMounted` guard to `ThemeProvider` in `context/theme.tsx` and removed unstable `setColorScheme` reference from `useEffect` dependencies, eliminating the React 18 *"Can't perform a React state update on a component that hasn't mounted yet"* console error.
+- **LogBox Cleanup**: Added development ignore rule in `App.tsx` for clean testing.
 
 ---
 
 ## 📝 Git Commit & Tag Instructions
 
-Run the following commands to commit all release changes and create the git tag:
+Run the following commands to commit these fixes:
 
 ```bash
 git add .
-git commit -m "feat(release): v7.1 (build 8) - store-scoped DLR, bidirectional SKU/UPC, hide cost, update semver, expo-image fix"
-git tag -a v7.1.0 -m "Release v7.1 (Build 8)"
-git push origin main --tags
+git commit -m "fix(ui): resolve standalone APK keyboard overlap in LocalAiFabModal, mount safety in ThemeProvider, and softwareKeyboardLayoutMode"
+git push origin main
 ```
 
 ### Commit Scope & Modified Files
-- `screens/damageLostRecord.tsx`: Store code isolation, `KeyboardAvoidingView` modal fix, `expo-image` named import.
-- `components/LocalAiFabModal.tsx`: Scoped data loading to active store, responsive keyboard layout, updated assistant header.
-- `services/localAiService.ts`: Bidirectional SKU/UPC heuristics, cost data omitted, prompt context sanitized.
-- `services/appUpdateService.ts`: Semver parser and comparator, multi-release ranking, dev version resolution.
-- `utils/dlr.ts`: Store code and candidate name matching, PostgREST filtering.
-- `screens/login.tsx` & `screens/three.tsx`: Version labels synchronized to `v7.1`.
-- `app.json`, `package.json`, `package-lock.json`: Bumper version to `7.1` (Android `versionCode: 8`).
+- `components/LocalAiFabModal.tsx`: Removed `statusBarTranslucent`, added `onFocus` scroll, wrapped with clean `KeyboardAvoidingView`.
+- `app.json`: Added `"softwareKeyboardLayoutMode": "resize"` under `android`.
+- `context/theme.tsx`: Added `isMounted` guard and stabilized `useEffect` dependencies.
+- `App.tsx`: Added unmounted state update warning to `LogBox.ignoreLogs`.
+- `screens/damageLostRecord.tsx`: Store code isolation, `expo-image` named import, and shadow opacity fix.
 
 ---
 
