@@ -1,6 +1,7 @@
 import 'react-native-gesture-handler';
 import './global.css';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
 
 import { DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { LogBox } from 'react-native';
@@ -16,7 +17,7 @@ import { initAppUpdateChecker } from './services/appUpdateService';
 LogBox.ignoreLogs([
   'InteractionManager has been deprecated',
   '[useLlamaModel] initLlama unavailable in current APK:',
-  'Cannot read property \'install\' of null',
+  "Cannot read property 'install' of null",
   "Can't perform a React state update on a component that hasn't mounted yet",
 ]);
 
@@ -43,9 +44,11 @@ function AppContent() {
 export default function App() {
   return (
     <SafeAreaProvider>
-      <ThemeProvider>
-        <AppContent />
-      </ThemeProvider>
+      <KeyboardProvider>
+        <ThemeProvider>
+          <AppContent />
+        </ThemeProvider>
+      </KeyboardProvider>
     </SafeAreaProvider>
   );
 }

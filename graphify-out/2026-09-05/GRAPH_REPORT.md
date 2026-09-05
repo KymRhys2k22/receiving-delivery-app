@@ -1,16 +1,16 @@
 # Graph Report - receiving-delivery-app  (2026-09-05)
 
 ## Corpus Check
-- 49 files · ~137,946 words
+- 49 files · ~138,044 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 539 nodes · 740 edges · 69 communities (29 shown, 40 thin omitted)
+- 543 nodes · 745 edges · 70 communities (30 shown, 40 thin omitted)
 - Extraction: 98% EXTRACTED · 2% INFERRED · 0% AMBIGUOUS · INFERRED: 18 edges (avg confidence: 0.76)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `7cc41169`
+- Built from commit: `c4c4ac6a`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -65,10 +65,11 @@
 - session-ses_fc33.md
 - rules/graphify.md
 - workflows/graphify.md
-- expo-build-properties
+- expo-application
 - Receiving & Delivery Scanner App (Daizo)
 - react-native-screens
-- lucide-react-native
+- LocalAiFabModal.tsx
+- react-native-keyboard-controller
 - papaparse
 - react-native
 - @expo/ui
@@ -76,8 +77,8 @@
 - expo-splash-screen
 - llama.rn
 - expo-notifications
-- react-native-markdown-display
-- @react-navigation/stack
+- react-native-svg
+- @react-navigation/bottom-tabs
 - 🚀 What's New in v7.1
 
 ## God Nodes (most connected - your core abstractions)
@@ -87,21 +88,21 @@
 4. `DamageLostRecordScreen()` - 17 edges
 5. `expo` - 15 edges
 6. `scripts` - 10 edges
-7. `processDlrSyncQueue()` - 9 edges
-8. `LocalAiFabModal()` - 8 edges
+7. `LocalAiFabModal()` - 9 edges
+8. `processDlrSyncQueue()` - 9 edges
 9. `checkForAppUpdate()` - 8 edges
-10. `🚀 What's New in v7.1` - 8 edges
+10. `Receiving & Delivery Scanner App (Daizo)` - 8 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `Damage Lost Record (DLR) Multi-Step Flow` --conceptually_related_to--> `Verification Component Patterns`  [INFERRED]
   session-ses_fc33.md → DESIGN.md
-- `AppContent()` --calls--> `useTheme()`  [EXTRACTED]
-  App.tsx → context/theme.tsx
 - `LocalAiFabModal()` --calls--> `useAuth()`  [EXTRACTED]
   components/LocalAiFabModal.tsx → context/auth.tsx
 - `LocalAiFabModal()` --calls--> `useTheme()`  [EXTRACTED]
   components/LocalAiFabModal.tsx → context/theme.tsx
 - `useIsNotSignedIn()` --calls--> `useAuth()`  [EXTRACTED]
+  navigation/index.tsx → context/auth.tsx
+- `useIsSignedIn()` --calls--> `useAuth()`  [EXTRACTED]
   navigation/index.tsx → context/auth.tsx
 
 ## Import Cycles
@@ -113,15 +114,15 @@
 - **App Branding and Mascot Design** — assets_icon_app_icon, assets_icon_delivery_elephant_mascot, assets_icon_branding_visual_identity [INFERRED 0.85]
 - **Splash Screen and Mascot Visual Identity** — assets_splash_png_splash_screen, assets_splash_png_delivery_elephant_mascot, assets_splash_png_branding_visual_identity [INFERRED 0.85]
 
-## Communities (69 total, 40 thin omitted)
+## Communities (70 total, 40 thin omitted)
 
 ### Community 0 - "useTheme"
 Cohesion: 0.07
-Nodes (49): AiAssistantContext, AiAssistantContextType, AiAssistantProvider(), useAiAssistant(), AuthContext, AuthContextType, AuthProvider(), useAuth() (+41 more)
+Nodes (50): AppContent(), useAiAssistant(), AuthContext, AuthContextType, AuthProvider(), useAuth(), ThemeContext, ThemeContextType (+42 more)
 
 ### Community 1 - "dlr.ts"
-Cohesion: 0.07
-Nodes (57): DAIZO_LOADING_ASSET, LocalAiFabModal(), LocalAiFabModalProps, Message, useLlamaModel(), DamageLostRecordScreen(), feedback(), formatRecordTime() (+49 more)
+Cohesion: 0.09
+Nodes (44): DamageLostRecordScreen(), feedback(), formatRecordTime(), Step, STEP_LIST, DaizoDataset, buildDlrImageName(), buildSupabasePayload() (+36 more)
 
 ### Community 2 - "expo"
 Cohesion: 0.06
@@ -176,16 +177,16 @@ Cohesion: 1.00
 Nodes (3): Application Branding and Visual Identity, Delivery Elephant Mascot, Application Splash Screen
 
 ### Community 23 - "dependencies"
-Cohesion: 0.22
-Nodes (9): expo, expo-application, dependencies, expo, expo-application, react-native-svg, @react-navigation/bottom-tabs, react-native-svg (+1 more)
+Cohesion: 0.18
+Nodes (11): expo, expo-build-properties, lucide-react-native, dependencies, expo, expo-build-properties, lucide-react-native, react-native-markdown-display (+3 more)
 
 ### Community 24 - "New session - 2026-08-26T06:38:56.026Z"
 Cohesion: 0.02
 Nodes (90): Assistant (Build · Ox Alpha Free (Unlimited) · 10.0s), Assistant (Build · Ox Alpha Free (Unlimited) · 10.3s), Assistant (Build · Ox Alpha Free (Unlimited) · 10.4s), Assistant (Build · Ox Alpha Free (Unlimited) · 10.5s), Assistant (Build · Ox Alpha Free (Unlimited) · 10.7s), Assistant (Build · Ox Alpha Free (Unlimited) · 116.2s), Assistant (Build · Ox Alpha Free (Unlimited) · 117.9s), Assistant (Build · Ox Alpha Free (Unlimited) · 1189.1s) (+82 more)
 
 ### Community 25 - "appUpdateService.ts"
-Cohesion: 0.18
-Nodes (18): AppContent(), AppUpdateRecord, AppVersionInfo, checkForAppUpdate(), CheckUpdateOptions, compareSemver(), getApplication(), getCurrentAppVersion() (+10 more)
+Cohesion: 0.19
+Nodes (16): AppUpdateRecord, AppVersionInfo, checkForAppUpdate(), CheckUpdateOptions, compareSemver(), getApplication(), getCurrentAppVersion(), getNotifications() (+8 more)
 
 ### Community 29 - "App Releases, Supabase Updates & Notifications Guidelines"
 Cohesion: 0.40
@@ -204,31 +205,35 @@ Cohesion: 0.50
 Nodes (3): 1. Cloudinary: replace YOUR_PRESET first. Success = JSON with "secure_url", 2. Supabase read: table exists? (empty [] is fine, error = table missing), 3. Supabase insert: tests schema + RLS exactly like the app does
 
 ### Community 56 - "Receiving & Delivery Scanner App (Daizo)"
-Cohesion: 0.13
-Nodes (14): 1. 📦 Receiving & Scanning Workflow, 2. ⚠️ Damage & Lost Record (DLR) Module, 3. 🤖 On-Device AI Assistant (Daizo), 4. 📜 Audit History & Session Recovery, 5. 🎨 Industrial UI Design System, 🚦 Getting Started, Installation, 🚀 Key Features (+6 more)
+Cohesion: 0.12
+Nodes (15): 1. 📦 Receiving & Scanning Workflow, 2. ⚠️ Damage & Lost Record (DLR) Module, 3. 🤖 On-Device AI Assistant (Daizo), 4. 📜 Audit History & Session Recovery, 5. 🎨 Industrial UI Design System, 👤 Author & Portfolio, 🚦 Getting Started, Installation (+7 more)
+
+### Community 58 - "LocalAiFabModal.tsx"
+Cohesion: 0.16
+Nodes (15): DAIZO_LOADING_ASSET, LocalAiFabModal(), LocalAiFabModalProps, Message, useGradualAnimation(), AiAssistantContext, AiAssistantContextType, AiAssistantProvider() (+7 more)
 
 ### Community 70 - "🚀 What's New in v7.1"
 Cohesion: 0.14
 Nodes (13): 🏪 1. Multi-Store Isolation for Damage Lost Record (DLR), 🔍 2. Intelligent Bidirectional SKU ↔ UPC Lookup, 📱 3. Standalone APK Keyboard & Modal UI Fix, 🔄 4. Semantic Versioning in App Update Service, 🖼️ 5. `expo-image` Named Import Fix, 🎨 6. Assistant Branding & UI Polish, 🛡️ 7. ThemeProvider Mount Safety & LogBox Cleanup, Commit Scope & Modified Files (+5 more)
 
 ## Knowledge Gaps
-- **287 isolated node(s):** `name`, `slug`, `version`, `favicon`, `tsconfigPaths` (+282 more)
+- **289 isolated node(s):** `name`, `slug`, `version`, `favicon`, `tsconfigPaths` (+284 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 - **40 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `dependencies` connect `dependencies` to `devDependencies`, `expo-document-picker`, `expo-file-system`, `expo-camera`, `expo-image`, `expo-sharing`, `expo-status-bar`, `@expo/vector-icons`, `expo-network`, `react`, `@react-native-async-storage/async-storage`, `react-native-gesture-handler`, `react-native-reanimated`, `react-native-safe-area-context`, `expo-haptics`, `react-native-worklets`, `expo-font`, `@react-navigation/native`, `nativewind`, `@supabase/supabase-js`, `xlsx`, `expo-build-properties`, `react-native-screens`, `lucide-react-native`, `papaparse`, `react-native`, `@expo/ui`, `expo-image-manipulator`, `expo-splash-screen`, `llama.rn`, `expo-notifications`, `react-native-markdown-display`, `@react-navigation/stack`?**
-  _High betweenness centrality (0.037) - this node is a cross-community bridge._
+- **Why does `dependencies` connect `dependencies` to `devDependencies`, `expo-document-picker`, `expo-file-system`, `expo-camera`, `expo-image`, `expo-sharing`, `expo-status-bar`, `@expo/vector-icons`, `expo-network`, `react`, `@react-native-async-storage/async-storage`, `react-native-gesture-handler`, `react-native-reanimated`, `react-native-safe-area-context`, `expo-haptics`, `react-native-worklets`, `expo-font`, `@react-navigation/native`, `nativewind`, `@supabase/supabase-js`, `xlsx`, `expo-application`, `react-native-screens`, `react-native-keyboard-controller`, `papaparse`, `react-native`, `@expo/ui`, `expo-image-manipulator`, `expo-splash-screen`, `llama.rn`, `expo-notifications`, `react-native-svg`, `@react-navigation/bottom-tabs`?**
+  _High betweenness centrality (0.038) - this node is a cross-community bridge._
 - **Why does `New session - 2026-08-26T06:38:56.026Z` connect `New session - 2026-08-26T06:38:56.026Z` to `session-ses_fc33.md`?**
-  _High betweenness centrality (0.030) - this node is a cross-community bridge._
+  _High betweenness centrality (0.029) - this node is a cross-community bridge._
 - **What connects `name`, `slug`, `version` to the rest of the system?**
-  _287 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _289 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `useTheme` be split into smaller, more focused modules?**
-  _Cohesion score 0.0670807453416149 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.0661189358372457 - nodes in this community are weakly interconnected._
 - **Should `dlr.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.06666666666666667 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.08599290780141844 - nodes in this community are weakly interconnected._
 - **Should `expo` be split into smaller, more focused modules?**
   _Cohesion score 0.0553306342780027 - nodes in this community are weakly interconnected._
 - **Should `devDependencies` be split into smaller, more focused modules?**

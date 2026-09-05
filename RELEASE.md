@@ -1,4 +1,4 @@
-# Receiving Scanner App — Release v7.1 (Build 8)
+# Receiving Scanner App — Release v7.1 (Build 10)
 
 **Release Date:** September 5, 2026  
 **Tag:** `v7.1` (or `v7.1.0`)  
@@ -98,7 +98,7 @@ When publishing this release to production:
      is_mandatory,
      released_at
    ) VALUES (
-     8,
+     10,
      '7.1.0',
      'v7.1.0: Store-filtered DLR records, bidirectional SKU ↔ UPC lookup in Daizo, and keyboard layout stability improvements.',
      'https://github.com/KymRhys2k22/receiving-delivery-app/releases/download/v7.1.0/receiving-scanner-v7.1.0.apk',
@@ -111,7 +111,7 @@ When publishing this release to production:
 
 ## 🛠️ Verification & Commit Details
 
-- **Android Version Code**: `8`
+- **Android Version Code**: `10`
 - **Application Version Name**: `7.1.0`
 - **TypeScript**: `npx tsc --noEmit` passing (0 errors)
 - **Live Device Verification**: Tested and verified on connected physical Android device (Redmi Note 10 Pro)

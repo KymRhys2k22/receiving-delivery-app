@@ -63,7 +63,7 @@
       "bundleIdentifier": "com.kymrhys.receivingscannerapp"
     },
     "android": {
-      "versionCode": 8,
+      "versionCode": 10,
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",

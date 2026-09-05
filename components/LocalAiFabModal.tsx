@@ -11,8 +11,9 @@ import {
   Keyboard,
   Image,
   Animated,
-  KeyboardAvoidingView,
 } from 'react-native';
+import { useKeyboardHandler } from 'react-native-keyboard-controller';
+import AnimatedReanimated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import Markdown from 'react-native-markdown-display';
 import { X, Send, Sparkles, RefreshCw } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
@@ -138,6 +139,25 @@ function DaizoTypingIndicator({
   );
 }
 
+const useGradualAnimation = () => {
+  const height = useSharedValue(0);
+
+  useKeyboardHandler(
+    {
+      onMove: (event) => {
+        'worklet';
+        height.value = Math.max(event.height, 0);
+      },
+      onEnd: (event) => {
+        'worklet';
+        height.value = Math.max(event.height, 0);
+      },
+    },
+    []
+  );
+  return { height };
+};
+
 export interface LocalAiFabModalProps {
   tableName?: string;
   selectFields?: string;
@@ -175,6 +195,13 @@ export function LocalAiFabModal({
   ]);
   const [isInferencing, setIsInferencing] = useState(false);
   const flatListRef = useRef<FlatList>(null);
+
+  const { height: keyboardHeight } = useGradualAnimation();
+  const fakeViewStyle = useAnimatedStyle(() => {
+    return {
+      height: Math.abs(keyboardHeight.value),
+    };
+  }, []);
 
   // Model & data loading states (persists in memory during app session)
   const { context, isReady, downloadProgress, statusMessage } = useLlamaModel();
@@ -490,14 +517,8 @@ export function LocalAiFabModal({
       )}
 
       {/* Slide-Up Chat Modal */}
-      <Modal
-        animationType="slide"
-        transparent
-        visible={isOpen}
-        onRequestClose={handleClose}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          className="flex-1 justify-end bg-black/60">
+      <Modal animationType="slide" transparent visible={isOpen} onRequestClose={handleClose}>
+        <View className="flex-1 justify-end bg-black/60">
           <TouchableOpacity
             activeOpacity={1}
             onPress={() => {
@@ -695,10 +716,13 @@ export function LocalAiFabModal({
                     value={inputText}
                     onChangeText={setInputText}
                     onSubmitEditing={() => handleSend()}
+                    returnKeyType="send"
+                    enterKeyHint="send"
+                    blurOnSubmit={false}
                     onFocus={() => {
                       setTimeout(() => {
                         flatListRef.current?.scrollToEnd({ animated: true });
-                      }, 120);
+                      }, 100);
                     }}
                     placeholder="Magtanong kay Daizo (presyo, box, DLR)..."
                     placeholderTextColor={isDark ? '#71717a' : '#a1a1aa'}
@@ -721,10 +745,11 @@ export function LocalAiFabModal({
                     )}
                   </TouchableOpacity>
                 </View>
+                <AnimatedReanimated.View style={fakeViewStyle} />
               </>
             )}
           </View>
-        </KeyboardAvoidingView>
+        </View>
       </Modal>
     </>
   );
