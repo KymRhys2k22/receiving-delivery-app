@@ -1,7 +1,7 @@
 # Graph Report - receiving-delivery-app  (2026-09-05)
 
 ## Corpus Check
-- 49 files · ~138,044 words
+- 49 files · ~138,043 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -10,7 +10,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `c4c4ac6a`
+- Built from commit: `2d32c909`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -41,7 +41,7 @@
 - dependencies
 - New session - 2026-08-26T06:38:56.026Z
 - appUpdateService.ts
-- expo-build-properties
+- expo-camera
 - expo-image
 - expo-sharing
 - App Releases, Supabase Updates & Notifications Guidelines
@@ -79,7 +79,7 @@
 - expo-notifications
 - react-native-svg
 - @react-navigation/bottom-tabs
-- 🚀 What's New in v7.1
+- 🚀 What's New in v7.2
 
 ## God Nodes (most connected - your core abstractions)
 1. `New session - 2026-08-26T06:38:56.026Z` - 90 edges
@@ -178,7 +178,7 @@ Nodes (3): Application Branding and Visual Identity, Delivery Elephant Mascot, A
 
 ### Community 23 - "dependencies"
 Cohesion: 0.18
-Nodes (11): expo, expo-camera, lucide-react-native, dependencies, expo, expo-camera, lucide-react-native, react-native-markdown-display (+3 more)
+Nodes (11): expo, expo-build-properties, lucide-react-native, dependencies, expo, expo-build-properties, lucide-react-native, react-native-markdown-display (+3 more)
 
 ### Community 24 - "New session - 2026-08-26T06:38:56.026Z"
 Cohesion: 0.02
@@ -212,7 +212,7 @@ Nodes (15): 1. 📦 Receiving & Scanning Workflow, 2. ⚠️ Damage & Lost Recor
 Cohesion: 0.16
 Nodes (15): DAIZO_LOADING_ASSET, LocalAiFabModal(), LocalAiFabModalProps, Message, useGradualAnimation(), AiAssistantContext, AiAssistantContextType, AiAssistantProvider() (+7 more)
 
-### Community 70 - "🚀 What's New in v7.1"
+### Community 70 - "🚀 What's New in v7.2"
 Cohesion: 0.14
 Nodes (13): 🏪 1. Multi-Store Isolation for Damage Lost Record (DLR), 🔍 2. Intelligent Bidirectional SKU ↔ UPC Lookup, 📱 3. Standalone APK Keyboard & Modal UI Fix, 🔄 4. Semantic Versioning in App Update Service, 🖼️ 5. `expo-image` Named Import Fix, 🎨 6. Assistant Branding & UI Polish, 🛡️ 7. ThemeProvider Mount Safety & LogBox Cleanup, Commit Scope & Modified Files (+5 more)
 
@@ -224,7 +224,7 @@ Nodes (13): 🏪 1. Multi-Store Isolation for Damage Lost Record (DLR), 🔍 2. 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `dependencies` connect `dependencies` to `devDependencies`, `expo-document-picker`, `expo-file-system`, `expo-build-properties`, `expo-image`, `expo-sharing`, `expo-status-bar`, `@expo/vector-icons`, `expo-network`, `react`, `@react-native-async-storage/async-storage`, `react-native-gesture-handler`, `react-native-reanimated`, `react-native-safe-area-context`, `expo-haptics`, `react-native-worklets`, `expo-font`, `@react-navigation/native`, `nativewind`, `@supabase/supabase-js`, `xlsx`, `expo-application`, `react-native-screens`, `react-native-keyboard-controller`, `papaparse`, `react-native`, `@expo/ui`, `expo-image-manipulator`, `expo-splash-screen`, `llama.rn`, `expo-notifications`, `react-native-svg`, `@react-navigation/bottom-tabs`?**
+- **Why does `dependencies` connect `dependencies` to `devDependencies`, `expo-document-picker`, `expo-file-system`, `expo-camera`, `expo-image`, `expo-sharing`, `expo-status-bar`, `@expo/vector-icons`, `expo-network`, `react`, `@react-native-async-storage/async-storage`, `react-native-gesture-handler`, `react-native-reanimated`, `react-native-safe-area-context`, `expo-haptics`, `react-native-worklets`, `expo-font`, `@react-navigation/native`, `nativewind`, `@supabase/supabase-js`, `xlsx`, `expo-application`, `react-native-screens`, `react-native-keyboard-controller`, `papaparse`, `react-native`, `@expo/ui`, `expo-image-manipulator`, `expo-splash-screen`, `llama.rn`, `expo-notifications`, `react-native-svg`, `@react-navigation/bottom-tabs`?**
   _High betweenness centrality (0.038) - this node is a cross-community bridge._
 - **Why does `New session - 2026-08-26T06:38:56.026Z` connect `New session - 2026-08-26T06:38:56.026Z` to `session-ses_fc33.md`?**
   _High betweenness centrality (0.029) - this node is a cross-community bridge._

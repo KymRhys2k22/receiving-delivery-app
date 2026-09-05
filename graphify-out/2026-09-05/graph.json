@@ -2564,15 +2564,15 @@
       "norm_label": "expo"
     },
     {
-      "label": "expo-build-properties",
+      "label": "expo-camera",
       "file_type": "code",
       "source_file": "package.json",
-      "source_location": "L25",
+      "source_location": "L26",
       "_origin": "ast",
-      "id": "package_dependencies_expo_build_properties",
+      "id": "package_dependencies_expo_camera",
       "community": 23,
       "community_name": "dependencies",
-      "norm_label": "expo-build-properties"
+      "norm_label": "expo-camera"
     },
     {
       "label": "lucide-react-native",
@@ -2619,15 +2619,15 @@
       "norm_label": "expo"
     },
     {
-      "label": "expo-build-properties",
+      "label": "expo-camera",
       "file_type": "concept",
       "source_file": "package.json",
-      "source_location": "L25",
+      "source_location": "L26",
       "_origin": "ast",
-      "id": "expo_build_properties",
+      "id": "expo_camera",
       "community": 23,
       "community_name": "dependencies",
-      "norm_label": "expo-build-properties"
+      "norm_label": "expo-camera"
     },
     {
       "label": "lucide-react-native",
@@ -3708,26 +3708,26 @@
       "norm_label": "note: \"app up to date\" alerts are only shown if ismanual === true (user clicked..."
     },
     {
-      "label": "expo-camera",
+      "label": "expo-build-properties",
       "file_type": "code",
       "source_file": "package.json",
-      "source_location": "L26",
+      "source_location": "L25",
       "_origin": "ast",
-      "id": "package_dependencies_expo_camera",
+      "id": "package_dependencies_expo_build_properties",
       "community": 26,
-      "community_name": "expo-camera",
-      "norm_label": "expo-camera"
+      "community_name": "expo-build-properties",
+      "norm_label": "expo-build-properties"
     },
     {
-      "label": "expo-camera",
+      "label": "expo-build-properties",
       "file_type": "concept",
       "source_file": "package.json",
-      "source_location": "L26",
+      "source_location": "L25",
       "_origin": "ast",
-      "id": "expo_camera",
+      "id": "expo_build_properties",
       "community": 26,
-      "community_name": "expo-camera",
-      "norm_label": "expo-camera"
+      "community_name": "expo-build-properties",
+      "norm_label": "expo-build-properties"
     },
     {
       "label": "expo-image",
@@ -5743,15 +5743,15 @@
       "norm_label": "\ud83d\udcdd git commit & tag instructions"
     },
     {
-      "label": "Receiving Scanner App \u2014 Release v7.1 (Build 8)",
+      "label": "Receiving Scanner App \u2014 Release v7.1 (Build 10)",
       "file_type": "document",
       "source_file": "RELEASE.md",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "release_receiving_scanner_app_release_v7_1_build_8",
+      "id": "release_receiving_scanner_app_release_v7_1_build_10",
       "community": 70,
       "community_name": "\ud83d\ude80 What's New in v7.1",
-      "norm_label": "receiving scanner app \u2014 release v7.1 (build 8)"
+      "norm_label": "receiving scanner app \u2014 release v7.1 (build 10)"
     },
     {
       "label": "\ud83d\udce6 Supabase `app_updates` Release Checklist",
@@ -11933,7 +11933,7 @@
       "weight": 1.0,
       "_origin": "ast",
       "source": "release",
-      "target": "release_receiving_scanner_app_release_v7_1_build_8",
+      "target": "release_receiving_scanner_app_release_v7_1_build_10",
       "confidence_score": 1.0
     },
     {
@@ -11954,7 +11954,7 @@
       "source_location": "L10",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "release_receiving_scanner_app_release_v7_1_build_8",
+      "source": "release_receiving_scanner_app_release_v7_1_build_10",
       "target": "release_what_s_new_in_v7_1",
       "confidence_score": 1.0
     },
@@ -11965,7 +11965,7 @@
       "source_location": "L112",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "release_receiving_scanner_app_release_v7_1_build_8",
+      "source": "release_receiving_scanner_app_release_v7_1_build_10",
       "target": "release_verification_commit_details",
       "confidence_score": 1.0
     },
@@ -11976,7 +11976,7 @@
       "source_location": "L56",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "release_receiving_scanner_app_release_v7_1_build_8",
+      "source": "release_receiving_scanner_app_release_v7_1_build_10",
       "target": "release_git_commit_tag_instructions",
       "confidence_score": 1.0
     },
@@ -11987,7 +11987,7 @@
       "source_location": "L75",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "release_receiving_scanner_app_release_v7_1_build_8",
+      "source": "release_receiving_scanner_app_release_v7_1_build_10",
       "target": "release_supabase_app_updates_release_checklist",
       "confidence_score": 1.0
     },

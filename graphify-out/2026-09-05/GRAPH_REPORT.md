@@ -41,7 +41,7 @@
 - dependencies
 - New session - 2026-08-26T06:38:56.026Z
 - appUpdateService.ts
-- expo-camera
+- expo-build-properties
 - expo-image
 - expo-sharing
 - App Releases, Supabase Updates & Notifications Guidelines
@@ -178,7 +178,7 @@ Nodes (3): Application Branding and Visual Identity, Delivery Elephant Mascot, A
 
 ### Community 23 - "dependencies"
 Cohesion: 0.18
-Nodes (11): expo, expo-build-properties, lucide-react-native, dependencies, expo, expo-build-properties, lucide-react-native, react-native-markdown-display (+3 more)
+Nodes (11): expo, expo-camera, lucide-react-native, dependencies, expo, expo-camera, lucide-react-native, react-native-markdown-display (+3 more)
 
 ### Community 24 - "New session - 2026-08-26T06:38:56.026Z"
 Cohesion: 0.02
@@ -224,7 +224,7 @@ Nodes (13): 🏪 1. Multi-Store Isolation for Damage Lost Record (DLR), 🔍 2. 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `dependencies` connect `dependencies` to `devDependencies`, `expo-document-picker`, `expo-file-system`, `expo-camera`, `expo-image`, `expo-sharing`, `expo-status-bar`, `@expo/vector-icons`, `expo-network`, `react`, `@react-native-async-storage/async-storage`, `react-native-gesture-handler`, `react-native-reanimated`, `react-native-safe-area-context`, `expo-haptics`, `react-native-worklets`, `expo-font`, `@react-navigation/native`, `nativewind`, `@supabase/supabase-js`, `xlsx`, `expo-application`, `react-native-screens`, `react-native-keyboard-controller`, `papaparse`, `react-native`, `@expo/ui`, `expo-image-manipulator`, `expo-splash-screen`, `llama.rn`, `expo-notifications`, `react-native-svg`, `@react-navigation/bottom-tabs`?**
+- **Why does `dependencies` connect `dependencies` to `devDependencies`, `expo-document-picker`, `expo-file-system`, `expo-build-properties`, `expo-image`, `expo-sharing`, `expo-status-bar`, `@expo/vector-icons`, `expo-network`, `react`, `@react-native-async-storage/async-storage`, `react-native-gesture-handler`, `react-native-reanimated`, `react-native-safe-area-context`, `expo-haptics`, `react-native-worklets`, `expo-font`, `@react-navigation/native`, `nativewind`, `@supabase/supabase-js`, `xlsx`, `expo-application`, `react-native-screens`, `react-native-keyboard-controller`, `papaparse`, `react-native`, `@expo/ui`, `expo-image-manipulator`, `expo-splash-screen`, `llama.rn`, `expo-notifications`, `react-native-svg`, `@react-navigation/bottom-tabs`?**
   _High betweenness centrality (0.038) - this node is a cross-community bridge._
 - **Why does `New session - 2026-08-26T06:38:56.026Z` connect `New session - 2026-08-26T06:38:56.026Z` to `session-ses_fc33.md`?**
   _High betweenness centrality (0.029) - this node is a cross-community bridge._

@@ -1,6 +1,6 @@
 {
   "name": "receiving-scanner-app",
-  "version": "7.1.0",
+  "version": "7.2.0",
   "scripts": {
     "android": "expo run:android",
     "ios": "expo run:ios",

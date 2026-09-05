@@ -2564,15 +2564,15 @@
       "norm_label": "expo"
     },
     {
-      "label": "expo-camera",
+      "label": "expo-build-properties",
       "file_type": "code",
       "source_file": "package.json",
-      "source_location": "L26",
+      "source_location": "L25",
       "_origin": "ast",
-      "id": "package_dependencies_expo_camera",
+      "id": "package_dependencies_expo_build_properties",
       "community": 23,
       "community_name": "dependencies",
-      "norm_label": "expo-camera"
+      "norm_label": "expo-build-properties"
     },
     {
       "label": "lucide-react-native",
@@ -2619,15 +2619,15 @@
       "norm_label": "expo"
     },
     {
-      "label": "expo-camera",
+      "label": "expo-build-properties",
       "file_type": "concept",
       "source_file": "package.json",
-      "source_location": "L26",
+      "source_location": "L25",
       "_origin": "ast",
-      "id": "expo_camera",
+      "id": "expo_build_properties",
       "community": 23,
       "community_name": "dependencies",
-      "norm_label": "expo-camera"
+      "norm_label": "expo-build-properties"
     },
     {
       "label": "lucide-react-native",
@@ -3708,26 +3708,26 @@
       "norm_label": "note: \"app up to date\" alerts are only shown if ismanual === true (user clicked..."
     },
     {
-      "label": "expo-build-properties",
+      "label": "expo-camera",
       "file_type": "code",
       "source_file": "package.json",
-      "source_location": "L25",
+      "source_location": "L26",
       "_origin": "ast",
-      "id": "package_dependencies_expo_build_properties",
+      "id": "package_dependencies_expo_camera",
       "community": 26,
-      "community_name": "expo-build-properties",
-      "norm_label": "expo-build-properties"
+      "community_name": "expo-camera",
+      "norm_label": "expo-camera"
     },
     {
-      "label": "expo-build-properties",
+      "label": "expo-camera",
       "file_type": "concept",
       "source_file": "package.json",
-      "source_location": "L25",
+      "source_location": "L26",
       "_origin": "ast",
-      "id": "expo_build_properties",
+      "id": "expo_camera",
       "community": 26,
-      "community_name": "expo-build-properties",
-      "norm_label": "expo-build-properties"
+      "community_name": "expo-camera",
+      "norm_label": "expo-camera"
     },
     {
       "label": "expo-image",
@@ -5640,7 +5640,7 @@
       "_origin": "ast",
       "id": "release",
       "community": 70,
-      "community_name": "\ud83d\ude80 What's New in v7.1",
+      "community_name": "\ud83d\ude80 What's New in v7.2",
       "norm_label": "release.md"
     },
     {
@@ -5651,7 +5651,7 @@
       "_origin": "ast",
       "id": "release_1_multi_store_isolation_for_damage_lost_record_dlr",
       "community": 70,
-      "community_name": "\ud83d\ude80 What's New in v7.1",
+      "community_name": "\ud83d\ude80 What's New in v7.2",
       "norm_label": "\ud83c\udfea 1. multi-store isolation for damage lost record (dlr)"
     },
     {
@@ -5662,7 +5662,7 @@
       "_origin": "ast",
       "id": "release_2_intelligent_bidirectional_sku_upc_lookup",
       "community": 70,
-      "community_name": "\ud83d\ude80 What's New in v7.1",
+      "community_name": "\ud83d\ude80 What's New in v7.2",
       "norm_label": "\ud83d\udd0d 2. intelligent bidirectional sku \u2194 upc lookup"
     },
     {
@@ -5673,7 +5673,7 @@
       "_origin": "ast",
       "id": "release_3_standalone_apk_keyboard_modal_ui_fix",
       "community": 70,
-      "community_name": "\ud83d\ude80 What's New in v7.1",
+      "community_name": "\ud83d\ude80 What's New in v7.2",
       "norm_label": "\ud83d\udcf1 3. standalone apk keyboard & modal ui fix"
     },
     {
@@ -5684,7 +5684,7 @@
       "_origin": "ast",
       "id": "release_4_semantic_versioning_in_app_update_service",
       "community": 70,
-      "community_name": "\ud83d\ude80 What's New in v7.1",
+      "community_name": "\ud83d\ude80 What's New in v7.2",
       "norm_label": "\ud83d\udd04 4. semantic versioning in app update service"
     },
     {
@@ -5695,7 +5695,7 @@
       "_origin": "ast",
       "id": "release_5_expo_image_named_import_fix",
       "community": 70,
-      "community_name": "\ud83d\ude80 What's New in v7.1",
+      "community_name": "\ud83d\ude80 What's New in v7.2",
       "norm_label": "\ud83d\uddbc\ufe0f 5. `expo-image` named import fix"
     },
     {
@@ -5706,7 +5706,7 @@
       "_origin": "ast",
       "id": "release_6_assistant_branding_ui_polish",
       "community": 70,
-      "community_name": "\ud83d\ude80 What's New in v7.1",
+      "community_name": "\ud83d\ude80 What's New in v7.2",
       "norm_label": "\ud83c\udfa8 6. assistant branding & ui polish"
     },
     {
@@ -5717,7 +5717,7 @@
       "_origin": "ast",
       "id": "release_7_themeprovider_mount_safety_logbox_cleanup",
       "community": 70,
-      "community_name": "\ud83d\ude80 What's New in v7.1",
+      "community_name": "\ud83d\ude80 What's New in v7.2",
       "norm_label": "\ud83d\udee1\ufe0f 7. themeprovider mount safety & logbox cleanup"
     },
     {
@@ -5728,7 +5728,7 @@
       "_origin": "ast",
       "id": "release_commit_scope_modified_files",
       "community": 70,
-      "community_name": "\ud83d\ude80 What's New in v7.1",
+      "community_name": "\ud83d\ude80 What's New in v7.2",
       "norm_label": "commit scope & modified files"
     },
     {
@@ -5739,19 +5739,19 @@
       "_origin": "ast",
       "id": "release_git_commit_tag_instructions",
       "community": 70,
-      "community_name": "\ud83d\ude80 What's New in v7.1",
+      "community_name": "\ud83d\ude80 What's New in v7.2",
       "norm_label": "\ud83d\udcdd git commit & tag instructions"
     },
     {
-      "label": "Receiving Scanner App \u2014 Release v7.1 (Build 10)",
+      "label": "Receiving Scanner App \u2014 Release v7.2 (Build 10)",
       "file_type": "document",
       "source_file": "RELEASE.md",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "release_receiving_scanner_app_release_v7_1_build_10",
+      "id": "release_receiving_scanner_app_release_v7_2_build_10",
       "community": 70,
-      "community_name": "\ud83d\ude80 What's New in v7.1",
-      "norm_label": "receiving scanner app \u2014 release v7.1 (build 10)"
+      "community_name": "\ud83d\ude80 What's New in v7.2",
+      "norm_label": "receiving scanner app \u2014 release v7.2 (build 10)"
     },
     {
       "label": "\ud83d\udce6 Supabase `app_updates` Release Checklist",
@@ -5761,7 +5761,7 @@
       "_origin": "ast",
       "id": "release_supabase_app_updates_release_checklist",
       "community": 70,
-      "community_name": "\ud83d\ude80 What's New in v7.1",
+      "community_name": "\ud83d\ude80 What's New in v7.2",
       "norm_label": "\ud83d\udce6 supabase `app_updates` release checklist"
     },
     {
@@ -5772,19 +5772,19 @@
       "_origin": "ast",
       "id": "release_verification_commit_details",
       "community": 70,
-      "community_name": "\ud83d\ude80 What's New in v7.1",
+      "community_name": "\ud83d\ude80 What's New in v7.2",
       "norm_label": "\ud83d\udee0\ufe0f verification & commit details"
     },
     {
-      "label": "\ud83d\ude80 What's New in v7.1",
+      "label": "\ud83d\ude80 What's New in v7.2",
       "file_type": "document",
       "source_file": "RELEASE.md",
       "source_location": "L10",
       "_origin": "ast",
-      "id": "release_what_s_new_in_v7_1",
+      "id": "release_what_s_new_in_v7_2",
       "community": 70,
-      "community_name": "\ud83d\ude80 What's New in v7.1",
-      "norm_label": "\ud83d\ude80 what's new in v7.1"
+      "community_name": "\ud83d\ude80 What's New in v7.2",
+      "norm_label": "\ud83d\ude80 what's new in v7.2"
     },
     {
       "label": "tsconfig.json",
@@ -11933,7 +11933,7 @@
       "weight": 1.0,
       "_origin": "ast",
       "source": "release",
-      "target": "release_receiving_scanner_app_release_v7_1_build_10",
+      "target": "release_receiving_scanner_app_release_v7_2_build_10",
       "confidence_score": 1.0
     },
     {
@@ -11954,8 +11954,8 @@
       "source_location": "L10",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "release_receiving_scanner_app_release_v7_1_build_10",
-      "target": "release_what_s_new_in_v7_1",
+      "source": "release_receiving_scanner_app_release_v7_2_build_10",
+      "target": "release_what_s_new_in_v7_2",
       "confidence_score": 1.0
     },
     {
@@ -11965,7 +11965,7 @@
       "source_location": "L112",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "release_receiving_scanner_app_release_v7_1_build_10",
+      "source": "release_receiving_scanner_app_release_v7_2_build_10",
       "target": "release_verification_commit_details",
       "confidence_score": 1.0
     },
@@ -11976,7 +11976,7 @@
       "source_location": "L56",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "release_receiving_scanner_app_release_v7_1_build_10",
+      "source": "release_receiving_scanner_app_release_v7_2_build_10",
       "target": "release_git_commit_tag_instructions",
       "confidence_score": 1.0
     },
@@ -11987,7 +11987,7 @@
       "source_location": "L75",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "release_receiving_scanner_app_release_v7_1_build_10",
+      "source": "release_receiving_scanner_app_release_v7_2_build_10",
       "target": "release_supabase_app_updates_release_checklist",
       "confidence_score": 1.0
     },
@@ -11998,7 +11998,7 @@
       "source_location": "L12",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "release_what_s_new_in_v7_1",
+      "source": "release_what_s_new_in_v7_2",
       "target": "release_1_multi_store_isolation_for_damage_lost_record_dlr",
       "confidence_score": 1.0
     },
@@ -12009,7 +12009,7 @@
       "source_location": "L18",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "release_what_s_new_in_v7_1",
+      "source": "release_what_s_new_in_v7_2",
       "target": "release_2_intelligent_bidirectional_sku_upc_lookup",
       "confidence_score": 1.0
     },
@@ -12020,7 +12020,7 @@
       "source_location": "L29",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "release_what_s_new_in_v7_1",
+      "source": "release_what_s_new_in_v7_2",
       "target": "release_3_standalone_apk_keyboard_modal_ui_fix",
       "confidence_score": 1.0
     },
@@ -12031,7 +12031,7 @@
       "source_location": "L36",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "release_what_s_new_in_v7_1",
+      "source": "release_what_s_new_in_v7_2",
       "target": "release_4_semantic_versioning_in_app_update_service",
       "confidence_score": 1.0
     },
@@ -12042,7 +12042,7 @@
       "source_location": "L41",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "release_what_s_new_in_v7_1",
+      "source": "release_what_s_new_in_v7_2",
       "target": "release_5_expo_image_named_import_fix",
       "confidence_score": 1.0
     },
@@ -12053,7 +12053,7 @@
       "source_location": "L45",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "release_what_s_new_in_v7_1",
+      "source": "release_what_s_new_in_v7_2",
       "target": "release_6_assistant_branding_ui_polish",
       "confidence_score": 1.0
     },
@@ -12064,7 +12064,7 @@
       "source_location": "L50",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "release_what_s_new_in_v7_1",
+      "source": "release_what_s_new_in_v7_2",
       "target": "release_7_themeprovider_mount_safety_logbox_cleanup",
       "confidence_score": 1.0
     },
@@ -14861,5 +14861,5 @@
       "source_file": "assets/splash.png"
     }
   ],
-  "built_at_commit": "c4c4ac6aa239aa1864c5d5adaac5445833548608"
+  "built_at_commit": "2d32c909ea1a2f78bbc361dfe83a49a2c49be224"
 }

@@ -1,13 +1,13 @@
-# Receiving Scanner App — Release v7.1 (Build 10)
+# Receiving Scanner App — Release v7.2 (Build 10)
 
 **Release Date:** September 5, 2026  
-**Tag:** `v7.1` (or `v7.1.0`)  
+**Tag:** `v7.2` (or `v7.2.0`)  
 **Target:** Android (`arm64-v8a` APK)  
 **SDK:** Expo SDK 56 · React Native 0.85.3  
 
 ---
 
-## 🚀 What's New in v7.1
+## 🚀 What's New in v7.2
 
 ### 🏪 1. Multi-Store Isolation for Damage Lost Record (DLR)
 - **Zero Cross-Store Data Leakage**: In `screens/damageLostRecord.tsx`, DLR records are strictly filtered by the authenticated user's active store code (e.g. `202`, `212`, `233`).
@@ -44,7 +44,7 @@
 
 ### 🎨 6. Assistant Branding & UI Polish
 - **Daizo Assistant Header**: Renamed modal header to `Daizo Assistant` with status pills and active store tags.
-- **System Version Sync**: Updated Login screen and Settings Dashboard to display engine status `v7.1`.
+- **System Version Sync**: Updated Login screen and Settings Dashboard to display engine status `v7.2`.
 - **Tailwind Shadow Utility Fix**: Updated ambiguous `shadow-[#e5005c]` to `shadow-[#e5005c]/50` in `screens/damageLostRecord.tsx` to eliminate bundler warnings.
 
 ### 🛡️ 7. ThemeProvider Mount Safety & LogBox Cleanup
@@ -82,9 +82,9 @@ When publishing this release to production:
    ```
 
 2. **Upload APK to GitHub Releases**:
-   - Create release tag: `v7.1.0` (or `v7.1`).
-   - Title: `v7.1.0 — Store-Scoped DLR, Bidirectional SKU/UPC Lookup & Keyboard Fix`.
-   - Attach the built APK: `receiving-scanner-v7.1.0.apk`.
+   - Create release tag: `v7.2.0` (or `v7.2`).
+   - Title: `v7.2.0 — Keyboard Controller Sync & System Version Update`.
+   - Attach the built APK: `receiving-scanner-v7.2.0.apk`.
    - Copy the Direct Download URL of the attached APK.
 
 3. **Register in Supabase**:
@@ -99,9 +99,9 @@ When publishing this release to production:
      released_at
    ) VALUES (
      10,
-     '7.1.0',
-     'v7.1.0: Store-filtered DLR records, bidirectional SKU ↔ UPC lookup in Daizo, and keyboard layout stability improvements.',
-     'https://github.com/KymRhys2k22/receiving-delivery-app/releases/download/v7.1.0/receiving-scanner-v7.1.0.apk',
+     '7.2.0',
+     'v7.2.0: Smooth frame-synced keyboard handling, store-filtered DLR records, and bidirectional SKU ↔ UPC lookup in Daizo.',
+     'https://github.com/KymRhys2k22/receiving-delivery-app/releases/download/v7.2.0/receiving-scanner-v7.2.0.apk',
      false,
      NOW()
    );
@@ -112,6 +112,6 @@ When publishing this release to production:
 ## 🛠️ Verification & Commit Details
 
 - **Android Version Code**: `10`
-- **Application Version Name**: `7.1.0`
+- **Application Version Name**: `7.2.0`
 - **TypeScript**: `npx tsc --noEmit` passing (0 errors)
 - **Live Device Verification**: Tested and verified on connected physical Android device (Redmi Note 10 Pro)
