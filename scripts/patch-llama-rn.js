@@ -1,5 +1,18 @@
 const fs = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
+
+// Ensure prebuilt native binaries (jniLibs, xcframework) are downloaded
+const downloadScript = path.join(__dirname, '..', 'node_modules', 'llama.rn', 'install', 'download-native-artifacts.js');
+const jniLibsDir = path.join(__dirname, '..', 'node_modules', 'llama.rn', 'android', 'src', 'main', 'jniLibs', 'arm64-v8a');
+if (fs.existsSync(downloadScript) && !fs.existsSync(jniLibsDir)) {
+  try {
+    console.log('[patch-llama-rn] Downloading llama.rn prebuilt native artifacts...');
+    execSync(`node "${downloadScript}"`, { stdio: 'inherit' });
+  } catch (err) {
+    console.warn('[patch-llama-rn] Warning: Failed to download prebuilt artifacts:', err.message);
+  }
+}
 
 const pluginPath = path.join(__dirname, '..', 'node_modules', 'llama.rn', 'app.plugin.js');
 if (fs.existsSync(pluginPath)) {
