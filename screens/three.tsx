@@ -102,11 +102,18 @@ export default function SettingsScreen() {
   ] as const;
 
   return (
-    <SafeAreaView className={`flex-1 ${bgClass}`}>
-      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+    <SafeAreaView
+      edges={['top', 'left', 'right']}
+      className={`flex-1 ${bgClass}`}
+      style={{ flex: 1, backgroundColor: isDark ? '#18181b' : '#ffffff' }}>
+      <StatusBar
+        barStyle={isDark ? 'light-content' : 'dark-content'}
+        backgroundColor="transparent"
+        translucent
+      />
 
       {/* Header */}
-      <View className={`flex-row items-center justify-between border-b px-4 py-4 ${headerBgClass}`}>
+      <View className={`flex-row items-center justify-between border-b px-4 py-2.5 ${headerBgClass}`}>
         <View className="flex-row items-center gap-2.5">
           <View className="h-9 w-9 items-center justify-center rounded-xl bg-[#e5005c]/15">
             <Sparkles color="#e5005c" size={20} />
@@ -374,7 +381,7 @@ export default function SettingsScreen() {
             Made by Kym Rhys Mallari
           </Text>
           <Text className={`mt-0.5 font-jetbrains text-[9px] ${textSecondaryClass}`}>
-            Version 7.1 · All Rights Reserved
+            Version 7.2 · All Rights Reserved
           </Text>
         </View>
       </ScrollView>

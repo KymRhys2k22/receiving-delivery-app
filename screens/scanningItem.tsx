@@ -13,6 +13,7 @@ import {
   ScrollView,
   Platform,
   Image,
+  StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -38,7 +39,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react-native';
-import { NavigationContext } from '@react-navigation/native';
+import { NavigationContext, useFocusEffect } from '@react-navigation/native';
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -430,34 +431,41 @@ export default function ScanningItemScreen({ navigation: propNavigation }: { nav
     };
   }, [isHoldScanning, laserAnim]);
 
-  // Reload item manifest and saved progress from AsyncStorage
-  useEffect(() => {
-    const loadSavedProgress = async () => {
-      try {
-        const storedManifest = await AsyncStorage.getItem(MANIFEST_ITEMS_KEY);
-        const storedScanned = await AsyncStorage.getItem(SCANNED_ITEMS_KEY);
-        const storedExpiry = await AsyncStorage.getItem(ITEM_EXPIRY_DATES_KEY);
+  // Reload item manifest and saved progress from AsyncStorage on focus
+  const loadSavedProgress = useCallback(async () => {
+    try {
+      const storedManifest = await AsyncStorage.getItem(MANIFEST_ITEMS_KEY);
+      const storedScanned = await AsyncStorage.getItem(SCANNED_ITEMS_KEY);
+      const storedExpiry = await AsyncStorage.getItem(ITEM_EXPIRY_DATES_KEY);
 
-        if (storedManifest) {
-          const parsedItems = JSON.parse(storedManifest) as ItemManifestRecord[];
-          setItems(parsedItems);
+      if (storedManifest) {
+        const parsedItems = JSON.parse(storedManifest) as ItemManifestRecord[];
+        setItems(parsedItems);
 
-          const parsedScanned = storedScanned
-            ? (JSON.parse(storedScanned) as Record<string, number>)
-            : {};
-          setScannedMap(parsedScanned);
+        const parsedScanned = storedScanned
+          ? (JSON.parse(storedScanned) as Record<string, number>)
+          : {};
+        setScannedMap(parsedScanned);
 
-          if (storedExpiry) {
-            const parsedExpiry = JSON.parse(storedExpiry) as Record<string, string>;
-            setExpiryDateMap(parsedExpiry);
-          }
+        if (storedExpiry) {
+          const parsedExpiry = JSON.parse(storedExpiry) as Record<string, string>;
+          setExpiryDateMap(parsedExpiry);
         }
-      } catch {
-        // Storage read failed — leave list as-is
+      } else {
+        setItems([]);
+        setScannedMap({});
+        setExpiryDateMap({});
       }
-    };
-    loadSavedProgress();
+    } catch {
+      // Storage read failed — leave list as-is
+    }
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadSavedProgress();
+    }, [loadSavedProgress])
+  );
 
   /** Secure case-insensitive item matcher by UPC, SKU, CID NO, or TRF NO returning ALL matches */
   const findAllMatchingItems = (
@@ -1049,7 +1057,15 @@ export default function ScanningItemScreen({ navigation: propNavigation }: { nav
   ]);
 
   return (
-    <SafeAreaView className={`flex-1 ${bgClass}`}>
+    <SafeAreaView
+      edges={['top', 'left', 'right']}
+      className={`flex-1 ${bgClass}`}
+      style={{ flex: 1, backgroundColor: isDark ? '#18181b' : '#ffffff' }}>
+      <StatusBar
+        barStyle={isDark ? 'light-content' : 'dark-content'}
+        backgroundColor="transparent"
+        translucent
+      />
       {/* Manual Entry Modal */}
       <Modal visible={showManual} transparent animationType="fade">
         <View className="flex-1 items-center justify-center bg-black/70 px-6">
@@ -2114,7 +2130,7 @@ export default function ScanningItemScreen({ navigation: propNavigation }: { nav
       </Modal>
 
       {/* Header */}
-      <View className={`flex-row items-center gap-3 border-b px-4 py-4 ${headerBgClass}`}>
+      <View className={`flex-row items-center gap-3 border-b px-4 py-2.5 ${headerBgClass}`}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <ArrowLeft color={isDark ? '#fafafa' : '#18181b'} size={22} />
         </TouchableOpacity>

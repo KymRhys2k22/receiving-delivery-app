@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useContext } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { NavigationContext } from '@react-navigation/native';
+import { NavigationContext, useFocusEffect } from '@react-navigation/native';
 import {
   Box as BoxIcon,
   Package,
@@ -20,6 +20,8 @@ import {
   MANIFEST_ITEMS_KEY,
   SCANNED_ITEMS_KEY,
   SCAN_HISTORY_KEY,
+  ACTIVE_BOX_FILE_KEY,
+  ACTIVE_ITEM_FILE_KEY,
   type ItemManifestRecord,
   type HistorySessionRecord,
   saveSessionToHistory,
@@ -67,9 +69,11 @@ export default function HistoryScreen({ navigation: propNavigation }: { navigati
     }
   }, []);
 
-  useEffect(() => {
-    loadHistory();
-  }, [loadHistory]);
+  useFocusEffect(
+    useCallback(() => {
+      loadHistory();
+    }, [loadHistory])
+  );
 
   /** Resume a historical session */
   const handleResumeSession = async (record: HistorySessionRecord) => {
@@ -80,6 +84,9 @@ export default function HistoryScreen({ navigation: propNavigation }: { navigati
 
         await AsyncStorage.setItem(MANIFEST_CIDS_KEY, JSON.stringify(manifestCids));
         await AsyncStorage.setItem(SCANNED_CIDS_KEY, JSON.stringify(scannedCids));
+        if (record.fileName) {
+          await AsyncStorage.setItem(ACTIVE_BOX_FILE_KEY, record.fileName);
+        }
 
         showToast(`Loaded Box Session: ${record.fileName}`);
         navigation.navigate('ScanningBox' as never);
@@ -89,6 +96,9 @@ export default function HistoryScreen({ navigation: propNavigation }: { navigati
 
         await AsyncStorage.setItem(MANIFEST_ITEMS_KEY, JSON.stringify(manifestItems));
         await AsyncStorage.setItem(SCANNED_ITEMS_KEY, JSON.stringify(scannedMap));
+        if (record.fileName) {
+          await AsyncStorage.setItem(ACTIVE_ITEM_FILE_KEY, record.fileName);
+        }
 
         showToast(`Loaded Item Session: ${record.fileName}`);
         navigation.navigate('ScanningItem' as never);
@@ -160,10 +170,18 @@ export default function HistoryScreen({ navigation: propNavigation }: { navigati
   };
 
   return (
-    <SafeAreaView className={`flex-1 ${bgClass}`}>
+    <SafeAreaView
+      edges={['top', 'left', 'right']}
+      className={`flex-1 ${bgClass}`}
+      style={{ flex: 1, backgroundColor: isDark ? '#18181b' : '#ffffff' }}>
+      <StatusBar
+        barStyle={isDark ? 'light-content' : 'dark-content'}
+        backgroundColor="transparent"
+        translucent
+      />
       {/* Toast Banner */}
       {toastMessage && (
-        <View className="absolute left-4 right-4 top-14 z-50 flex-row items-center gap-2 rounded-xl border border-[#22c55e] bg-[#163e26] p-3 shadow-xl">
+        <View className="absolute left-4 right-4 top-16 z-50 flex-row items-center gap-2 rounded-xl border border-[#22c55e] bg-[#163e26] p-3 shadow-xl">
           <CheckCircle2 color="#22c55e" size={18} />
           <Text className="flex-1 font-jetbrains text-xs font-bold text-[#4ade80]">
             {toastMessage}
@@ -172,7 +190,7 @@ export default function HistoryScreen({ navigation: propNavigation }: { navigati
       )}
 
       {/* Screen Header */}
-      <View className={`flex-row items-center justify-between border-b px-5 py-4 ${headerBgClass}`}>
+      <View className={`flex-row items-center justify-between border-b px-5 py-2.5 ${headerBgClass}`}>
         <View>
           <Text className={`font-hanken text-2xl font-extrabold ${textPrimaryClass}`}>
             Scanning History

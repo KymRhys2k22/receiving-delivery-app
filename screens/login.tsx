@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Text,
   View,
@@ -77,14 +78,22 @@ export default function LoginScreen() {
   const textSecondaryClass = isDark ? 'text-[#a1a1aa]' : 'text-[#71717a]';
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      className={`flex-1 ${bgClass}`}>
-      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-      <ScrollView
-        contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}
-        className={`flex-1 ${bgClass} px-4 pb-40`}
-        keyboardShouldPersistTaps="handled">
+    <SafeAreaView
+      edges={['top', 'bottom', 'left', 'right']}
+      className={`flex-1 ${bgClass}`}
+      style={{ flex: 1, backgroundColor: isDark ? '#131316' : '#f4f4f5' }}>
+      <StatusBar
+        barStyle={isDark ? 'light-content' : 'dark-content'}
+        backgroundColor="transparent"
+        translucent
+      />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        className="flex-1">
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingVertical: 20 }}
+          className={`flex-1 ${bgClass} px-5`}
+          keyboardShouldPersistTaps="handled">
         {/* Terminal Header */}
         <View className="mb-8 items-center">
           <View className="mb-4 items-center justify-center">
@@ -208,5 +217,6 @@ export default function LoginScreen() {
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
+  </SafeAreaView>
   );
 }

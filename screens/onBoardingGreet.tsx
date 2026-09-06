@@ -54,8 +54,14 @@ export default function OnBoardingGreetScreen() {
   const textSecondaryClass = isDark ? 'text-[#a1a1aa]' : 'text-[#71717a]';
 
   return (
-    <SafeAreaView className={`flex-1 ${bgClass}`}>
-      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+    <SafeAreaView
+      className={`flex-1 ${bgClass}`}
+      style={{ flex: 1, backgroundColor: isDark ? '#131316' : '#f4f4f5' }}>
+      <StatusBar
+        barStyle={isDark ? 'light-content' : 'dark-content'}
+        backgroundColor="transparent"
+        translucent
+      />
       <View className="flex-1 justify-between px-6 py-8">
         {/* Top Header / Logo */}
         <View className="mt-4 items-center">

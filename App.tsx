@@ -13,6 +13,14 @@ import { ThemeProvider, useTheme } from './context/theme';
 import { AiAssistantProvider } from './context/aiAssistant';
 import { initAppUpdateChecker } from './services/appUpdateService';
 
+import { cssInterop } from 'nativewind';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'react-native';
+
+cssInterop(SafeAreaView, {
+  className: 'style',
+});
+
 // Ignore specific development warnings
 LogBox.ignoreLogs([
   'InteractionManager has been deprecated',
@@ -35,6 +43,11 @@ function AppContent() {
   return (
     <AuthProvider>
       <AiAssistantProvider>
+        <StatusBar
+          barStyle={isDark ? 'light-content' : 'dark-content'}
+          backgroundColor="transparent"
+          translucent
+        />
         <Navigation theme={theme} />
       </AiAssistantProvider>
     </AuthProvider>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useContext } from 'react';
-import { NavigationContext } from '@react-navigation/native';
+import { NavigationContext, useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Text,
@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
+  StatusBar,
 } from 'react-native';
 import {
   ArrowLeft,
@@ -21,6 +22,8 @@ import {
   Warehouse,
   FileText,
   ChevronRight,
+  RotateCcw,
+  Trash2,
 } from 'lucide-react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import Papa from 'papaparse';
@@ -33,6 +36,8 @@ import {
   MANIFEST_ITEMS_KEY,
   SCANNED_ITEMS_KEY,
   SCAN_HISTORY_KEY,
+  ACTIVE_BOX_FILE_KEY,
+  ACTIVE_ITEM_FILE_KEY,
   type ItemManifestRecord,
   type BoxManifestRecord,
   saveSessionToHistory,
@@ -44,6 +49,8 @@ export {
   MANIFEST_ITEMS_KEY,
   SCANNED_ITEMS_KEY,
   SCAN_HISTORY_KEY,
+  ACTIVE_BOX_FILE_KEY,
+  ACTIVE_ITEM_FILE_KEY,
   type ItemManifestRecord,
   type BoxManifestRecord,
 };
@@ -63,20 +70,26 @@ interface Box {
 
 function SessionBanner({
   title,
+  fileName,
   scanned,
   total,
+  subtitle,
   icon: Icon,
   accent,
   onResume,
   onReset,
+  onClear,
 }: {
   title: string;
+  fileName?: string;
   scanned: number;
   total: number;
+  subtitle?: string;
   icon: React.ComponentType<{ color: string; size: number }>;
   accent: string;
   onResume: () => void;
   onReset: () => void;
+  onClear?: () => void;
 }) {
   const { isDark } = useTheme();
   const pct = total > 0 ? Math.min(100, Math.round((scanned / total) * 100)) : 0;
@@ -87,31 +100,41 @@ function SessionBanner({
       className="mb-4 overflow-hidden rounded-xl border p-4"
       style={{ borderColor: `${accent}55`, backgroundColor: `${accent}12` }}>
       <View className="mb-2.5 flex-row items-center justify-between">
-        <View className="flex-row items-center gap-2">
+        <View className="flex-row items-center gap-2.5">
           <View
-            className="h-8 w-8 items-center justify-center rounded-lg"
+            className="h-9 w-9 items-center justify-center rounded-lg"
             style={{ backgroundColor: `${accent}26` }}>
-            <Icon color={accent} size={16} />
+            <Icon color={accent} size={18} />
           </View>
-          <Text
-            className={`font-hanken text-sm font-bold ${isDark ? 'text-[#fafafa]' : 'text-[#18181b]'}`}>
-            {title}
-          </Text>
+          <View className="max-w-[190px]">
+            <Text
+              className={`font-hanken text-sm font-bold ${isDark ? 'text-[#fafafa]' : 'text-[#18181b]'}`}>
+              {title}
+            </Text>
+            {fileName ? (
+              <Text
+                className="font-jetbrains text-[10px] text-[#a1a1aa]"
+                numberOfLines={1}
+                ellipsizeMode="middle">
+                📄 {fileName}
+              </Text>
+            ) : null}
+          </View>
         </View>
         <View className="flex-row items-center gap-2">
           {complete && (
-            <View className="rounded-full bg-[#22c55e]/20 px-1.5 py-0.5">
-              <Text className="font-jetbrains text-[8px] font-bold text-[#22c55e]">DONE</Text>
+            <View className="rounded-full bg-[#22c55e]/20 px-2 py-0.5">
+              <Text className="font-jetbrains text-[8px] font-bold text-[#22c55e]">COMPLETED</Text>
             </View>
           )}
           <Text className="font-jetbrains text-[11px] font-bold" style={{ color: accent }}>
-            {scanned}/{total}
+            {scanned}/{total} ({pct}%)
           </Text>
         </View>
       </View>
 
       <View
-        className="mb-3 h-1.5 overflow-hidden rounded-full"
+        className="mb-3 h-2 overflow-hidden rounded-full"
         style={{ backgroundColor: `${accent}26` }}>
         <View
           style={{ width: `${pct}%`, backgroundColor: accent }}
@@ -123,7 +146,8 @@ function SessionBanner({
         className={`mb-3 font-hanken text-[11px] ${isDark ? 'text-[#a1a1aa]' : 'text-[#71717a]'}`}>
         {complete
           ? 'All entries in this manifest are scanned. Resume to review or reset the session.'
-          : 'Saved progress detected — continue scanning right where you left off.'}
+          : subtitle ||
+            `Saved progress: ${scanned} of ${total} scanned (${Math.max(0, total - scanned)} remaining).`}
       </Text>
 
       <View className="flex-row items-center gap-2">
@@ -139,10 +163,21 @@ function SessionBanner({
         </TouchableOpacity>
         <TouchableOpacity
           onPress={onReset}
-          className="rounded-lg border px-4 py-2.5"
+          activeOpacity={0.7}
+          className="flex-row items-center gap-1.5 rounded-lg border px-3 py-2.5"
           style={{ borderColor: `${accent}44` }}>
+          <RotateCcw color="#a1a1aa" size={13} />
           <Text className="font-jetbrains text-xs font-semibold text-[#a1a1aa]">RESET</Text>
         </TouchableOpacity>
+        {onClear && (
+          <TouchableOpacity
+            onPress={onClear}
+            activeOpacity={0.7}
+            className="flex-row items-center gap-1 rounded-lg border border-[#ef4444]/40 bg-[#ef4444]/10 px-3 py-2.5">
+            <Trash2 color="#ef4444" size={13} />
+            <Text className="font-jetbrains text-xs font-semibold text-[#ef4444]">CLEAR</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
@@ -177,6 +212,13 @@ const INITIAL_BOXES: Box[] = [
   },
 ];
 
+interface ProgressState {
+  scanned: number;
+  total: number;
+  fileName?: string;
+  itemCount?: number;
+}
+
 export default function TabOneScreen({ navigation: propNavigation }: { navigation?: any } = {}) {
   const contextNavigation = useContext(NavigationContext);
   const navigation = propNavigation || contextNavigation;
@@ -205,7 +247,7 @@ export default function TabOneScreen({ navigation: propNavigation }: { navigatio
     null
   );
 
-  // Upload manifest simulation
+  // Upload manifest state
   const [isUploading, setIsUploading] = useState(false);
 
   const showToast = (text: string, type: 'success' | 'error' | 'info' = 'info') => {
@@ -222,55 +264,58 @@ export default function TabOneScreen({ navigation: propNavigation }: { navigatio
   }, [toast]);
 
   // Active session scanning progress
-  const [savedProgress, setSavedProgress] = useState<{
-    scanned: number;
-    total: number;
-  } | null>(null);
+  const [savedProgress, setSavedProgress] = useState<ProgressState | null>(null);
+  const [savedItemProgress, setSavedItemProgress] = useState<ProgressState | null>(null);
 
-  const [savedItemProgress, setSavedItemProgress] = useState<{
-    scanned: number;
-    total: number;
-  } | null>(null);
+  const checkProgress = useCallback(async () => {
+    try {
+      // 1. Box CID Progress
+      const storedManifest = await AsyncStorage.getItem(MANIFEST_CIDS_KEY);
+      const storedScanned = await AsyncStorage.getItem(SCANNED_CIDS_KEY);
+      const storedBoxFileName = await AsyncStorage.getItem(ACTIVE_BOX_FILE_KEY);
 
-  useEffect(() => {
-    const checkProgress = async () => {
-      try {
-        // 1. Box CID Progress
-        const storedManifest = await AsyncStorage.getItem(MANIFEST_CIDS_KEY);
-        const storedScanned = await AsyncStorage.getItem(SCANNED_CIDS_KEY);
+      if (storedManifest) {
+        const rawManifest = JSON.parse(storedManifest) as any[];
+        const rawScanned = storedScanned ? (JSON.parse(storedScanned) as any[]) : [];
 
-        if (storedManifest) {
-          const rawManifest = JSON.parse(storedManifest) as any[];
-          const rawScanned = storedScanned ? (JSON.parse(storedScanned) as any[]) : [];
+        const getCidStr = (item: any) =>
+          (typeof item === 'string' ? item : item?.cid || '').trim();
 
-          const getCidStr = (item: any) =>
-            (typeof item === 'string' ? item : item?.cid || '').trim();
+        const uniqueManifest = Array.from(
+          new Set((Array.isArray(rawManifest) ? rawManifest : []).map(getCidStr).filter(Boolean))
+        );
+        const uniqueScanned = Array.from(
+          new Set((Array.isArray(rawScanned) ? rawScanned : []).map(getCidStr).filter(Boolean))
+        );
 
-          const uniqueManifest = Array.from(
-            new Set((Array.isArray(rawManifest) ? rawManifest : []).map(getCidStr).filter(Boolean))
-          );
-          const uniqueScanned = Array.from(
-            new Set((Array.isArray(rawScanned) ? rawScanned : []).map(getCidStr).filter(Boolean))
-          );
+        if (uniqueManifest.length > 0) {
+          const manifestCidSet = new Set(uniqueManifest.map((c) => c.toUpperCase()));
+          const matchedScanned = uniqueScanned.filter((c) => manifestCidSet.has(c.toUpperCase()));
 
           setSavedProgress({
-            scanned: uniqueScanned.length,
+            scanned: Math.min(matchedScanned.length, uniqueManifest.length),
             total: uniqueManifest.length,
+            fileName: storedBoxFileName || undefined,
           });
         } else {
           setSavedProgress(null);
         }
+      } else {
+        setSavedProgress(null);
+      }
 
-        // 2. Item Progress
-        const storedItemManifest = await AsyncStorage.getItem(MANIFEST_ITEMS_KEY);
-        const storedScannedItems = await AsyncStorage.getItem(SCANNED_ITEMS_KEY);
+      // 2. Item Progress
+      const storedItemManifest = await AsyncStorage.getItem(MANIFEST_ITEMS_KEY);
+      const storedScannedItems = await AsyncStorage.getItem(SCANNED_ITEMS_KEY);
+      const storedItemFileName = await AsyncStorage.getItem(ACTIVE_ITEM_FILE_KEY);
 
-        if (storedItemManifest) {
-          const manifestItems = JSON.parse(storedItemManifest) as ItemManifestRecord[];
-          const scannedMap = storedScannedItems
-            ? (JSON.parse(storedScannedItems) as Record<string, number>)
-            : {};
+      if (storedItemManifest) {
+        const manifestItems = JSON.parse(storedItemManifest) as ItemManifestRecord[];
+        const scannedMap = storedScannedItems
+          ? (JSON.parse(storedScannedItems) as Record<string, number>)
+          : {};
 
+        if (Array.isArray(manifestItems) && manifestItems.length > 0) {
           const totalQty = manifestItems.reduce((sum, item) => sum + (item.qty || 1), 0);
           const scannedQty = manifestItems.reduce(
             (sum, item) => sum + (scannedMap[item.id] || 0),
@@ -278,24 +323,35 @@ export default function TabOneScreen({ navigation: propNavigation }: { navigatio
           );
 
           setSavedItemProgress({
-            scanned: scannedQty,
+            scanned: Math.min(scannedQty, totalQty),
             total: totalQty,
+            fileName: storedItemFileName || undefined,
+            itemCount: manifestItems.length,
           });
         } else {
           setSavedItemProgress(null);
         }
-      } catch {
-        setSavedProgress(null);
+      } else {
         setSavedItemProgress(null);
       }
-    };
-    checkProgress();
+    } catch (err) {
+      console.error('[checkProgress] Error reading progress:', err);
+      setSavedProgress(null);
+      setSavedItemProgress(null);
+    }
   }, []);
+
+  // Check progress immediately on focus (runs on mount, tab switches, and navigating back from scanners)
+  useFocusEffect(
+    useCallback(() => {
+      checkProgress();
+    }, [checkProgress])
+  );
 
   /**
    * Step 1 — Upload Box Manifest CSV.
    * Parses with PapaParse, extracts the "CID NO" column,
-   * and persists the list to AsyncStorage for scanningBox.tsx.
+   * persists the list to AsyncStorage, updates state instantly, and opens Box Scanner.
    */
   const handleUpload = async () => {
     try {
@@ -308,17 +364,18 @@ export default function TabOneScreen({ navigation: propNavigation }: { navigatio
         setIsUploading(true);
         const asset = result.assets[0];
 
-        // Read raw CSV text — fetch() works with file://, content:// and any picker URI
-        const csvText = await fetch(asset.uri).then((r) => r.text());
+        // Read raw CSV text — strip BOM
+        const rawCsvText = await fetch(asset.uri).then((r) => r.text());
+        const csvText = rawCsvText.replace(/^\uFEFF/, '').trim();
 
-        // Parse with PapaParse — explicit comma delimiter avoids auto-detect issues
+        // Parse with PapaParse
         const parsed = Papa.parse<Record<string, string>>(csvText, {
           header: true,
-          skipEmptyLines: true,
-          delimiter: ',',
+          skipEmptyLines: 'greedy',
+          transformHeader: (h) => h.trim().replace(/^[\uFEFF\xA0]+|[\uFEFF\xA0]+$/g, ''),
         });
 
-        // Only abort on fatal errors (not the non-fatal "auto-detect" warning)
+        // Only abort on fatal errors (not delimiter detection warnings)
         const fatalErrors = parsed.errors.filter((e) => e.type !== 'Delimiter');
         if (fatalErrors.length > 0) {
           setIsUploading(false);
@@ -326,7 +383,7 @@ export default function TabOneScreen({ navigation: propNavigation }: { navigatio
           return;
         }
 
-        // Extract the "CID NO" (1st column) and "TRF NO" (2nd column)
+        // Extract the "CID NO" and "TRF NO"
         const seenCids = new Set<string>();
         const boxList: BoxManifestRecord[] = [];
 
@@ -335,16 +392,38 @@ export default function TabOneScreen({ navigation: propNavigation }: { navigatio
             const k = Object.keys(r).find((key) =>
               targets.some((t) => t.toUpperCase() === key.trim().toUpperCase())
             );
-            return k ? r[k].trim() : '';
+            return k ? (r[k] || '').trim() : '';
           };
 
           const cid =
-            getRowVal(row, ['CID NO', 'CID', 'CID_NO', 'CIDNO', 'BOX CID', 'BOX CID NO']) ||
-            (parsed.meta.fields && parsed.meta.fields[0] ? (row[parsed.meta.fields[0]] || '').trim() : '');
+            getRowVal(row, [
+              'CID NO',
+              'CID',
+              'CID_NO',
+              'CIDNO',
+              'BOX CID',
+              'BOX CID NO',
+              'BOX NO',
+              'BOX',
+              'CONTAINER',
+            ]) ||
+            (parsed.meta.fields && parsed.meta.fields[0]
+              ? (row[parsed.meta.fields[0]] || '').trim()
+              : '');
 
           const trf =
-            getRowVal(row, ['TRF NO', 'TRF', 'TRF_NO', 'TRFNO', 'TRANSFER NO', 'TRANSFER']) ||
-            (parsed.meta.fields && parsed.meta.fields.length > 1 ? (row[parsed.meta.fields[1]] || '').trim() : '');
+            getRowVal(row, [
+              'TRF NO',
+              'TRF',
+              'TRF_NO',
+              'TRFNO',
+              'TRANSFER NO',
+              'TRANSFER',
+              'TRF NUMBER',
+            ]) ||
+            (parsed.meta.fields && parsed.meta.fields.length > 1
+              ? (row[parsed.meta.fields[1]] || '').trim()
+              : '');
 
           if (cid) {
             const upper = cid.toUpperCase();
@@ -364,6 +443,7 @@ export default function TabOneScreen({ navigation: propNavigation }: { navigatio
         // Reset scanned CIDs and persist new manifest to AsyncStorage
         await AsyncStorage.removeItem(SCANNED_CIDS_KEY);
         await AsyncStorage.setItem(MANIFEST_CIDS_KEY, JSON.stringify(boxList));
+        await AsyncStorage.setItem(ACTIVE_BOX_FILE_KEY, asset.name);
 
         // Save session to History (for History tab grouped by date)
         await saveSessionToHistory({
@@ -373,6 +453,13 @@ export default function TabOneScreen({ navigation: propNavigation }: { navigatio
           scannedCount: 0,
           manifestData: boxList,
           scannedData: [],
+        });
+
+        // Immediately update state in screens/one.tsx so it appears instantaneously!
+        setSavedProgress({
+          scanned: 0,
+          total: boxList.length,
+          fileName: asset.name,
         });
 
         // Reset boxes to pending
@@ -386,6 +473,9 @@ export default function TabOneScreen({ navigation: propNavigation }: { navigatio
 
         setIsUploading(false);
         showToast(`Box manifest uploaded: ${boxList.length} boxes from ${asset.name}`, 'success');
+
+        // Refresh progress immediately
+        await checkProgress();
 
         // Navigate to ScanningBox so the user can start scanning immediately
         navigation.navigate('ScanningBox' as never);
@@ -401,7 +491,7 @@ export default function TabOneScreen({ navigation: propNavigation }: { navigatio
   /**
    * Step 2 — Upload Scanning Items CSV.
    * Schema: CID NO, TRF NO, UPC, SKU, DESCRIPTION, QTY
-   * Persists items to AsyncStorage for scanningItem.tsx.
+   * Persists items to AsyncStorage, updates state instantly, and opens Item Scanner.
    */
   const handleUploadScanningData = async () => {
     try {
@@ -414,12 +504,13 @@ export default function TabOneScreen({ navigation: propNavigation }: { navigatio
         setIsUploading(true);
         const asset = result.assets[0];
 
-        const csvText = await fetch(asset.uri).then((r) => r.text());
+        const rawCsvText = await fetch(asset.uri).then((r) => r.text());
+        const csvText = rawCsvText.replace(/^\uFEFF/, '').trim();
 
         const parsed = Papa.parse<Record<string, string>>(csvText, {
           header: true,
-          skipEmptyLines: true,
-          delimiter: ',',
+          skipEmptyLines: 'greedy',
+          transformHeader: (h) => h.trim().replace(/^[\uFEFF\xA0]+|[\uFEFF\xA0]+$/g, ''),
         });
 
         const fatalErrors = parsed.errors.filter((e) => e.type !== 'Delimiter');
@@ -432,20 +523,58 @@ export default function TabOneScreen({ navigation: propNavigation }: { navigatio
         const itemsList: ItemManifestRecord[] = [];
 
         parsed.data.forEach((row, idx) => {
-          const getRowVal = (r: Record<string, string>, target: string) => {
-            const k = Object.keys(r).find(
-              (key) => key.trim().toUpperCase() === target.toUpperCase()
+          const getRowVal = (r: Record<string, string>, targets: string[]) => {
+            const k = Object.keys(r).find((key) =>
+              targets.some((t) => t.toUpperCase() === key.trim().toUpperCase())
             );
-            return k ? r[k].trim() : '';
+            return k ? (r[k] || '').trim() : '';
           };
 
-          const cid = getRowVal(row, 'CID NO') || getRowVal(row, 'CID');
-          const trf = getRowVal(row, 'TRF NO') || getRowVal(row, 'TRF');
-          const upc = getRowVal(row, 'UPC');
-          const sku = getRowVal(row, 'SKU');
-          const description = getRowVal(row, 'DESCRIPTION');
-          const rawQty = getRowVal(row, 'QTY');
-          const qty = parseInt(rawQty, 10) || 1;
+          const cid = getRowVal(row, ['CID NO', 'CID', 'CID_NO', 'CIDNO', 'BOX CID', 'BOX NO']);
+          const trf = getRowVal(row, [
+            'TRF NO',
+            'TRF',
+            'TRF_NO',
+            'TRFNO',
+            'TRANSFER NO',
+            'TRANSFER',
+          ]);
+          const upc = getRowVal(row, [
+            'UPC',
+            'UPC NO',
+            'UPC_NO',
+            'BARCODE',
+            'EAN',
+            'EAN13',
+            'UPC CODE',
+          ]);
+          const sku = getRowVal(row, [
+            'SKU',
+            'SKU NO',
+            'SKU_NO',
+            'ITEM CODE',
+            'ITEM NO',
+            'ITEM SKU',
+            'PRODUCT CODE',
+          ]);
+          const description = getRowVal(row, [
+            'DESCRIPTION',
+            'DESC',
+            'ITEM DESCRIPTION',
+            'PRODUCT NAME',
+            'PRODUCT DESCRIPTION',
+            'NAME',
+          ]);
+          const rawQty = getRowVal(row, [
+            'QTY',
+            'QUANTITY',
+            'EXPECTED QTY',
+            'TOTAL QTY',
+            'COUNT',
+            'AMOUNT',
+          ]);
+          const parsedQty = parseInt(rawQty, 10);
+          const qty = isNaN(parsedQty) || parsedQty <= 0 ? 1 : parsedQty;
 
           if (cid || trf || upc || sku || description) {
             itemsList.push({
@@ -455,7 +584,7 @@ export default function TabOneScreen({ navigation: propNavigation }: { navigatio
               upc,
               sku,
               description,
-              qty: Math.max(1, qty),
+              qty,
             });
           }
         });
@@ -471,6 +600,7 @@ export default function TabOneScreen({ navigation: propNavigation }: { navigatio
 
         await AsyncStorage.removeItem(SCANNED_ITEMS_KEY);
         await AsyncStorage.setItem(MANIFEST_ITEMS_KEY, JSON.stringify(itemsList));
+        await AsyncStorage.setItem(ACTIVE_ITEM_FILE_KEY, asset.name);
 
         // Save session to History (for History tab grouped by date)
         const totalQty = itemsList.reduce((sum, item) => sum + (item.qty || 1), 0);
@@ -483,11 +613,22 @@ export default function TabOneScreen({ navigation: propNavigation }: { navigatio
           scannedData: {},
         });
 
+        // Immediately update state in screens/one.tsx so it appears instantaneously!
+        setSavedItemProgress({
+          scanned: 0,
+          total: totalQty,
+          fileName: asset.name,
+          itemCount: itemsList.length,
+        });
+
         setIsUploading(false);
         showToast(
-          `Item manifest uploaded: ${itemsList.length} items from ${asset.name}`,
+          `Item manifest uploaded: ${itemsList.length} items (${totalQty} total qty) from ${asset.name}`,
           'success'
         );
+
+        // Refresh progress immediately
+        await checkProgress();
 
         navigation.navigate('ScanningItem' as never);
       }
@@ -559,12 +700,20 @@ export default function TabOneScreen({ navigation: propNavigation }: { navigatio
   const isBoxComplete = totalExpected > 0 && totalScanned === totalExpected;
 
   return (
-    <SafeAreaView className={`flex-1 ${bgClass}`}>
+    <SafeAreaView
+      edges={['top', 'left', 'right']}
+      className={`flex-1 ${bgClass}`}
+      style={{ flex: 1, backgroundColor: isDark ? '#18181b' : '#ffffff' }}>
+      <StatusBar
+        barStyle={isDark ? 'light-content' : 'dark-content'}
+        backgroundColor="transparent"
+        translucent
+      />
       {/* View Toast Notification */}
       {toast && (
         <View
           style={{ zIndex: 999 }}
-          className={`absolute left-4 right-4 top-12 flex-row items-center gap-2.5 rounded-xl border p-3 ${
+          className={`absolute left-4 right-4 top-16 flex-row items-center gap-2.5 rounded-xl border p-3 ${
             toast.type === 'success'
               ? 'border-[#22c55e] bg-[#22c55e]/10'
               : toast.type === 'error'
@@ -595,7 +744,7 @@ export default function TabOneScreen({ navigation: propNavigation }: { navigatio
         <View className="flex-1">
           {/* Custom Header */}
           <View
-            className={`flex-row items-center justify-between border-b px-4 py-3.5 ${headerBgClass}`}>
+            className={`flex-row items-center justify-between border-b px-4 py-2.5 ${headerBgClass}`}>
             <View className="flex-row items-center gap-2.5">
               <View className="h-9 w-9 items-center justify-center rounded-xl bg-[#e5005c]/15">
                 <Warehouse color="#e5005c" size={20} />
@@ -671,6 +820,7 @@ export default function TabOneScreen({ navigation: propNavigation }: { navigatio
             {savedProgress && savedProgress.total > 0 && (
               <SessionBanner
                 title="Box (CID) Session"
+                fileName={savedProgress.fileName}
                 scanned={savedProgress.scanned}
                 total={savedProgress.total}
                 icon={BoxIcon}
@@ -678,8 +828,15 @@ export default function TabOneScreen({ navigation: propNavigation }: { navigatio
                 onResume={() => navigation.navigate('ScanningBox' as never)}
                 onReset={async () => {
                   await AsyncStorage.removeItem(SCANNED_CIDS_KEY);
-                  setSavedProgress((prev) => (prev ? { ...prev, scanned: 0 } : null));
-                  showToast('Scanning progress reset', 'info');
+                  await checkProgress();
+                  showToast('Box scanning progress reset', 'info');
+                }}
+                onClear={async () => {
+                  await AsyncStorage.removeItem(MANIFEST_CIDS_KEY);
+                  await AsyncStorage.removeItem(SCANNED_CIDS_KEY);
+                  await AsyncStorage.removeItem(ACTIVE_BOX_FILE_KEY);
+                  await checkProgress();
+                  showToast('Box manifest cleared', 'info');
                 }}
               />
             )}
@@ -688,15 +845,28 @@ export default function TabOneScreen({ navigation: propNavigation }: { navigatio
             {savedItemProgress && savedItemProgress.total > 0 && (
               <SessionBanner
                 title="Item Scan Session"
+                fileName={savedItemProgress.fileName}
                 scanned={savedItemProgress.scanned}
                 total={savedItemProgress.total}
+                subtitle={
+                  savedItemProgress.itemCount
+                    ? `${savedItemProgress.scanned} of ${savedItemProgress.total} total units scanned across ${savedItemProgress.itemCount} item rows.`
+                    : undefined
+                }
                 icon={Scan}
                 accent="#e5005c"
                 onResume={() => navigation.navigate('ScanningItem' as never)}
                 onReset={async () => {
                   await AsyncStorage.removeItem(SCANNED_ITEMS_KEY);
-                  setSavedItemProgress((prev) => (prev ? { ...prev, scanned: 0 } : null));
+                  await checkProgress();
                   showToast('Item scanning progress reset', 'info');
+                }}
+                onClear={async () => {
+                  await AsyncStorage.removeItem(MANIFEST_ITEMS_KEY);
+                  await AsyncStorage.removeItem(SCANNED_ITEMS_KEY);
+                  await AsyncStorage.removeItem(ACTIVE_ITEM_FILE_KEY);
+                  await checkProgress();
+                  showToast('Item manifest cleared', 'info');
                 }}
               />
             )}
@@ -723,6 +893,13 @@ export default function TabOneScreen({ navigation: propNavigation }: { navigatio
                   <View className="rounded border border-[#3f3f46]/50 bg-black/20 px-1.5 py-0.5">
                     <Text className="font-jetbrains text-[8px] font-bold text-[#a1a1aa]">.CSV</Text>
                   </View>
+                  {savedProgress && savedProgress.total > 0 && (
+                    <View className="rounded-full bg-[#ff80ab]/20 px-2 py-0.5">
+                      <Text className="font-jetbrains text-[8px] font-bold text-[#ff80ab]">
+                        {savedProgress.total} BOXES LOADED
+                      </Text>
+                    </View>
+                  )}
                 </View>
                 <Text className={`font-hanken text-sm font-bold ${textPrimaryClass}`}>
                   Upload Box Manifest
@@ -730,7 +907,9 @@ export default function TabOneScreen({ navigation: propNavigation }: { navigatio
                 <Text
                   className={`mt-0.5 font-hanken text-[11px] ${textSecondaryClass}`}
                   numberOfLines={1}>
-                  CID NO, TRF NO columns · Box-level receiving
+                  {savedProgress?.fileName
+                    ? `Current: ${savedProgress.fileName}`
+                    : 'CID NO, TRF NO columns · Box-level receiving'}
                 </Text>
               </View>
               <View className="h-8 w-8 items-center justify-center rounded-full bg-[#ff80ab]/15">
@@ -761,6 +940,13 @@ export default function TabOneScreen({ navigation: propNavigation }: { navigatio
                   <View className="rounded border border-[#3f3f46]/50 bg-black/20 px-1.5 py-0.5">
                     <Text className="font-jetbrains text-[8px] font-bold text-[#a1a1aa]">.CSV</Text>
                   </View>
+                  {savedItemProgress && savedItemProgress.total > 0 && (
+                    <View className="rounded-full bg-[#e5005c]/20 px-2 py-0.5">
+                      <Text className="font-jetbrains text-[8px] font-bold text-[#e5005c]">
+                        {savedItemProgress.total} TOTAL UNITS LOADED
+                      </Text>
+                    </View>
+                  )}
                 </View>
                 <Text className={`font-hanken text-sm font-bold ${textPrimaryClass}`}>
                   Upload Scanning Items
@@ -768,7 +954,9 @@ export default function TabOneScreen({ navigation: propNavigation }: { navigatio
                 <Text
                   className={`mt-0.5 font-hanken text-[11px] ${textSecondaryClass}`}
                   numberOfLines={1}>
-                  CID · TRF · UPC · SKU · DESCRIPTION · QTY
+                  {savedItemProgress?.fileName
+                    ? `Current: ${savedItemProgress.fileName}`
+                    : 'CID · TRF · UPC · SKU · DESCRIPTION · QTY'}
                 </Text>
               </View>
               <View className="h-8 w-8 items-center justify-center rounded-full bg-[#e5005c]/15">
@@ -787,7 +975,7 @@ export default function TabOneScreen({ navigation: propNavigation }: { navigatio
       {currentMode === 'verify_items' && activeBox && (
         <View className="flex-1">
           {/* Header */}
-          <View className={`flex-row items-center gap-3 border-b px-4 py-4 ${headerBgClass}`}>
+          <View className={`flex-row items-center gap-3 border-b px-4 py-2.5 ${headerBgClass}`}>
             <TouchableOpacity onPress={() => setCurrentMode('dashboard')}>
               <ArrowLeft color={isDark ? '#fafafa' : '#18181b'} size={22} />
             </TouchableOpacity>

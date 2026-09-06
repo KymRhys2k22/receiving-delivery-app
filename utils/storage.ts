@@ -7,6 +7,8 @@ export const MANIFEST_ITEMS_KEY = 'manifest_items';
 export const SCANNED_ITEMS_KEY = 'scanned_items';
 export const ITEM_EXPIRY_DATES_KEY = 'item_expiry_dates';
 export const SCAN_HISTORY_KEY = 'scan_history';
+export const ACTIVE_BOX_FILE_KEY = 'active_box_filename';
+export const ACTIVE_ITEM_FILE_KEY = 'active_item_filename';
 
 // Shared Interfaces
 export interface BoxManifestRecord {

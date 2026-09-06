@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   FlatList,
   PanResponder,
+  StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -23,7 +24,7 @@ import {
   ChevronDown,
   Bluetooth,
 } from 'lucide-react-native';
-import { NavigationContext } from '@react-navigation/native';
+import { NavigationContext, useFocusEffect } from '@react-navigation/native';
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -307,32 +308,39 @@ export default function ScanningBoxScreen({ navigation: propNavigation }: { navi
     return Array.from(map.values());
   };
 
-  // Reload manifest and saved scanned CIDs from AsyncStorage
-  useEffect(() => {
-    const loadSavedProgress = async () => {
-      try {
-        const storedManifest = await AsyncStorage.getItem(MANIFEST_CIDS_KEY);
-        const storedScanned = await AsyncStorage.getItem(SCANNED_CIDS_KEY);
+  // Reload manifest and saved scanned CIDs from AsyncStorage on focus
+  const loadSavedProgress = useCallback(async () => {
+    try {
+      const storedManifest = await AsyncStorage.getItem(MANIFEST_CIDS_KEY);
+      const storedScanned = await AsyncStorage.getItem(SCANNED_CIDS_KEY);
 
-        if (storedManifest) {
-          const rawManifest = JSON.parse(storedManifest) as any[];
-          const uniqueBoxes = deduplicateBoxes(Array.isArray(rawManifest) ? rawManifest : []);
-          masterCidsRef.current = uniqueBoxes;
+      if (storedManifest) {
+        const rawManifest = JSON.parse(storedManifest) as any[];
+        const uniqueBoxes = deduplicateBoxes(Array.isArray(rawManifest) ? rawManifest : []);
+        masterCidsRef.current = uniqueBoxes;
 
-          const rawScanned = storedScanned ? (JSON.parse(storedScanned) as any[]) : [];
-          const scannedList = deduplicateBoxes(Array.isArray(rawScanned) ? rawScanned : []);
-          setScannedBoxes(scannedList);
+        const rawScanned = storedScanned ? (JSON.parse(storedScanned) as any[]) : [];
+        const scannedList = deduplicateBoxes(Array.isArray(rawScanned) ? rawScanned : []);
+        setScannedBoxes(scannedList);
 
-          const scannedSet = new Set(scannedList.map((s) => s.cid.toUpperCase()));
-          const remainingUnscanned = uniqueBoxes.filter((c) => !scannedSet.has(c.cid.toUpperCase()));
-          setUnscannedBoxes(remainingUnscanned);
-        }
-      } catch {
-        // Storage read failed — leave list as-is
+        const scannedSet = new Set(scannedList.map((s) => s.cid.toUpperCase()));
+        const remainingUnscanned = uniqueBoxes.filter((c) => !scannedSet.has(c.cid.toUpperCase()));
+        setUnscannedBoxes(remainingUnscanned);
+      } else {
+        masterCidsRef.current = [];
+        setScannedBoxes([]);
+        setUnscannedBoxes([]);
       }
-    };
-    loadSavedProgress();
+    } catch {
+      // Storage read failed — leave list as-is
+    }
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadSavedProgress();
+    }, [loadSavedProgress])
+  );
 
   const totalBoxes = unscannedBoxes.length + scannedBoxes.length;
   const progressPct = totalBoxes > 0 ? Math.round((scannedBoxes.length / totalBoxes) * 100) : 0;
@@ -521,7 +529,15 @@ export default function ScanningBoxScreen({ navigation: propNavigation }: { navi
   const displayBoxes = activeTab === 'unscanned' ? unscannedBoxes : scannedBoxes;
 
   return (
-    <SafeAreaView className={`flex-1 ${bgClass}`}>
+    <SafeAreaView
+      edges={['top', 'left', 'right']}
+      className={`flex-1 ${bgClass}`}
+      style={{ flex: 1, backgroundColor: isDark ? '#18181b' : '#ffffff' }}>
+      <StatusBar
+        barStyle={isDark ? 'light-content' : 'dark-content'}
+        backgroundColor="transparent"
+        translucent
+      />
       {/* Manual Entry Modal */}
       <Modal visible={showManual} transparent animationType="fade">
         <View className="flex-1 items-center justify-center bg-black/70 px-6">
@@ -646,7 +662,7 @@ export default function ScanningBoxScreen({ navigation: propNavigation }: { navi
       </Modal>
 
       {/* Header */}
-      <View className={`flex-row items-center gap-3 border-b px-4 py-4 ${headerBgClass}`}>
+      <View className={`flex-row items-center gap-3 border-b px-4 py-2.5 ${headerBgClass}`}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <ArrowLeft color={isDark ? '#fafafa' : '#18181b'} size={22} />
         </TouchableOpacity>
@@ -667,7 +683,7 @@ export default function ScanningBoxScreen({ navigation: propNavigation }: { navi
       {notification && (
         <View
           style={{ zIndex: 999, elevation: 10 }}
-          className={`absolute left-4 right-4 top-20 flex-row items-center gap-3 rounded-xl border p-3.5 shadow-2xl ${
+          className={`absolute left-4 right-4 top-24 flex-row items-center gap-3 rounded-xl border p-3.5 shadow-2xl ${
             notification.type === 'success'
               ? 'border-[#22c55e] bg-[#163e26]/95'
               : notification.type === 'warning'

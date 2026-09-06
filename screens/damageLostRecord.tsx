@@ -13,6 +13,7 @@ import {
   Animated,
   KeyboardAvoidingView,
   Platform,
+  StatusBar,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -1669,8 +1670,16 @@ export default function DamageLostRecordScreen({
   };
 
   return (
-    <SafeAreaView className={`flex-1 ${bgClass}`}>
-      <View className={`flex-row items-center gap-2.5 border-b px-4 py-3 ${headerBgClass}`}>
+    <SafeAreaView
+      edges={['top', 'left', 'right']}
+      className={`flex-1 ${bgClass}`}
+      style={{ flex: 1, backgroundColor: isDark ? '#131316' : '#ffffff' }}>
+      <StatusBar
+        barStyle={isDark ? 'light-content' : 'dark-content'}
+        backgroundColor="transparent"
+        translucent
+      />
+      <View className={`flex-row items-center gap-2.5 border-b px-4 py-2.5 ${headerBgClass}`}>
         {!embedded ? (
           <TouchableOpacity
             onPress={() => {

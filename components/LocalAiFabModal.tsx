@@ -11,6 +11,7 @@ import {
   Keyboard,
   Image,
   Animated,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { useKeyboardHandler } from 'react-native-keyboard-controller';
 import AnimatedReanimated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
@@ -529,7 +530,11 @@ export function LocalAiFabModal({
           />
           <View
             style={{ height: '82%', maxHeight: '85%' }}
-            className={`w-full rounded-t-3xl border-t ${borderClass} ${modalBgClass} p-4 shadow-2xl`}>
+            className={`w-full rounded-t-3xl border-t ${borderClass} ${modalBgClass} px-4 pb-4 pt-3 shadow-2xl`}>
+            {/* Top Pull Handle Indicator */}
+            <View className="mb-2.5 items-center">
+              <View className={`h-1.5 w-10 rounded-full ${isDark ? 'bg-[#3f3f46]' : 'bg-[#d4d4d8]'}`} />
+            </View>
             {/* Header */}
             <View
               className={`flex-row items-center justify-between border-b ${borderClass} pb-3.5`}>
