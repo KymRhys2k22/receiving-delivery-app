@@ -1,16 +1,16 @@
 # Graph Report - receiving-delivery-app  (2026-09-06)
 
 ## Corpus Check
-- 49 files · ~138,709 words
+- 49 files · ~139,220 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 546 nodes · 752 edges · 70 communities (30 shown, 40 thin omitted)
+- 550 nodes · 756 edges · 70 communities (30 shown, 40 thin omitted)
 - Extraction: 98% EXTRACTED · 2% INFERRED · 0% AMBIGUOUS · INFERRED: 18 edges (avg confidence: 0.76)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `eeb2b0c7`
+- Built from commit: `55126555`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -56,7 +56,7 @@
 - react-native-safe-area-context
 - expo-haptics
 - react-native-worklets
-- expo-font
+- expo-application
 - @react-navigation/native
 - nativewind
 - @supabase/supabase-js
@@ -87,11 +87,11 @@
 3. `useAuth()` - 18 edges
 4. `DamageLostRecordScreen()` - 17 edges
 5. `expo` - 15 edges
-6. `scripts` - 10 edges
-7. `LocalAiFabModal()` - 9 edges
-8. `processDlrSyncQueue()` - 9 edges
-9. `checkForAppUpdate()` - 8 edges
-10. `Receiving & Delivery Scanner App (Daizo)` - 8 edges
+6. `🚀 What's New in v7.2` - 12 edges
+7. `scripts` - 10 edges
+8. `LocalAiFabModal()` - 9 edges
+9. `processDlrSyncQueue()` - 9 edges
+10. `checkForAppUpdate()` - 8 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `Damage Lost Record (DLR) Multi-Step Flow` --conceptually_related_to--> `Verification Component Patterns`  [INFERRED]
@@ -117,8 +117,8 @@
 ## Communities (70 total, 40 thin omitted)
 
 ### Community 0 - "useTheme"
-Cohesion: 0.06
-Nodes (52): AiAssistantContext, AiAssistantContextType, AiAssistantProvider(), useAiAssistant(), AuthContext, AuthContextType, AuthProvider(), useAuth() (+44 more)
+Cohesion: 0.07
+Nodes (49): useAiAssistant(), AuthContext, AuthContextType, AuthProvider(), useAuth(), ThemeContext, ThemeContextType, ThemeMode (+41 more)
 
 ### Community 1 - "dlr.ts"
 Cohesion: 0.08
@@ -178,7 +178,7 @@ Nodes (3): Application Branding and Visual Identity, Delivery Elephant Mascot, A
 
 ### Community 23 - "dependencies"
 Cohesion: 0.18
-Nodes (11): expo, expo-application, lucide-react-native, dependencies, expo, expo-application, lucide-react-native, react-native-markdown-display (+3 more)
+Nodes (11): expo, expo-font, lucide-react-native, dependencies, expo, expo-font, lucide-react-native, react-native-markdown-display (+3 more)
 
 ### Community 24 - "New session - 2026-08-26T06:38:56.026Z"
 Cohesion: 0.02
@@ -209,29 +209,29 @@ Cohesion: 0.12
 Nodes (15): 1. 📦 Receiving & Scanning Workflow, 2. ⚠️ Damage & Lost Record (DLR) Module, 3. 🤖 On-Device AI Assistant (Daizo), 4. 📜 Audit History & Session Recovery, 5. 🎨 Industrial UI Design System, 👤 Author & Portfolio, 🚦 Getting Started, Installation (+7 more)
 
 ### Community 58 - "LocalAiFabModal.tsx"
-Cohesion: 0.29
-Nodes (7): DAIZO_LOADING_ASSET, LocalAiFabModal(), LocalAiFabModalProps, Message, useGradualAnimation(), useLlamaModel(), getCachedDaizoDataset()
+Cohesion: 0.20
+Nodes (10): DAIZO_LOADING_ASSET, LocalAiFabModal(), LocalAiFabModalProps, Message, useGradualAnimation(), AiAssistantContext, AiAssistantContextType, AiAssistantProvider() (+2 more)
 
 ### Community 70 - "🚀 What's New in v7.2"
-Cohesion: 0.14
-Nodes (13): 🏪 1. Multi-Store Isolation for Damage Lost Record (DLR), 🔍 2. Intelligent Bidirectional SKU ↔ UPC Lookup, 📱 3. Standalone APK Keyboard & Modal UI Fix, 🔄 4. Semantic Versioning in App Update Service, 🖼️ 5. `expo-image` Named Import Fix, 🎨 6. Assistant Branding & UI Polish, 🛡️ 7. ThemeProvider Mount Safety & LogBox Cleanup, Commit Scope & Modified Files (+5 more)
+Cohesion: 0.11
+Nodes (17): 🎨 10. Assistant Branding & UI Polish, 🛡️ 11. ThemeProvider Mount Safety & LogBox Cleanup, ⚡ 1. Live Session Persistence & Focus Synchronization, 📊 2. Resilient Multi-Column CSV Manifest Ingestion, 🎨 3. Edge-to-Edge Translucent Status Bar & SafeAreaView Architecture, 🤖 4. AI Modal Pull-Handle & Login Polish, 🏪 5. Multi-Store Isolation for Damage Lost Record (DLR), 🔍 6. Intelligent Bidirectional SKU ↔ UPC Lookup (+9 more)
 
 ## Knowledge Gaps
-- **290 isolated node(s):** `name`, `slug`, `version`, `favicon`, `tsconfigPaths` (+285 more)
+- **294 isolated node(s):** `name`, `slug`, `version`, `favicon`, `tsconfigPaths` (+289 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 - **40 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `dependencies` connect `dependencies` to `devDependencies`, `expo-document-picker`, `expo-file-system`, `expo-camera`, `expo-image`, `expo-sharing`, `expo-status-bar`, `@expo/vector-icons`, `expo-network`, `react`, `@react-native-async-storage/async-storage`, `react-native-gesture-handler`, `react-native-reanimated`, `react-native-safe-area-context`, `expo-haptics`, `react-native-worklets`, `expo-font`, `@react-navigation/native`, `nativewind`, `@supabase/supabase-js`, `xlsx`, `expo-build-properties`, `react-native-screens`, `react-native-keyboard-controller`, `papaparse`, `react-native`, `@expo/ui`, `expo-image-manipulator`, `expo-splash-screen`, `llama.rn`, `expo-notifications`, `react-native-svg`, `@react-navigation/bottom-tabs`?**
-  _High betweenness centrality (0.038) - this node is a cross-community bridge._
+- **Why does `dependencies` connect `dependencies` to `devDependencies`, `expo-document-picker`, `expo-file-system`, `expo-camera`, `expo-image`, `expo-sharing`, `expo-status-bar`, `@expo/vector-icons`, `expo-network`, `react`, `@react-native-async-storage/async-storage`, `react-native-gesture-handler`, `react-native-reanimated`, `react-native-safe-area-context`, `expo-haptics`, `react-native-worklets`, `expo-application`, `@react-navigation/native`, `nativewind`, `@supabase/supabase-js`, `xlsx`, `expo-build-properties`, `react-native-screens`, `react-native-keyboard-controller`, `papaparse`, `react-native`, `@expo/ui`, `expo-image-manipulator`, `expo-splash-screen`, `llama.rn`, `expo-notifications`, `react-native-svg`, `@react-navigation/bottom-tabs`?**
+  _High betweenness centrality (0.037) - this node is a cross-community bridge._
 - **Why does `New session - 2026-08-26T06:38:56.026Z` connect `New session - 2026-08-26T06:38:56.026Z` to `session-ses_fc33.md`?**
-  _High betweenness centrality (0.029) - this node is a cross-community bridge._
+  _High betweenness centrality (0.028) - this node is a cross-community bridge._
 - **What connects `name`, `slug`, `version` to the rest of the system?**
-  _290 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _294 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `useTheme` be split into smaller, more focused modules?**
-  _Cohesion score 0.06430745814307458 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.06905370843989769 - nodes in this community are weakly interconnected._
 - **Should `dlr.ts` be split into smaller, more focused modules?**
   _Cohesion score 0.07832080200501253 - nodes in this community are weakly interconnected._
 - **Should `expo` be split into smaller, more focused modules?**

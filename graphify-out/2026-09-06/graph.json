@@ -495,7 +495,7 @@
       "label": "App()",
       "file_type": "code",
       "source_file": "App.tsx",
-      "source_location": "L44",
+      "source_location": "L57",
       "_callable": true,
       "_origin": "ast",
       "id": "app_app",
@@ -1251,7 +1251,7 @@
       "label": "AppContent()",
       "file_type": "code",
       "source_file": "App.tsx",
-      "source_location": "L24",
+      "source_location": "L32",
       "_callable": true,
       "_origin": "ast",
       "id": "app_appcontent",
@@ -2621,15 +2621,15 @@
       "norm_label": "expo"
     },
     {
-      "label": "expo-build-properties",
+      "label": "expo-application",
       "file_type": "code",
       "source_file": "package.json",
-      "source_location": "L25",
+      "source_location": "L24",
       "_origin": "ast",
-      "id": "package_dependencies_expo_build_properties",
+      "id": "package_dependencies_expo_application",
       "community": 23,
       "community_name": "dependencies",
-      "norm_label": "expo-build-properties"
+      "norm_label": "expo-application"
     },
     {
       "label": "lucide-react-native",
@@ -2676,15 +2676,15 @@
       "norm_label": "expo"
     },
     {
-      "label": "expo-build-properties",
+      "label": "expo-application",
       "file_type": "concept",
       "source_file": "package.json",
-      "source_location": "L25",
+      "source_location": "L24",
       "_origin": "ast",
-      "id": "expo_build_properties",
+      "id": "expo_application",
       "community": 23,
       "community_name": "dependencies",
-      "norm_label": "expo-build-properties"
+      "norm_label": "expo-application"
     },
     {
       "label": "lucide-react-native",
@@ -5118,26 +5118,26 @@
       "norm_label": "workflow: graphify"
     },
     {
-      "label": "expo-application",
+      "label": "expo-build-properties",
       "file_type": "code",
       "source_file": "package.json",
-      "source_location": "L24",
+      "source_location": "L25",
       "_origin": "ast",
-      "id": "package_dependencies_expo_application",
+      "id": "package_dependencies_expo_build_properties",
       "community": 55,
-      "community_name": "expo-application",
-      "norm_label": "expo-application"
+      "community_name": "expo-build-properties",
+      "norm_label": "expo-build-properties"
     },
     {
-      "label": "expo-application",
+      "label": "expo-build-properties",
       "file_type": "concept",
       "source_file": "package.json",
-      "source_location": "L24",
+      "source_location": "L25",
       "_origin": "ast",
-      "id": "expo_application",
+      "id": "expo_build_properties",
       "community": 55,
-      "community_name": "expo-application",
-      "norm_label": "expo-application"
+      "community_name": "expo-build-properties",
+      "norm_label": "expo-build-properties"
     },
     {
       "label": "README.md",
@@ -6340,7 +6340,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "App.tsx",
-      "source_location": "L25",
+      "source_location": "L33",
       "weight": 1.0,
       "_origin": "ast",
       "source": "app_appcontent",
@@ -6352,7 +6352,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "App.tsx",
-      "source_location": "L29",
+      "source_location": "L37",
       "weight": 1.0,
       "_origin": "ast",
       "source": "app_appcontent",
@@ -6520,7 +6520,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "screens/damageLostRecord.tsx",
-      "source_location": "L2087",
+      "source_location": "L2094",
       "weight": 1.0,
       "_origin": "ast",
       "source": "screens_damagelostrecord_damagelostrecordscreen",
@@ -10450,7 +10450,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "App.tsx",
-      "source_location": "L24",
+      "source_location": "L32",
       "weight": 1.0,
       "_origin": "ast",
       "source": "app_tsx_app",
@@ -10461,7 +10461,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "App.tsx",
-      "source_location": "L44",
+      "source_location": "L57",
       "weight": 1.0,
       "_origin": "ast",
       "source": "app_tsx_app",

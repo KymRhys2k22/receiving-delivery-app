@@ -40,7 +40,7 @@
   "38": "react-native-safe-area-context",
   "39": "expo-haptics",
   "40": "react-native-worklets",
-  "41": "expo-font",
+  "41": "expo-application",
   "42": "@react-navigation/native",
   "43": "nativewind",
   "44": "@supabase/supabase-js",

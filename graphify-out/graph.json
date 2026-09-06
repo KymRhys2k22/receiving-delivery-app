@@ -63,19 +63,6 @@
   },
   "nodes": [
     {
-      "label": "AiAssistantContextType",
-      "file_type": "code",
-      "source_file": "context/aiAssistant.tsx",
-      "source_location": "L4",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "context_aiassistant_aiassistantcontexttype",
-      "community": 0,
-      "community_name": "useTheme",
-      "norm_label": "aiassistantcontexttype"
-    },
-    {
       "label": "AuthContextType",
       "file_type": "code",
       "source_file": "context/auth.tsx",
@@ -453,6 +440,19 @@
       "norm_label": "message"
     },
     {
+      "label": "AiAssistantContextType",
+      "file_type": "code",
+      "source_file": "context/aiAssistant.tsx",
+      "source_location": "L4",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "context_aiassistant_aiassistantcontexttype",
+      "community": 58,
+      "community_name": "LocalAiFabModal.tsx",
+      "norm_label": "aiassistantcontexttype"
+    },
+    {
       "label": "EditScreenInfoProps",
       "file_type": "code",
       "source_file": "components/EditScreenInfo.tsx",
@@ -502,18 +502,6 @@
       "community": 0,
       "community_name": "useTheme",
       "norm_label": "app()"
-    },
-    {
-      "label": "AiAssistantProvider()",
-      "file_type": "code",
-      "source_file": "context/aiAssistant.tsx",
-      "source_location": "L18",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "context_aiassistant_aiassistantprovider",
-      "community": 0,
-      "community_name": "useTheme",
-      "norm_label": "aiassistantprovider()"
     },
     {
       "label": "useAiAssistant()",
@@ -1416,6 +1404,18 @@
       "norm_label": "usegradualanimation()"
     },
     {
+      "label": "AiAssistantProvider()",
+      "file_type": "code",
+      "source_file": "context/aiAssistant.tsx",
+      "source_location": "L18",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "context_aiassistant_aiassistantprovider",
+      "community": 58,
+      "community_name": "LocalAiFabModal.tsx",
+      "norm_label": "aiassistantprovider()"
+    },
+    {
       "label": "useLlamaModel()",
       "file_type": "code",
       "source_file": "hooks/useLlamaModel.ts",
@@ -1497,28 +1497,6 @@
       "community": 0,
       "community_name": "useTheme",
       "norm_label": "app.tsx"
-    },
-    {
-      "label": "aiAssistant.tsx",
-      "file_type": "code",
-      "source_file": "context/aiAssistant.tsx",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "context_aiassistant",
-      "community": 0,
-      "community_name": "useTheme",
-      "norm_label": "aiassistant.tsx"
-    },
-    {
-      "label": "AiAssistantContext",
-      "file_type": "code",
-      "source_file": "context/aiAssistant.tsx",
-      "source_location": "L11",
-      "_origin": "ast",
-      "id": "context_aiassistant_aiassistantcontext",
-      "community": 0,
-      "community_name": "useTheme",
-      "norm_label": "aiassistantcontext"
     },
     {
       "label": "auth.tsx",
@@ -2621,15 +2599,15 @@
       "norm_label": "expo"
     },
     {
-      "label": "expo-application",
+      "label": "expo-font",
       "file_type": "code",
       "source_file": "package.json",
-      "source_location": "L24",
+      "source_location": "L29",
       "_origin": "ast",
-      "id": "package_dependencies_expo_application",
+      "id": "package_dependencies_expo_font",
       "community": 23,
       "community_name": "dependencies",
-      "norm_label": "expo-application"
+      "norm_label": "expo-font"
     },
     {
       "label": "lucide-react-native",
@@ -2676,15 +2654,15 @@
       "norm_label": "expo"
     },
     {
-      "label": "expo-application",
+      "label": "expo-font",
       "file_type": "concept",
       "source_file": "package.json",
-      "source_location": "L24",
+      "source_location": "L29",
       "_origin": "ast",
-      "id": "expo_application",
+      "id": "expo_font",
       "community": 23,
       "community_name": "dependencies",
-      "norm_label": "expo-application"
+      "norm_label": "expo-font"
     },
     {
       "label": "lucide-react-native",
@@ -4722,26 +4700,26 @@
       "norm_label": "react-native-worklets"
     },
     {
-      "label": "expo-font",
+      "label": "expo-application",
       "file_type": "code",
       "source_file": "package.json",
-      "source_location": "L29",
+      "source_location": "L24",
       "_origin": "ast",
-      "id": "package_dependencies_expo_font",
+      "id": "package_dependencies_expo_application",
       "community": 41,
-      "community_name": "expo-font",
-      "norm_label": "expo-font"
+      "community_name": "expo-application",
+      "norm_label": "expo-application"
     },
     {
-      "label": "expo-font",
+      "label": "expo-application",
       "file_type": "concept",
       "source_file": "package.json",
-      "source_location": "L29",
+      "source_location": "L24",
       "_origin": "ast",
-      "id": "expo_font",
+      "id": "expo_application",
       "community": 41,
-      "community_name": "expo-font",
-      "norm_label": "expo-font"
+      "community_name": "expo-application",
+      "norm_label": "expo-application"
     },
     {
       "label": "@react-navigation/native",
@@ -5360,6 +5338,28 @@
       "norm_label": "daizo_loading_asset"
     },
     {
+      "label": "aiAssistant.tsx",
+      "file_type": "code",
+      "source_file": "context/aiAssistant.tsx",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "context_aiassistant",
+      "community": 58,
+      "community_name": "LocalAiFabModal.tsx",
+      "norm_label": "aiassistant.tsx"
+    },
+    {
+      "label": "AiAssistantContext",
+      "file_type": "code",
+      "source_file": "context/aiAssistant.tsx",
+      "source_location": "L11",
+      "_origin": "ast",
+      "id": "context_aiassistant_aiassistantcontext",
+      "community": 58,
+      "community_name": "LocalAiFabModal.tsx",
+      "norm_label": "aiassistantcontext"
+    },
+    {
       "label": "useLlamaModel.ts",
       "file_type": "code",
       "source_file": "hooks/useLlamaModel.ts",
@@ -5679,87 +5679,131 @@
       "norm_label": "release.md"
     },
     {
-      "label": "\ud83c\udfea 1. Multi-Store Isolation for Damage Lost Record (DLR)",
+      "label": "\ud83c\udfa8 10. Assistant Branding & UI Polish",
+      "file_type": "document",
+      "source_file": "RELEASE.md",
+      "source_location": "L81",
+      "_origin": "ast",
+      "id": "release_10_assistant_branding_ui_polish",
+      "community": 70,
+      "community_name": "\ud83d\ude80 What's New in v7.2",
+      "norm_label": "\ud83c\udfa8 10. assistant branding & ui polish"
+    },
+    {
+      "label": "\ud83d\udee1\ufe0f 11. ThemeProvider Mount Safety & LogBox Cleanup",
+      "file_type": "document",
+      "source_file": "RELEASE.md",
+      "source_location": "L86",
+      "_origin": "ast",
+      "id": "release_11_themeprovider_mount_safety_logbox_cleanup",
+      "community": 70,
+      "community_name": "\ud83d\ude80 What's New in v7.2",
+      "norm_label": "\ud83d\udee1\ufe0f 11. themeprovider mount safety & logbox cleanup"
+    },
+    {
+      "label": "\u26a1 1. Live Session Persistence & Focus Synchronization",
       "file_type": "document",
       "source_file": "RELEASE.md",
       "source_location": "L12",
       "_origin": "ast",
-      "id": "release_1_multi_store_isolation_for_damage_lost_record_dlr",
+      "id": "release_1_live_session_persistence_focus_synchronization",
       "community": 70,
       "community_name": "\ud83d\ude80 What's New in v7.2",
-      "norm_label": "\ud83c\udfea 1. multi-store isolation for damage lost record (dlr)"
+      "norm_label": "\u26a1 1. live session persistence & focus synchronization"
     },
     {
-      "label": "\ud83d\udd0d 2. Intelligent Bidirectional SKU \u2194 UPC Lookup",
+      "label": "\ud83d\udcca 2. Resilient Multi-Column CSV Manifest Ingestion",
       "file_type": "document",
       "source_file": "RELEASE.md",
       "source_location": "L18",
       "_origin": "ast",
-      "id": "release_2_intelligent_bidirectional_sku_upc_lookup",
+      "id": "release_2_resilient_multi_column_csv_manifest_ingestion",
       "community": 70,
       "community_name": "\ud83d\ude80 What's New in v7.2",
-      "norm_label": "\ud83d\udd0d 2. intelligent bidirectional sku \u2194 upc lookup"
+      "norm_label": "\ud83d\udcca 2. resilient multi-column csv manifest ingestion"
     },
     {
-      "label": "\ud83d\udcf1 3. Standalone APK Keyboard & Modal UI Fix",
+      "label": "\ud83c\udfa8 3. Edge-to-Edge Translucent Status Bar & SafeAreaView Architecture",
       "file_type": "document",
       "source_file": "RELEASE.md",
-      "source_location": "L29",
+      "source_location": "L30",
       "_origin": "ast",
-      "id": "release_3_standalone_apk_keyboard_modal_ui_fix",
+      "id": "release_3_edge_to_edge_translucent_status_bar_safeareaview_architecture",
       "community": 70,
       "community_name": "\ud83d\ude80 What's New in v7.2",
-      "norm_label": "\ud83d\udcf1 3. standalone apk keyboard & modal ui fix"
+      "norm_label": "\ud83c\udfa8 3. edge-to-edge translucent status bar & safeareaview architecture"
     },
     {
-      "label": "\ud83d\udd04 4. Semantic Versioning in App Update Service",
+      "label": "\ud83e\udd16 4. AI Modal Pull-Handle & Login Polish",
       "file_type": "document",
       "source_file": "RELEASE.md",
-      "source_location": "L36",
+      "source_location": "L44",
       "_origin": "ast",
-      "id": "release_4_semantic_versioning_in_app_update_service",
+      "id": "release_4_ai_modal_pull_handle_login_polish",
       "community": 70,
       "community_name": "\ud83d\ude80 What's New in v7.2",
-      "norm_label": "\ud83d\udd04 4. semantic versioning in app update service"
+      "norm_label": "\ud83e\udd16 4. ai modal pull-handle & login polish"
     },
     {
-      "label": "\ud83d\uddbc\ufe0f 5. `expo-image` Named Import Fix",
+      "label": "\ud83c\udfea 5. Multi-Store Isolation for Damage Lost Record (DLR)",
       "file_type": "document",
       "source_file": "RELEASE.md",
-      "source_location": "L41",
+      "source_location": "L48",
       "_origin": "ast",
-      "id": "release_5_expo_image_named_import_fix",
+      "id": "release_5_multi_store_isolation_for_damage_lost_record_dlr",
       "community": 70,
       "community_name": "\ud83d\ude80 What's New in v7.2",
-      "norm_label": "\ud83d\uddbc\ufe0f 5. `expo-image` named import fix"
+      "norm_label": "\ud83c\udfea 5. multi-store isolation for damage lost record (dlr)"
     },
     {
-      "label": "\ud83c\udfa8 6. Assistant Branding & UI Polish",
+      "label": "\ud83d\udd0d 6. Intelligent Bidirectional SKU \u2194 UPC Lookup",
       "file_type": "document",
       "source_file": "RELEASE.md",
-      "source_location": "L45",
+      "source_location": "L54",
       "_origin": "ast",
-      "id": "release_6_assistant_branding_ui_polish",
+      "id": "release_6_intelligent_bidirectional_sku_upc_lookup",
       "community": 70,
       "community_name": "\ud83d\ude80 What's New in v7.2",
-      "norm_label": "\ud83c\udfa8 6. assistant branding & ui polish"
+      "norm_label": "\ud83d\udd0d 6. intelligent bidirectional sku \u2194 upc lookup"
     },
     {
-      "label": "\ud83d\udee1\ufe0f 7. ThemeProvider Mount Safety & LogBox Cleanup",
+      "label": "\ud83d\udcf1 7. Standalone APK Keyboard & Modal UI Fix",
       "file_type": "document",
       "source_file": "RELEASE.md",
-      "source_location": "L50",
+      "source_location": "L65",
       "_origin": "ast",
-      "id": "release_7_themeprovider_mount_safety_logbox_cleanup",
+      "id": "release_7_standalone_apk_keyboard_modal_ui_fix",
       "community": 70,
       "community_name": "\ud83d\ude80 What's New in v7.2",
-      "norm_label": "\ud83d\udee1\ufe0f 7. themeprovider mount safety & logbox cleanup"
+      "norm_label": "\ud83d\udcf1 7. standalone apk keyboard & modal ui fix"
+    },
+    {
+      "label": "\ud83d\udd04 8. Semantic Versioning in App Update Service",
+      "file_type": "document",
+      "source_file": "RELEASE.md",
+      "source_location": "L72",
+      "_origin": "ast",
+      "id": "release_8_semantic_versioning_in_app_update_service",
+      "community": 70,
+      "community_name": "\ud83d\ude80 What's New in v7.2",
+      "norm_label": "\ud83d\udd04 8. semantic versioning in app update service"
+    },
+    {
+      "label": "\ud83d\uddbc\ufe0f 9. `expo-image` Named Import Fix",
+      "file_type": "document",
+      "source_file": "RELEASE.md",
+      "source_location": "L77",
+      "_origin": "ast",
+      "id": "release_9_expo_image_named_import_fix",
+      "community": 70,
+      "community_name": "\ud83d\ude80 What's New in v7.2",
+      "norm_label": "\ud83d\uddbc\ufe0f 9. `expo-image` named import fix"
     },
     {
       "label": "Commit Scope & Modified Files",
       "file_type": "document",
       "source_file": "RELEASE.md",
-      "source_location": "L66",
+      "source_location": "L102",
       "_origin": "ast",
       "id": "release_commit_scope_modified_files",
       "community": 70,
@@ -5770,7 +5814,7 @@
       "label": "\ud83d\udcdd Git Commit & Tag Instructions",
       "file_type": "document",
       "source_file": "RELEASE.md",
-      "source_location": "L56",
+      "source_location": "L92",
       "_origin": "ast",
       "id": "release_git_commit_tag_instructions",
       "community": 70,
@@ -5792,7 +5836,7 @@
       "label": "\ud83d\udce6 Supabase `app_updates` Release Checklist",
       "file_type": "document",
       "source_file": "RELEASE.md",
-      "source_location": "L75",
+      "source_location": "L118",
       "_origin": "ast",
       "id": "release_supabase_app_updates_release_checklist",
       "community": 70,
@@ -5803,7 +5847,7 @@
       "label": "\ud83d\udee0\ufe0f Verification & Commit Details",
       "file_type": "document",
       "source_file": "RELEASE.md",
-      "source_location": "L112",
+      "source_location": "L155",
       "_origin": "ast",
       "id": "release_verification_commit_details",
       "community": 70,
@@ -12023,7 +12067,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "RELEASE.md",
-      "source_location": "L66",
+      "source_location": "L102",
       "weight": 1.0,
       "_origin": "ast",
       "source": "release_git_commit_tag_instructions",
@@ -12045,29 +12089,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "RELEASE.md",
-      "source_location": "L112",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "release_receiving_scanner_app_release_v7_2_build_10",
-      "target": "release_verification_commit_details",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "RELEASE.md",
-      "source_location": "L56",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "release_receiving_scanner_app_release_v7_2_build_10",
-      "target": "release_git_commit_tag_instructions",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "RELEASE.md",
-      "source_location": "L75",
+      "source_location": "L118",
       "weight": 1.0,
       "_origin": "ast",
       "source": "release_receiving_scanner_app_release_v7_2_build_10",
@@ -12078,11 +12100,33 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "RELEASE.md",
+      "source_location": "L155",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "release_receiving_scanner_app_release_v7_2_build_10",
+      "target": "release_verification_commit_details",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "RELEASE.md",
+      "source_location": "L92",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "release_receiving_scanner_app_release_v7_2_build_10",
+      "target": "release_git_commit_tag_instructions",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "RELEASE.md",
       "source_location": "L12",
       "weight": 1.0,
       "_origin": "ast",
       "source": "release_what_s_new_in_v7_2",
-      "target": "release_1_multi_store_isolation_for_damage_lost_record_dlr",
+      "target": "release_1_live_session_persistence_focus_synchronization",
       "confidence_score": 1.0
     },
     {
@@ -12093,62 +12137,106 @@
       "weight": 1.0,
       "_origin": "ast",
       "source": "release_what_s_new_in_v7_2",
-      "target": "release_2_intelligent_bidirectional_sku_upc_lookup",
+      "target": "release_2_resilient_multi_column_csv_manifest_ingestion",
       "confidence_score": 1.0
     },
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "RELEASE.md",
-      "source_location": "L29",
+      "source_location": "L30",
       "weight": 1.0,
       "_origin": "ast",
       "source": "release_what_s_new_in_v7_2",
-      "target": "release_3_standalone_apk_keyboard_modal_ui_fix",
+      "target": "release_3_edge_to_edge_translucent_status_bar_safeareaview_architecture",
       "confidence_score": 1.0
     },
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "RELEASE.md",
-      "source_location": "L36",
+      "source_location": "L44",
       "weight": 1.0,
       "_origin": "ast",
       "source": "release_what_s_new_in_v7_2",
-      "target": "release_4_semantic_versioning_in_app_update_service",
+      "target": "release_4_ai_modal_pull_handle_login_polish",
       "confidence_score": 1.0
     },
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "RELEASE.md",
-      "source_location": "L41",
+      "source_location": "L48",
       "weight": 1.0,
       "_origin": "ast",
       "source": "release_what_s_new_in_v7_2",
-      "target": "release_5_expo_image_named_import_fix",
+      "target": "release_5_multi_store_isolation_for_damage_lost_record_dlr",
       "confidence_score": 1.0
     },
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "RELEASE.md",
-      "source_location": "L45",
+      "source_location": "L54",
       "weight": 1.0,
       "_origin": "ast",
       "source": "release_what_s_new_in_v7_2",
-      "target": "release_6_assistant_branding_ui_polish",
+      "target": "release_6_intelligent_bidirectional_sku_upc_lookup",
       "confidence_score": 1.0
     },
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "RELEASE.md",
-      "source_location": "L50",
+      "source_location": "L65",
       "weight": 1.0,
       "_origin": "ast",
       "source": "release_what_s_new_in_v7_2",
-      "target": "release_7_themeprovider_mount_safety_logbox_cleanup",
+      "target": "release_7_standalone_apk_keyboard_modal_ui_fix",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "RELEASE.md",
+      "source_location": "L72",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "release_what_s_new_in_v7_2",
+      "target": "release_8_semantic_versioning_in_app_update_service",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "RELEASE.md",
+      "source_location": "L77",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "release_what_s_new_in_v7_2",
+      "target": "release_9_expo_image_named_import_fix",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "RELEASE.md",
+      "source_location": "L81",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "release_what_s_new_in_v7_2",
+      "target": "release_10_assistant_branding_ui_polish",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "RELEASE.md",
+      "source_location": "L86",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "release_what_s_new_in_v7_2",
+      "target": "release_11_themeprovider_mount_safety_logbox_cleanup",
       "confidence_score": 1.0
     },
     {
@@ -14977,5 +15065,5 @@
       "source_file": "assets/splash.png"
     }
   ],
-  "built_at_commit": "eeb2b0c7b624a23c1308a926127a67b17e3c6bab"
+  "built_at_commit": "55126555766d92989fdf6f63c906e8df15d3b363"
 }
