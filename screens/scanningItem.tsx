@@ -14,6 +14,8 @@ import {
   Platform,
   Image,
   StatusBar,
+  StyleSheet,
+  BackHandler,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -38,11 +40,17 @@ import {
   Calendar as CalendarIcon,
   ChevronLeft,
   ChevronRight,
+  ZoomIn,
+  ZoomOut,
+  Camera,
+  CloudUpload,
+  Flashlight,
 } from 'lucide-react-native';
 import { NavigationContext, useFocusEffect } from '@react-navigation/native';
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
 import * as FileSystem from 'expo-file-system/legacy';
+import * as ImageManipulator from 'expo-image-manipulator';
 import * as Sharing from 'expo-sharing';
 import * as XLSX from 'xlsx';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -52,8 +60,10 @@ import {
   MANIFEST_ITEMS_KEY,
   SCANNED_ITEMS_KEY,
   ITEM_EXPIRY_DATES_KEY,
+  UPLOADED_ITEM_IMAGES_KEY,
   type ItemManifestRecord,
 } from '../utils/storage';
+import { compressImage } from '../utils/dlr';
 
 const playScanFeedback = async (type: 'success' | 'warning' | 'error') => {
   // 1. Tactile Haptic Vibration Feedback
@@ -160,49 +170,1282 @@ const getOneYearAheadDate = () => {
   return `${yyyy}-${mm}-${dd}`;
 };
 
-function GhostItemImage({ upc }: { upc?: string }) {
+const ITEM_IMAGE_CLOUDINARY_CLOUD_NAME =
+  process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME || 'dqtldfxeh';
+const ITEM_IMAGE_CLOUDINARY_UPLOAD_PRESET =
+  process.env.EXPO_CLOUDINARY_UPLOAD_PRESET ||
+  process.env.EXPO_PUBLIC_CLOUDINARY_ITEM_UPLOAD_PRESET ||
+  'daisoimage';
+const ITEM_IMAGE_CLOUDINARY_ENDPOINT = `https://api.cloudinary.com/v1_1/${ITEM_IMAGE_CLOUDINARY_CLOUD_NAME}/image/upload`;
+
+/**
+ * Strips leading zeros and invisible scanner control characters before comparing
+ * scanned barcodes/SKUs/UPCs against manifest data (e.g. "000260295", "00260295", "0260295" -> "260295").
+ */
+function normalizeScanCode(value?: string | null): string {
+  const cleaned = (value || '')
+    .replace(/[\u0000-\u001F\u007F-\u009F\u200B-\u200D\uFEFF]/g, '')
+    .trim()
+    .toUpperCase();
+  if (!cleaned) return '';
+  return cleaned.replace(/^0+/, '') || '0';
+}
+
+function isMatchingScanCode(a?: string | null, b?: string | null): boolean {
+  const normA = normalizeScanCode(a);
+  const normB = normalizeScanCode(b);
+  if (!normA || !normB) return false;
+  return normA === normB;
+}
+
+function getItemImageKey(item: ItemManifestRecord): string {
+  const upc = (item.upc || '').trim();
+  if (upc) return `upc:${upc}`;
+  const sku = (item.sku || '').trim();
+  if (sku) return `sku:${sku}`;
+  return `id:${item.id}`;
+}
+
+async function cropImageToSquare(
+  uri: string,
+  fallbackWidth?: number,
+  fallbackHeight?: number
+): Promise<string> {
+  try {
+    const mod = ImageManipulator as unknown as {
+      manipulateAsync?: (
+        uri: string,
+        actions: object[],
+        options: object
+      ) => Promise<{ uri: string }>;
+      SaveFormat?: { JPEG: 'jpeg' };
+      ImageManipulator?: {
+        manipulate: (source: unknown) => {
+          crop: (rect: { originX: number; originY: number; width: number; height: number }) => void;
+          renderAsync: () => Promise<{
+            width?: number;
+            height?: number;
+            saveAsync: (options: object) => Promise<{ uri: string }>;
+          }>;
+        };
+      };
+    };
+
+    if (mod.ImageManipulator?.manipulate) {
+      const initialRef = await mod.ImageManipulator.manipulate(uri).renderAsync();
+      const imgWidth = initialRef.width || fallbackWidth || 0;
+      const imgHeight = initialRef.height || fallbackHeight || 0;
+
+      if (imgWidth > 0 && imgHeight > 0) {
+        if (imgWidth === imgHeight) {
+          return uri;
+        }
+        const size = Math.min(imgWidth, imgHeight);
+        const originX = Math.floor((imgWidth - size) / 2);
+        const originY = Math.floor((imgHeight - size) / 2);
+
+        const cropContext = mod.ImageManipulator.manipulate(initialRef);
+        cropContext.crop({ originX, originY, width: size, height: size });
+        const croppedRef = await cropContext.renderAsync();
+        const saved = await croppedRef.saveAsync({
+          compress: 0.9,
+          format: mod.SaveFormat?.JPEG || 'jpeg',
+        });
+        return saved.uri;
+      }
+    }
+
+    if (typeof mod.manipulateAsync === 'function' && fallbackWidth && fallbackHeight) {
+      if (fallbackWidth === fallbackHeight) {
+        return uri;
+      }
+      const size = Math.min(fallbackWidth, fallbackHeight);
+      const originX = Math.floor((fallbackWidth - size) / 2);
+      const originY = Math.floor((fallbackHeight - size) / 2);
+      const cropped = await mod.manipulateAsync(
+        uri,
+        [{ crop: { originX, originY, width: size, height: size } }],
+        {
+          compress: 0.9,
+          format: mod.SaveFormat?.JPEG || 'jpeg',
+        }
+      );
+      return cropped.uri;
+    }
+  } catch {}
+
+  return uri;
+}
+
+async function toUploadDataUri(uri: string): Promise<string> {
+  if (uri.startsWith('data:image/')) {
+    return uri;
+  }
+  if (Platform.OS === 'web') {
+    const response = await fetch(uri);
+    const blob = await response.blob();
+    return await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string') {
+          resolve(reader.result);
+        } else {
+          reject(new Error('Failed to read captured image on web'));
+        }
+      };
+      reader.onerror = () => reject(new Error('Failed to read captured image blob'));
+      reader.readAsDataURL(blob);
+    });
+  }
+  const base64Data = await FileSystem.readAsStringAsync(uri, {
+    encoding: FileSystem.EncodingType.Base64,
+  });
+  return `data:image/jpeg;base64,${base64Data}`;
+}
+
+async function uploadItemImageToCloudinary(
+  dataUri: string,
+  item: ItemManifestRecord
+): Promise<string> {
+  const rawCode = (item.upc || '').trim() || (item.sku || '').trim() || item.id;
+  const safePublicId = rawCode.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64) || 'item';
+
+  // Primary attempt: store under products/<upc> matching the card lookup path
+  const formData = new FormData();
+  formData.append('file', dataUri);
+  formData.append('upload_preset', ITEM_IMAGE_CLOUDINARY_UPLOAD_PRESET);
+  formData.append('folder', 'products');
+  formData.append('public_id', safePublicId);
+
+  const res = await fetch(ITEM_IMAGE_CLOUDINARY_ENDPOINT, {
+    method: 'POST',
+    body: formData,
+  });
+
+  let result: { secure_url?: string; error?: { message?: string } } = {};
+  try {
+    result = await res.json();
+  } catch {}
+
+  if (res.ok && result.secure_url) {
+    return result.secure_url;
+  }
+
+  // Fallback if the unsigned preset restricts custom public_id / folder / overwrite
+  const errMsg = (result.error?.message || '').toLowerCase();
+  const isPresetParamRestriction =
+    errMsg.includes('public_id') ||
+    errMsg.includes('public id') ||
+    errMsg.includes('folder') ||
+    errMsg.includes('overwrite') ||
+    errMsg.includes('already exists') ||
+    errMsg.includes('display name');
+
+  if (isPresetParamRestriction) {
+    const fallbackForm = new FormData();
+    fallbackForm.append('file', dataUri);
+    fallbackForm.append('upload_preset', ITEM_IMAGE_CLOUDINARY_UPLOAD_PRESET);
+
+    const fallbackRes = await fetch(ITEM_IMAGE_CLOUDINARY_ENDPOINT, {
+      method: 'POST',
+      body: fallbackForm,
+    });
+
+    let fallbackResult: { secure_url?: string; error?: { message?: string } } = {};
+    try {
+      fallbackResult = await fallbackRes.json();
+    } catch {}
+
+    if (fallbackRes.ok && fallbackResult.secure_url) {
+      return fallbackResult.secure_url;
+    }
+
+    throw new Error(
+      fallbackResult.error?.message || `Cloudinary upload failed (${fallbackRes.status})`
+    );
+  }
+
+  throw new Error(result.error?.message || `Cloudinary upload failed (${res.status})`);
+}
+
+interface ItemImagePreviewPayload {
+  item: ItemManifestRecord;
+  thumbnailUrl: string;
+  highResUrl: string;
+}
+
+function ItemImageColumn({
+  item,
+  isDark,
+  size = 'card',
+  uploadedImageUrl,
+  onPressImage,
+  onPressUploadImage,
+}: {
+  item: ItemManifestRecord;
+  isDark: boolean;
+  size?: 'card' | 'compact';
+  uploadedImageUrl?: string;
+  onPressImage: (payload: ItemImagePreviewPayload) => void;
+  onPressUploadImage: (item: ItemManifestRecord) => void;
+}) {
   const [triedBackupUpc, setTriedBackupUpc] = useState<string | null>(null);
   const [failedUpc, setFailedUpc] = useState<string | null>(null);
+  const [failedUploadedUri, setFailedUploadedUri] = useState<string | null>(null);
   const [loadedUri, setLoadedUri] = useState<string | null>(null);
 
-  if (!upc || failedUpc === upc) return null;
+  const cleanUpc = (item.upc || '').trim();
+  const boxSizeClass = size === 'compact' ? 'h-24 w-24' : 'h-28 w-28';
+  const activeUploadedUrl =
+    uploadedImageUrl && failedUploadedUri !== uploadedImageUrl ? uploadedImageUrl : undefined;
 
-  const isUsingBackup = triedBackupUpc === upc;
-  const imageUrl = isUsingBackup
-    ? `https://res.cloudinary.com/dqtldfxeh/image/upload/c_fill,w_200,h_200/products/${upc}`
-    : `https://jpbulk.daisonet.com/cdn/shop/files/${upc}_10_200x.jpg`;
+  if (!activeUploadedUrl && (!cleanUpc || failedUpc === cleanUpc)) {
+    return (
+      <TouchableOpacity
+        key="upload-placeholder"
+        activeOpacity={0.75}
+        onPress={() => {
+          try {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          } catch {}
+          onPressUploadImage(item);
+        }}
+        className="items-center justify-center self-center">
+        <View
+          className={`${boxSizeClass} items-center justify-center rounded-lg border border-dashed px-2 ${
+            isDark ? 'border-[#e5005c]/60 bg-[#e5005c]/10' : 'border-[#e5005c]/50 bg-[#e5005c]/5'
+          }`}>
+          <View className="mb-1.5 rounded-full bg-[#e5005c]/15 p-2">
+            <Camera color="#e5005c" size={17} />
+          </View>
+          <Text className="text-center font-jetbrains text-[9px] font-bold leading-3 text-[#e5005c]">
+            UPLOAD{'\n'}IMAGE
+          </Text>
+        </View>
+      </TouchableOpacity>
+    );
+  }
+
+  const isUsingBackup = triedBackupUpc === cleanUpc;
+  const imageUrl = activeUploadedUrl
+    ? activeUploadedUrl
+    : isUsingBackup
+      ? `https://res.cloudinary.com/dqtldfxeh/image/upload/c_fill,w_200,h_200/products/${cleanUpc}`
+      : `https://jpbulk.daisonet.com/cdn/shop/files/${cleanUpc}_10_400x.jpg`;
+
+  const highResUrl = activeUploadedUrl
+    ? activeUploadedUrl
+    : isUsingBackup
+      ? `https://res.cloudinary.com/dqtldfxeh/image/upload/products/${cleanUpc}`
+      : `https://jpbulk.daisonet.com/cdn/shop/files/${cleanUpc}_10_1000x.jpg`;
 
   const isLoaded = loadedUri === imageUrl;
 
   const handleImageError = () => {
-    if (!isUsingBackup) {
+    if (activeUploadedUrl) {
+      setFailedUploadedUri(activeUploadedUrl);
+    } else if (!isUsingBackup) {
       // Primary Daiso CDN failed -> Try backup Cloudinary URL
-      setTriedBackupUpc(upc);
+      setTriedBackupUpc(cleanUpc);
     } else {
-      // Backup also failed -> Hide gracefully with zero UI indication
-      setFailedUpc(upc);
+      // Backup also failed -> Show clickable UPLOAD IMAGE trigger
+      setFailedUpc(cleanUpc);
     }
   };
 
   return (
-    <View
-      pointerEvents="none"
-      className="absolute bottom-0 right-0 top-0 w-32 items-end justify-center overflow-hidden pr-2"
-      style={{ zIndex: 0 }}>
-      <Image
-        key={imageUrl}
-        source={{ uri: imageUrl }}
-        resizeMode="contain"
-        onError={handleImageError}
-        onLoad={() => setLoadedUri(imageUrl)}
-        className="h-32 w-32 rounded-lg"
-        style={{ opacity: isLoaded ? 1 : 0 }}
+    <TouchableOpacity
+      key="image-preview"
+      activeOpacity={0.8}
+      disabled={!isLoaded}
+      onPress={() => {
+        if (isLoaded) {
+          try {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          } catch {}
+          onPressImage({
+            item,
+            thumbnailUrl: imageUrl,
+            highResUrl,
+          });
+        }
+      }}
+      className="items-center justify-center self-center">
+      <View
+        className={`${boxSizeClass} relative items-center justify-center overflow-hidden rounded-lg border ${
+          isLoaded
+            ? isDark
+              ? 'border-[#3f3f46] bg-white'
+              : 'border-[#d4d4d8] bg-white'
+            : isDark
+              ? 'border-[#3f3f46] bg-[#131316]'
+              : 'border-[#e4e4e7] bg-[#fafafa]'
+        }`}>
+        {!isLoaded && <ActivityIndicator size="small" color="#e5005c" />}
+        <Image
+          key={imageUrl}
+          source={{ uri: imageUrl }}
+          resizeMode={activeUploadedUrl ? 'cover' : 'contain'}
+          onError={handleImageError}
+          onLoad={() => setLoadedUri(imageUrl)}
+          className="h-full w-full"
+          style={{
+            position: isLoaded ? 'relative' : 'absolute',
+            opacity: isLoaded ? 1 : 0,
+            padding: activeUploadedUrl ? 0 : 6,
+          }}
+        />
+        {isLoaded && (
+          <View className="absolute bottom-1 right-1 flex-row items-center gap-0.5 rounded bg-black/75 px-1.5 py-0.5">
+            <ZoomIn color="#ffffff" size={10} />
+            <Text className="font-jetbrains text-[8px] font-bold text-[#ffffff]">ZOOM</Text>
+          </View>
+        )}
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+function ItemImageCaptureModalContent({
+  item,
+  isDark,
+  permission,
+  onRequestPermission,
+  onClose,
+  onUploaded,
+}: {
+  item: ItemManifestRecord;
+  isDark: boolean;
+  permission: ReturnType<typeof useCameraPermissions>[0];
+  onRequestPermission: () => void;
+  onClose: () => void;
+  onUploaded: (item: ItemManifestRecord, secureUrl: string) => void;
+}) {
+  const cameraRef = useRef<CameraView | null>(null);
+  const [capturedUri, setCapturedUri] = useState<string | null>(null);
+  const [isCapturing, setIsCapturing] = useState<boolean>(false);
+  const [isUploading, setIsUploading] = useState<boolean>(false);
+  const [uploadStatusText, setUploadStatusText] = useState<string>('');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [torchEnabled, setTorchEnabled] = useState<boolean>(false);
+  const [isCameraReady, setIsCameraReady] = useState<boolean>(false);
+  const [canMountCamera, setCanMountCamera] = useState<boolean>(Platform.OS === 'web');
+
+  const textPrimaryClass = isDark ? 'text-[#fafafa]' : 'text-[#18181b]';
+  const textSecondaryClass = isDark ? 'text-[#a1a1aa]' : 'text-[#71717a]';
+
+  // Wait for the background barcode scanner CameraView to fully unbind & unmount before mounting modal camera
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      return;
+    }
+    const mountTimer = setTimeout(() => {
+      setCanMountCamera(true);
+    }, 400);
+
+    return () => {
+      clearTimeout(mountTimer);
+    };
+  }, []);
+
+  // Ensure Android CameraX session starts cleanly if default prop diffing skipped initial creation
+  useEffect(() => {
+    if (
+      !canMountCamera ||
+      capturedUri ||
+      !permission?.granted ||
+      isCameraReady ||
+      Platform.OS === 'web'
+    ) {
+      return;
+    }
+    const resumeTimer = setTimeout(() => {
+      try {
+        cameraRef.current?.resumePreview()?.catch(() => {});
+      } catch {}
+    }, 500);
+    return () => clearTimeout(resumeTimer);
+  }, [canMountCamera, capturedUri, permission?.granted, isCameraReady]);
+
+  // Support Android hardware back button while in-window camera overlay is open
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (!isUploading) {
+        onClose();
+      }
+      return true;
+    });
+    return () => sub.remove();
+  }, [isUploading, onClose]);
+
+  const isCaptureDisabled =
+    !permission?.granted ||
+    !canMountCamera ||
+    isCapturing ||
+    (!isCameraReady && Platform.OS !== 'web');
+
+  const handleCapturePhoto = useCallback(async () => {
+    if (isCapturing) return;
+    setIsCapturing(true);
+    setErrorMessage(null);
+    try {
+      const photo = await cameraRef.current?.takePictureAsync({ quality: 0.85 });
+      if (photo?.uri) {
+        const squareUri = await cropImageToSquare(photo.uri, photo.width, photo.height);
+        setCapturedUri(squareUri);
+        try {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        } catch {}
+      } else {
+        throw new Error('Camera did not return an image. Please try again.');
+      }
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : 'Failed to capture photo');
+      playScanFeedback('error');
+    } finally {
+      setIsCapturing(false);
+    }
+  }, [isCapturing]);
+
+  const handleUploadCapturedPhoto = useCallback(async () => {
+    if (!capturedUri || isUploading) return;
+    setIsUploading(true);
+    setErrorMessage(null);
+    try {
+      setUploadStatusText('Compressing 1:1 image...');
+      const compressedUri = await compressImage(capturedUri);
+      const dataUri = await toUploadDataUri(compressedUri);
+
+      setUploadStatusText(`Uploading to Cloudinary (${ITEM_IMAGE_CLOUDINARY_UPLOAD_PRESET})...`);
+      const secureUrl = await uploadItemImageToCloudinary(dataUri, item);
+
+      onUploaded(item, secureUrl);
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : 'Upload failed. Check your connection.');
+      playScanFeedback('error');
+    } finally {
+      setIsUploading(false);
+      setUploadStatusText('');
+    }
+  }, [capturedUri, isUploading, item, onUploaded]);
+
+  const handleSafeClose = useCallback(() => {
+    try {
+      cameraRef.current?.pausePreview()?.catch(() => {});
+    } catch {}
+    onClose();
+  }, [onClose]);
+
+  return (
+    <View className="flex-1 items-center justify-center bg-black/85 px-4 py-6">
+      <TouchableOpacity
+        activeOpacity={1}
+        disabled={isUploading}
+        onPress={handleSafeClose}
+        style={StyleSheet.absoluteFill}
       />
+
+      <View
+        className={`max-h-[92%] w-full max-w-sm overflow-hidden rounded-xl border shadow-2xl ${
+          isDark ? 'border-[#3f3f46] bg-[#1f1f22]' : 'border-[#e4e4e7] bg-[#ffffff]'
+        }`}>
+        {/* Modal Header */}
+        <View
+          className={`flex-row items-center justify-between border-b px-4 py-3 ${
+            isDark ? 'border-[#3f3f46]' : 'border-[#e4e4e7]'
+          }`}>
+          <View className="flex-1 flex-row items-center gap-2 pr-2">
+            <View className="rounded-lg bg-[#e5005c]/15 p-1.5">
+              <Camera color="#e5005c" size={16} />
+            </View>
+            <View className="flex-1">
+              <Text className={`font-hanken text-sm font-bold ${textPrimaryClass}`}>
+                Capture & Upload Item Image
+              </Text>
+              <Text
+                className={`font-jetbrains text-[10px] ${textSecondaryClass}`}
+                numberOfLines={1}>
+                {item.upc
+                  ? `UPC: ${item.upc}`
+                  : item.sku
+                    ? `SKU: ${item.sku}`
+                    : 'Capture product photo'}
+              </Text>
+            </View>
+          </View>
+
+          <TouchableOpacity
+            onPress={handleSafeClose}
+            disabled={isUploading}
+            className={`rounded-lg border p-1.5 ${
+              isDark ? 'border-[#3f3f46] bg-[#2a2a2d]' : 'border-[#e4e4e7] bg-[#f4f4f5]'
+            }`}>
+            <X color={isDark ? '#fafafa' : '#18181b'} size={18} />
+          </TouchableOpacity>
+        </View>
+
+        {/* 1:1 Square Camera Viewfinder / Captured Photo Preview */}
+        <View
+          style={{ aspectRatio: 1 }}
+          className={`relative w-full overflow-hidden border-b bg-black ${
+            isDark ? 'border-[#3f3f46]' : 'border-[#e4e4e7]'
+          }`}>
+          {!permission ? (
+            <View className="flex-1 items-center justify-center gap-2">
+              <ActivityIndicator size="small" color="#e5005c" />
+              <Text className="font-jetbrains text-xs text-[#a1a1aa]">Initializing camera...</Text>
+            </View>
+          ) : !permission.granted ? (
+            <View className="flex-1 items-center justify-center gap-3 px-6">
+              <AlertTriangle color="#eab308" size={32} />
+              <Text className="text-center font-hanken text-xs text-[#fafafa]">
+                Camera permission is required to capture and upload an item image.
+              </Text>
+              <TouchableOpacity
+                onPress={onRequestPermission}
+                className="rounded-lg bg-[#e5005c] px-4 py-2.5">
+                <Text className="font-jetbrains text-xs font-bold text-[#ffffff]">
+                  GRANT CAMERA ACCESS
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : capturedUri ? (
+            <>
+              <Image
+                source={{ uri: capturedUri }}
+                resizeMode="cover"
+                className="h-full w-full bg-black"
+              />
+              <View className="absolute left-3 top-3 rounded-md bg-black/70 px-2.5 py-1">
+                <Text className="font-jetbrains text-[10px] font-bold text-[#22c55e]">
+                  ✓ 1:1 PHOTO CAPTURED — REVIEW BEFORE UPLOAD
+                </Text>
+              </View>
+
+              {isUploading && (
+                <View className="absolute bottom-0 left-0 right-0 top-0 items-center justify-center gap-2.5 bg-black/75 px-6">
+                  <ActivityIndicator size="large" color="#e5005c" />
+                  <Text className="text-center font-jetbrains text-xs font-bold text-[#ffffff]">
+                    {uploadStatusText || 'Uploading image...'}
+                  </Text>
+                </View>
+              )}
+            </>
+          ) : !canMountCamera ? (
+            <View className="flex-1 items-center justify-center gap-2.5 px-6">
+              <ActivityIndicator size="small" color="#e5005c" />
+              <Text className="text-center font-jetbrains text-xs text-[#a1a1aa]">
+                Switching camera from barcode scanner...
+              </Text>
+            </View>
+          ) : (
+            <>
+              <CameraView
+                ref={cameraRef}
+                style={StyleSheet.absoluteFill}
+                facing="back"
+                mode="picture"
+                enableTorch={torchEnabled}
+                onCameraReady={() => setIsCameraReady(true)}
+                onMountError={(event) => {
+                  setIsCameraReady(false);
+                  setErrorMessage(
+                    event.message || 'Camera could not start. Tap retry or reopen modal.'
+                  );
+                }}
+              />
+
+              {!isCameraReady && Platform.OS !== 'web' && (
+                <View
+                  pointerEvents="none"
+                  className="absolute bottom-0 left-0 right-0 top-0 items-center justify-center gap-2 bg-black/45">
+                  <ActivityIndicator size="small" color="#e5005c" />
+                  <Text className="font-jetbrains text-[11px] text-[#fafafa]">
+                    Starting camera preview...
+                  </Text>
+                </View>
+              )}
+
+              {/* 1:1 Framing Corner Guides */}
+              <View
+                pointerEvents="none"
+                className="absolute left-12 top-12 h-10 w-10 border-l-2 border-t-2 border-white/70"
+              />
+              <View
+                pointerEvents="none"
+                className="absolute right-12 top-12 h-10 w-10 border-r-2 border-t-2 border-white/70"
+              />
+              <View
+                pointerEvents="none"
+                className="absolute bottom-12 left-12 h-10 w-10 border-b-2 border-l-2 border-white/70"
+              />
+              <View
+                pointerEvents="none"
+                className="absolute bottom-12 right-12 h-10 w-10 border-b-2 border-r-2 border-white/70"
+              />
+
+              {/* Top Camera Status & Torch Toggle */}
+              <View className="absolute left-3 right-3 top-3 flex-row items-center justify-between">
+                <View className="rounded-md bg-black/65 px-2.5 py-1">
+                  <Text className="font-jetbrains text-[10px] font-bold text-[#ffffff]">
+                    1:1 · CENTER PRODUCT IN FRAME
+                  </Text>
+                </View>
+
+                <TouchableOpacity
+                  onPress={() => setTorchEnabled((prev) => !prev)}
+                  activeOpacity={0.8}
+                  className={`flex-row items-center gap-1 rounded-lg border px-2.5 py-1.5 ${
+                    torchEnabled
+                      ? 'border-[#f59e0b] bg-[#f59e0b]/25'
+                      : 'border-white/25 bg-black/65'
+                  }`}>
+                  <Flashlight color={torchEnabled ? '#f59e0b' : '#ffffff'} size={14} />
+                  <Text
+                    className={`font-jetbrains text-[9px] font-bold ${
+                      torchEnabled ? 'text-[#f59e0b]' : 'text-[#ffffff]'
+                    }`}>
+                    {torchEnabled ? 'FLASH ON' : 'FLASH'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
+        </View>
+
+        {/* Item Info & Error Feedback */}
+        <View className="px-4 pt-3">
+          <View
+            className={`rounded-lg border p-2.5 ${
+              isDark ? 'border-[#3f3f46] bg-[#131316]' : 'border-[#e4e4e7] bg-[#fafafa]'
+            }`}>
+            <View className="flex-row items-center justify-between gap-2">
+              <Text
+                className={`flex-1 font-jetbrains text-xs font-bold ${textPrimaryClass}`}
+                numberOfLines={1}>
+                SKU: {item.sku || '—'}
+              </Text>
+              <View className="rounded bg-[#e5005c]/15 px-2 py-0.5">
+                <Text className="font-jetbrains text-[9px] font-bold text-[#e5005c]">
+                  PRESET: {ITEM_IMAGE_CLOUDINARY_UPLOAD_PRESET}
+                </Text>
+              </View>
+            </View>
+            {item.description ? (
+              <Text className={`mt-1 font-hanken text-xs ${textSecondaryClass}`} numberOfLines={2}>
+                {item.description}
+              </Text>
+            ) : null}
+          </View>
+
+          {errorMessage ? (
+            <View className="mt-2.5 flex-row items-center gap-2 rounded-lg border border-[#ef4444]/40 bg-[#ef4444]/15 p-2.5">
+              <AlertTriangle color="#ef4444" size={15} />
+              <Text className="flex-1 font-jetbrains text-[11px] font-semibold text-[#ef4444]">
+                {errorMessage}
+              </Text>
+            </View>
+          ) : null}
+        </View>
+
+        {/* Footer Capture / Upload Buttons */}
+        <View className="flex-row items-center gap-2.5 px-4 py-3.5">
+          {!capturedUri ? (
+            <>
+              <TouchableOpacity
+                key="cancel-btn"
+                onPress={handleSafeClose}
+                activeOpacity={0.8}
+                className={`flex-1 items-center justify-center rounded-lg border py-3 ${
+                  isDark
+                    ? 'border-[#3f3f46] bg-[#2a2a2d] active:bg-[#3f3f46]'
+                    : 'border-[#d4d4d8] bg-[#f4f4f5] active:bg-[#e4e4e7]'
+                }`}>
+                <Text className={`font-jetbrains text-xs font-bold ${textSecondaryClass}`}>
+                  CANCEL
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                key="capture-btn"
+                onPress={handleCapturePhoto}
+                disabled={isCaptureDisabled}
+                activeOpacity={0.8}
+                className={`flex-[1.6] flex-row items-center justify-center gap-2 rounded-lg py-3 ${
+                  isCaptureDisabled ? 'bg-[#e5005c]/45' : 'bg-[#e5005c] active:bg-[#c20050]'
+                }`}>
+                {isCapturing ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <Camera color="#ffffff" size={16} />
+                )}
+                <Text className="font-jetbrains text-xs font-bold text-[#ffffff]">
+                  {isCapturing
+                    ? 'CAPTURING...'
+                    : !canMountCamera || (!isCameraReady && Platform.OS !== 'web')
+                      ? 'STARTING CAMERA...'
+                      : 'CAPTURE IMAGE'}
+                </Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <TouchableOpacity
+                key="retake-btn"
+                onPress={() => {
+                  setIsCameraReady(false);
+                  setCapturedUri(null);
+                  setErrorMessage(null);
+                }}
+                disabled={isUploading}
+                activeOpacity={0.8}
+                className={`flex-1 flex-row items-center justify-center gap-1.5 rounded-lg border py-3 ${
+                  isDark
+                    ? 'border-[#3f3f46] bg-[#2a2a2d] active:bg-[#3f3f46]'
+                    : 'border-[#d4d4d8] bg-[#f4f4f5] active:bg-[#e4e4e7]'
+                }`}>
+                <RotateCcw color={isDark ? '#a1a1aa' : '#71717a'} size={14} />
+                <Text className={`font-jetbrains text-xs font-bold ${textSecondaryClass}`}>
+                  RETAKE
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                key="upload-btn"
+                onPress={handleUploadCapturedPhoto}
+                disabled={isUploading}
+                activeOpacity={0.8}
+                className={`flex-[1.6] flex-row items-center justify-center gap-2 rounded-lg py-3 ${
+                  isUploading ? 'bg-[#e5005c]/55' : 'bg-[#e5005c] active:bg-[#c20050]'
+                }`}>
+                {isUploading ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <CloudUpload color="#ffffff" size={16} />
+                )}
+                <Text className="font-jetbrains text-xs font-bold text-[#ffffff]">
+                  {isUploading ? 'UPLOADING...' : 'UPLOAD IMAGE'}
+                </Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+      </View>
     </View>
   );
 }
 
-export default function ScanningItemScreen({ navigation: propNavigation }: { navigation?: any } = {}) {
+function ItemImageZoomModalContent({
+  data,
+  isDark,
+  scannedQty,
+  expiryDate,
+  openedFromQtyModal,
+  onClose,
+  onOpenQtyModal,
+}: {
+  data: ItemImagePreviewPayload;
+  isDark: boolean;
+  scannedQty: number;
+  expiryDate?: string;
+  openedFromQtyModal: boolean;
+  onClose: () => void;
+  onOpenQtyModal: (item: ItemManifestRecord) => void;
+}) {
+  const { item, thumbnailUrl, highResUrl } = data;
+  const textPrimaryClass = isDark ? 'text-[#fafafa]' : 'text-[#18181b]';
+  const textSecondaryClass = isDark ? 'text-[#a1a1aa]' : 'text-[#71717a]';
+  const subCardBgClass = isDark ? 'border-[#3f3f46] bg-[#131316]' : 'border-[#e4e4e7] bg-[#fafafa]';
+
+  const [zoomScale, setZoomScale] = useState<number>(1);
+  const [panOffset, setPanOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [loadedHighResUri, setLoadedHighResUri] = useState<string | null>(null);
+  const [failedHighResUri, setFailedHighResUri] = useState<string | null>(null);
+
+  const zoomScaleRef = useRef<number>(1);
+  const panOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const viewportSizeRef = useRef<{ width: number; height: number }>({ width: 320, height: 288 });
+  const gestureStartRef = useRef({
+    startX: 0,
+    startY: 0,
+    panX: 0,
+    panY: 0,
+    pinchDist: 0,
+    startScale: 1,
+    moved: false,
+  });
+  const lastTapTimeRef = useRef<number>(0);
+
+  const clampPan = useCallback((x: number, y: number, scale: number) => {
+    if (scale <= 1) return { x: 0, y: 0 };
+    const maxX = (viewportSizeRef.current.width * (scale - 1)) / 2;
+    const maxY = (viewportSizeRef.current.height * (scale - 1)) / 2;
+    return {
+      x: Math.max(-maxX, Math.min(maxX, x)),
+      y: Math.max(-maxY, Math.min(maxY, y)),
+    };
+  }, []);
+
+  const applyZoom = useCallback(
+    (nextScale: number, nextPan?: { x: number; y: number }) => {
+      const clampedScale = Math.min(4, Math.max(1, Math.round(nextScale * 100) / 100));
+      const targetPan =
+        clampedScale <= 1
+          ? { x: 0, y: 0 }
+          : clampPan(
+              nextPan ? nextPan.x : panOffsetRef.current.x,
+              nextPan ? nextPan.y : panOffsetRef.current.y,
+              clampedScale
+            );
+      zoomScaleRef.current = clampedScale;
+      panOffsetRef.current = targetPan;
+      setZoomScale(clampedScale);
+      setPanOffset(targetPan);
+    },
+    [clampPan]
+  );
+
+  const handleResponderGrant = useCallback((evt: any) => {
+    const touches = evt.nativeEvent.touches || [];
+    gestureStartRef.current.moved = false;
+    gestureStartRef.current.startX = evt.nativeEvent.pageX || 0;
+    gestureStartRef.current.startY = evt.nativeEvent.pageY || 0;
+    gestureStartRef.current.panX = panOffsetRef.current.x;
+    gestureStartRef.current.panY = panOffsetRef.current.y;
+    gestureStartRef.current.startScale = zoomScaleRef.current;
+
+    if (touches.length >= 2) {
+      gestureStartRef.current.pinchDist = Math.hypot(
+        touches[1].pageX - touches[0].pageX,
+        touches[1].pageY - touches[0].pageY
+      );
+    } else {
+      gestureStartRef.current.pinchDist = 0;
+    }
+  }, []);
+
+  const handleResponderMove = useCallback(
+    (evt: any) => {
+      const touches = evt.nativeEvent.touches || [];
+      if (touches.length >= 2) {
+        gestureStartRef.current.moved = true;
+        const dist = Math.hypot(
+          touches[1].pageX - touches[0].pageX,
+          touches[1].pageY - touches[0].pageY
+        );
+        if (gestureStartRef.current.pinchDist === 0) {
+          gestureStartRef.current.pinchDist = dist;
+          gestureStartRef.current.startScale = zoomScaleRef.current;
+        } else if (dist > 0) {
+          const nextScale =
+            gestureStartRef.current.startScale * (dist / gestureStartRef.current.pinchDist);
+          applyZoom(nextScale);
+        }
+      } else if (zoomScaleRef.current > 1) {
+        const dx = (evt.nativeEvent.pageX || 0) - gestureStartRef.current.startX;
+        const dy = (evt.nativeEvent.pageY || 0) - gestureStartRef.current.startY;
+        if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+          gestureStartRef.current.moved = true;
+        }
+        applyZoom(zoomScaleRef.current, {
+          x: gestureStartRef.current.panX + dx,
+          y: gestureStartRef.current.panY + dy,
+        });
+      }
+    },
+    [applyZoom]
+  );
+
+  const handleResponderRelease = useCallback(() => {
+    if (!gestureStartRef.current.moved) {
+      const now = Date.now();
+      if (lastTapTimeRef.current > 0 && now - lastTapTimeRef.current < 320) {
+        lastTapTimeRef.current = 0;
+        const targetScale = zoomScaleRef.current > 1 ? 1 : 2.5;
+        applyZoom(targetScale, { x: 0, y: 0 });
+        try {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        } catch {}
+      } else {
+        lastTapTimeRef.current = now;
+      }
+    }
+  }, [applyZoom]);
+
+  const expectedQty = item.qty || 0;
+  const isOverScanned = scannedQty > expectedQty;
+  const isFulfilled = scannedQty === expectedQty && expectedQty > 0;
+  const isShort = scannedQty > 0 && scannedQty < expectedQty;
+  const overageAmount = Math.max(0, scannedQty - expectedQty);
+  const remainingQty = Math.max(0, expectedQty - scannedQty);
+
+  const showHighRes = highResUrl !== thumbnailUrl && failedHighResUri !== highResUrl;
+  const isHighResReady = loadedHighResUri === highResUrl;
+
+  return (
+    <View className="flex-1 items-center justify-center bg-black/85 px-4 py-6">
+      {/* Tap outside modal card to close */}
+      <TouchableOpacity
+        activeOpacity={1}
+        onPress={onClose}
+        style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 }}
+      />
+
+      <View
+        className={`max-h-[92%] w-full max-w-md overflow-hidden rounded-xl border shadow-2xl ${
+          isDark ? 'border-[#3f3f46] bg-[#1f1f22]' : 'border-[#e4e4e7] bg-[#ffffff]'
+        }`}>
+        {/* Modal Header */}
+        <View
+          className={`flex-row items-center justify-between border-b px-4 py-3 ${
+            isDark ? 'border-[#3f3f46]' : 'border-[#e4e4e7]'
+          }`}>
+          <View className="flex-1 flex-row items-center gap-2 pr-2">
+            <View className="rounded-lg bg-[#e5005c]/15 p-1.5">
+              <ZoomIn color="#e5005c" size={16} />
+            </View>
+            <View className="flex-1">
+              <Text className={`font-hanken text-sm font-bold ${textPrimaryClass}`}>
+                Item Image Preview
+              </Text>
+              <Text
+                className={`font-jetbrains text-[10px] ${textSecondaryClass}`}
+                numberOfLines={1}>
+                {item.sku ? `SKU: ${item.sku}` : item.upc ? `UPC: ${item.upc}` : 'Product Details'}
+              </Text>
+            </View>
+          </View>
+
+          <TouchableOpacity
+            onPress={onClose}
+            className={`rounded-lg border p-1.5 ${
+              isDark ? 'border-[#3f3f46] bg-[#2a2a2d]' : 'border-[#e4e4e7] bg-[#f4f4f5]'
+            }`}>
+            <X color={isDark ? '#fafafa' : '#18181b'} size={18} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Enlarged & Interactive Zoomable Image Viewport */}
+        <View
+          onLayout={(e) => {
+            const { width, height } = e.nativeEvent.layout;
+            if (width > 0 && height > 0) {
+              viewportSizeRef.current = { width, height };
+            }
+          }}
+          className={`relative h-72 w-full overflow-hidden border-b bg-white ${
+            isDark ? 'border-[#3f3f46]' : 'border-[#e4e4e7]'
+          }`}>
+          <View
+            onStartShouldSetResponder={() => true}
+            onMoveShouldSetResponder={(evt) =>
+              (evt.nativeEvent.touches?.length || 0) >= 2 || zoomScaleRef.current > 1
+            }
+            onResponderGrant={handleResponderGrant}
+            onResponderMove={handleResponderMove}
+            onResponderRelease={handleResponderRelease}
+            className="h-full w-full items-center justify-center">
+            <View
+              style={{
+                width: '100%',
+                height: '100%',
+                transform: [
+                  { translateX: panOffset.x },
+                  { translateY: panOffset.y },
+                  { scale: zoomScale },
+                ],
+              }}>
+              <Image
+                source={{ uri: thumbnailUrl }}
+                resizeMode="contain"
+                className="h-full w-full p-3"
+              />
+              {showHighRes && (
+                <Image
+                  key={highResUrl}
+                  source={{ uri: highResUrl }}
+                  resizeMode="contain"
+                  onLoad={() => setLoadedHighResUri(highResUrl)}
+                  onError={() => setFailedHighResUri(highResUrl)}
+                  className="h-full w-full p-3"
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    right: 0,
+                    bottom: 0,
+                    left: 0,
+                    opacity: isHighResReady ? 1 : 0,
+                  }}
+                />
+              )}
+            </View>
+          </View>
+
+          {/* Zoom Controls Overlay */}
+          <View
+            pointerEvents="box-none"
+            className="absolute bottom-2.5 left-2.5 right-2.5 flex-row items-center justify-between">
+            <View pointerEvents="none" className="rounded-md bg-black/65 px-2 py-1">
+              <Text className="font-jetbrains text-[9px] font-semibold text-[#ffffff]">
+                {zoomScale > 1 ? 'Drag to pan · Double-tap reset' : 'Pinch or double-tap to zoom'}
+              </Text>
+            </View>
+
+            <View className="flex-row items-center gap-1 rounded-lg bg-black/80 p-1">
+              <TouchableOpacity
+                onPress={() => {
+                  applyZoom(zoomScale - 0.5);
+                  try {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  } catch {}
+                }}
+                disabled={zoomScale <= 1}
+                className={`h-7 w-7 items-center justify-center rounded ${
+                  zoomScale <= 1 ? 'opacity-40' : 'active:bg-white/20'
+                }`}>
+                <ZoomOut color="#ffffff" size={14} />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => {
+                  const nextPreset = zoomScale < 2 ? 2 : zoomScale < 3 ? 3 : 1;
+                  applyZoom(nextPreset, nextPreset === 1 ? { x: 0, y: 0 } : undefined);
+                  try {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  } catch {}
+                }}
+                className="rounded bg-white/15 px-2 py-1">
+                <Text className="font-jetbrains text-[10px] font-bold text-[#ffffff]">
+                  {zoomScale.toFixed(1)}x
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => {
+                  applyZoom(zoomScale + 0.5);
+                  try {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  } catch {}
+                }}
+                disabled={zoomScale >= 4}
+                className={`h-7 w-7 items-center justify-center rounded ${
+                  zoomScale >= 4 ? 'opacity-40' : 'active:bg-white/20'
+                }`}>
+                <ZoomIn color="#ffffff" size={14} />
+              </TouchableOpacity>
+
+              {zoomScale > 1 && (
+                <TouchableOpacity
+                  onPress={() => {
+                    applyZoom(1, { x: 0, y: 0 });
+                    try {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    } catch {}
+                  }}
+                  className="ml-0.5 h-7 w-7 items-center justify-center rounded bg-[#e5005c]">
+                  <RotateCcw color="#ffffff" size={13} />
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        </View>
+
+        {/* Item Details Below the Enlarged Image */}
+        <ScrollView className="max-h-72 px-4 pt-3.5" showsVerticalScrollIndicator={false}>
+          {/* Status & Expiry Pills */}
+          <View className="mb-2 flex-row flex-wrap items-center gap-1.5">
+            {isOverScanned ? (
+              <View className="flex-row items-center gap-1 rounded border border-[#ef4444]/40 bg-[#ef4444]/15 px-2 py-0.5">
+                <AlertTriangle color="#ef4444" size={12} />
+                <Text className="font-jetbrains text-[10px] font-bold text-[#ef4444]">
+                  OVER-SCANNED (+{overageAmount})
+                </Text>
+              </View>
+            ) : isFulfilled ? (
+              <View className="flex-row items-center gap-1 rounded border border-[#22c55e]/40 bg-[#22c55e]/15 px-2 py-0.5">
+                <CheckCircle color="#22c55e" size={12} />
+                <Text className="font-jetbrains text-[10px] font-bold text-[#22c55e]">
+                  FULFILLED
+                </Text>
+              </View>
+            ) : isShort ? (
+              <View className="flex-row items-center gap-1 rounded border border-[#eab308]/40 bg-[#eab308]/15 px-2 py-0.5">
+                <AlertTriangle color="#eab308" size={12} />
+                <Text className="font-jetbrains text-[10px] font-bold text-[#eab308]">
+                  SHORT (-{remainingQty})
+                </Text>
+              </View>
+            ) : (
+              <View
+                className={`rounded border px-2 py-0.5 ${
+                  isDark ? 'border-[#3f3f46] bg-[#2a2a2d]' : 'border-[#d4d4d8] bg-[#f4f4f5]'
+                }`}>
+                <Text className={`font-jetbrains text-[10px] font-bold ${textSecondaryClass}`}>
+                  UNSCANNED
+                </Text>
+              </View>
+            )}
+
+            {expiryDate ? (
+              <View className="flex-row items-center gap-1 rounded border border-[#e5005c]/30 bg-[#e5005c]/10 px-2 py-0.5">
+                <CalendarIcon color="#e5005c" size={11} />
+                <Text className="font-jetbrains text-[10px] font-bold text-[#e5005c]">
+                  EXP: {expiryDate}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+
+          {/* Full Item Description */}
+          <Text className={`mb-3 font-hanken text-sm font-bold ${textPrimaryClass}`}>
+            {item.description || 'No description available'}
+          </Text>
+
+          {/* 2-Column Technical Identifiers Grid */}
+          <View className="mb-3 flex-row flex-wrap gap-2">
+            <View className={`min-w-[47%] flex-1 rounded-lg border p-2.5 ${subCardBgClass}`}>
+              <Text
+                className={`font-jetbrains text-[9px] font-bold uppercase tracking-wider ${textSecondaryClass}`}>
+                SKU
+              </Text>
+              <Text
+                className={`mt-0.5 font-jetbrains text-xs font-bold ${textPrimaryClass}`}
+                selectable>
+                {item.sku || '—'}
+              </Text>
+            </View>
+
+            <View className={`min-w-[47%] flex-1 rounded-lg border p-2.5 ${subCardBgClass}`}>
+              <Text
+                className={`font-jetbrains text-[9px] font-bold uppercase tracking-wider ${textSecondaryClass}`}>
+                UPC
+              </Text>
+              <Text className="mt-0.5 font-jetbrains text-xs font-bold text-[#e5005c]" selectable>
+                {item.upc || '—'}
+              </Text>
+            </View>
+
+            <View className={`min-w-[47%] flex-1 rounded-lg border p-2.5 ${subCardBgClass}`}>
+              <Text
+                className={`font-jetbrains text-[9px] font-bold uppercase tracking-wider ${textSecondaryClass}`}>
+                BOX CID
+              </Text>
+              <Text
+                className={`mt-0.5 font-jetbrains text-xs font-semibold ${textPrimaryClass}`}
+                selectable>
+                {item.cid || '—'}
+              </Text>
+            </View>
+
+            <View className={`min-w-[47%] flex-1 rounded-lg border p-2.5 ${subCardBgClass}`}>
+              <Text
+                className={`font-jetbrains text-[9px] font-bold uppercase tracking-wider ${textSecondaryClass}`}>
+                TRF NO
+              </Text>
+              <Text
+                className={`mt-0.5 font-jetbrains text-xs font-semibold ${textPrimaryClass}`}
+                selectable>
+                {item.trf || '—'}
+              </Text>
+            </View>
+          </View>
+
+          {/* Quantity Breakdown Row */}
+          <View className="mb-3 flex-row items-center gap-2">
+            <View className={`flex-1 items-center rounded-lg border py-2 ${subCardBgClass}`}>
+              <Text className={`font-jetbrains text-[9px] font-bold ${textSecondaryClass}`}>
+                MANIFEST QTY
+              </Text>
+              <Text className={`mt-0.5 font-jetbrains text-sm font-bold ${textPrimaryClass}`}>
+                {expectedQty}
+              </Text>
+            </View>
+
+            <View className={`flex-1 items-center rounded-lg border py-2 ${subCardBgClass}`}>
+              <Text className={`font-jetbrains text-[9px] font-bold ${textSecondaryClass}`}>
+                SCANNED QTY
+              </Text>
+              <Text
+                className={`mt-0.5 font-jetbrains text-sm font-bold ${
+                  isOverScanned
+                    ? 'text-[#ef4444]'
+                    : isFulfilled
+                      ? 'text-[#22c55e]'
+                      : scannedQty > 0
+                        ? 'text-[#e5005c]'
+                        : textPrimaryClass
+                }`}>
+                {scannedQty}
+              </Text>
+            </View>
+
+            <View className={`flex-1 items-center rounded-lg border py-2 ${subCardBgClass}`}>
+              <Text className={`font-jetbrains text-[9px] font-bold ${textSecondaryClass}`}>
+                {isOverScanned ? 'OVERAGE' : 'REMAINING'}
+              </Text>
+              <Text
+                className={`mt-0.5 font-jetbrains text-sm font-bold ${
+                  isOverScanned
+                    ? 'text-[#ef4444]'
+                    : remainingQty > 0
+                      ? 'text-[#eab308]'
+                      : 'text-[#22c55e]'
+                }`}>
+                {isOverScanned ? `+${overageAmount}` : remainingQty}
+              </Text>
+            </View>
+          </View>
+        </ScrollView>
+
+        {/* Modal Footer Actions */}
+        <View
+          className={`flex-row items-center gap-2.5 border-t px-4 py-3 ${
+            isDark ? 'border-[#3f3f46]' : 'border-[#e4e4e7]'
+          }`}>
+          {openedFromQtyModal ? (
+            <TouchableOpacity
+              key="back-qty-btn"
+              onPress={onClose}
+              activeOpacity={0.8}
+              className="flex-1 items-center justify-center rounded-lg bg-[#e5005c] py-3 active:bg-[#c20050]">
+              <Text className="font-jetbrains text-xs font-bold text-[#ffffff]">
+                BACK TO QTY ENTRY
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <>
+              <TouchableOpacity
+                key="close-btn"
+                onPress={onClose}
+                activeOpacity={0.8}
+                className={`flex-1 items-center justify-center rounded-lg border py-3 ${
+                  isDark
+                    ? 'border-[#3f3f46] bg-[#2a2a2d] active:bg-[#3f3f46]'
+                    : 'border-[#d4d4d8] bg-[#f4f4f5] active:bg-[#e4e4e7]'
+                }`}>
+                <Text className={`font-jetbrains text-xs font-bold ${textSecondaryClass}`}>
+                  CLOSE
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                key="update-qty-btn"
+                onPress={() => onOpenQtyModal(item)}
+                activeOpacity={0.8}
+                className="flex-1 items-center justify-center rounded-lg bg-[#e5005c] py-3 active:bg-[#c20050]">
+                <Text className="font-jetbrains text-xs font-bold text-[#ffffff]">UPDATE QTY</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+      </View>
+    </View>
+  );
+}
+
+export default function ScanningItemScreen({
+  navigation: propNavigation,
+}: { navigation?: any } = {}) {
   const contextNavigation = useContext(NavigationContext);
   const navigation = propNavigation || contextNavigation;
   const { operatorId, storeCode, storeName, loginDate } = useAuth();
@@ -246,6 +1489,25 @@ export default function ScanningItemScreen({ navigation: propNavigation }: { nav
   const [scannedItemModal, setScannedItemModal] = useState<ItemManifestRecord | null>(null);
   const [qtyInputModalValue, setQtyInputModalValue] = useState<string>('1');
 
+  // Enlarged / Zoomed Item Image & Details Modal state
+  const [imageZoomModal, setImageZoomModal] = useState<ItemImagePreviewPayload | null>(null);
+
+  // Camera Capture & Cloudinary Upload Modal state for missing item images
+  const [uploadImageModalItem, setUploadImageModalItem] = useState<ItemManifestRecord | null>(null);
+  const [uploadedImageMap, setUploadedImageMap] = useState<Record<string, string>>({});
+  const scannerCameraRef = useRef<CameraView | null>(null);
+  const scannerResumeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [isScreenFocused, setIsScreenFocused] = useState<boolean>(true);
+  const [isScannerPausedForModal, setIsScannerPausedForModal] = useState<boolean>(false);
+
+  useEffect(() => {
+    return () => {
+      if (scannerResumeTimerRef.current) {
+        clearTimeout(scannerResumeTimerRef.current);
+      }
+    };
+  }, []);
+
   // Expiry date states for items under all CIDs
   const [expiryDateMap, setExpiryDateMap] = useState<Record<string, string>>({});
   const expiryDateMapRef = useRef<Record<string, string>>({});
@@ -285,28 +1547,50 @@ export default function ScanningItemScreen({ navigation: propNavigation }: { nav
 
   // Full screen tabs mode (covers camera when swiped up)
   const [isFullScreenTabs, setIsFullScreenTabs] = useState(false);
+  const [isBluetoothScannerActive, setIsBluetoothScannerActive] = useState(false);
   const [bluetoothInput, setBluetoothInput] = useState('');
   const bluetoothInputRef = useRef<TextInput>(null);
   const liveBufferRef = useRef('');
   const scanBufferTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [isBuffering, setIsBuffering] = useState(false);
 
+  const toggleBluetoothScanner = useCallback(() => {
+    setIsBluetoothScannerActive((prev) => {
+      const next = !prev;
+      if (!next) {
+        if (scanBufferTimerRef.current) {
+          clearTimeout(scanBufferTimerRef.current);
+          scanBufferTimerRef.current = null;
+        }
+        setIsBuffering(false);
+        liveBufferRef.current = '';
+        setBluetoothInput('');
+        bluetoothInputRef.current?.blur();
+      }
+      return next;
+    });
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch {}
+  }, []);
+
   const refocusBluetoothInput = useCallback(() => {
-    if (isFullScreenTabs) {
+    if (isFullScreenTabs && isBluetoothScannerActive) {
       setTimeout(() => {
         bluetoothInputRef.current?.focus();
       }, 150);
     }
-  }, [isFullScreenTabs]);
+  }, [isFullScreenTabs, isBluetoothScannerActive]);
 
-  // Focus bluetooth input automatically whenever swiped up into full screen tabs
+  // Focus bluetooth input automatically only when swiped up AND Bluetooth scanner toggle is active
   useEffect(() => {
-    if (isFullScreenTabs) {
-      setTimeout(() => {
+    if (isFullScreenTabs && isBluetoothScannerActive) {
+      const focusTimer = setTimeout(() => {
         bluetoothInputRef.current?.focus();
       }, 100);
+      return () => clearTimeout(focusTimer);
     }
-  }, [isFullScreenTabs]);
+  }, [isFullScreenTabs, isBluetoothScannerActive]);
 
   useEffect(() => {
     return () => {
@@ -437,6 +1721,11 @@ export default function ScanningItemScreen({ navigation: propNavigation }: { nav
       const storedManifest = await AsyncStorage.getItem(MANIFEST_ITEMS_KEY);
       const storedScanned = await AsyncStorage.getItem(SCANNED_ITEMS_KEY);
       const storedExpiry = await AsyncStorage.getItem(ITEM_EXPIRY_DATES_KEY);
+      const storedUploadedImages = await AsyncStorage.getItem(UPLOADED_ITEM_IMAGES_KEY);
+
+      if (storedUploadedImages) {
+        setUploadedImageMap(JSON.parse(storedUploadedImages) as Record<string, string>);
+      }
 
       if (storedManifest) {
         const parsedItems = JSON.parse(storedManifest) as ItemManifestRecord[];
@@ -461,9 +1750,69 @@ export default function ScanningItemScreen({ navigation: propNavigation }: { nav
     }
   }, []);
 
+  const openUploadImageModal = useCallback((targetItem: ItemManifestRecord) => {
+    if (scannerResumeTimerRef.current) {
+      clearTimeout(scannerResumeTimerRef.current);
+      scannerResumeTimerRef.current = null;
+    }
+    try {
+      scannerCameraRef.current?.pausePreview()?.catch(() => {});
+    } catch {}
+    setIsScannerPausedForModal(true);
+    setUploadImageModalItem(targetItem);
+  }, []);
+
+  const closeUploadImageModal = useCallback(() => {
+    setUploadImageModalItem(null);
+    if (scannerResumeTimerRef.current) {
+      clearTimeout(scannerResumeTimerRef.current);
+    }
+    scannerResumeTimerRef.current = setTimeout(() => {
+      setIsScannerPausedForModal(false);
+      scannerResumeTimerRef.current = null;
+    }, 400);
+    if (!scannedItemModal) {
+      refocusBluetoothInput();
+    }
+  }, [scannedItemModal, refocusBluetoothInput]);
+
+  const handleItemImageUploaded = useCallback(
+    (uploadedItem: ItemManifestRecord, secureUrl: string) => {
+      const key = getItemImageKey(uploadedItem);
+      setUploadedImageMap((prev) => {
+        const updated = { ...prev, [key]: secureUrl };
+        AsyncStorage.setItem(UPLOADED_ITEM_IMAGES_KEY, JSON.stringify(updated)).catch(() => {});
+        return updated;
+      });
+      setUploadImageModalItem(null);
+      if (scannerResumeTimerRef.current) {
+        clearTimeout(scannerResumeTimerRef.current);
+      }
+      scannerResumeTimerRef.current = setTimeout(() => {
+        setIsScannerPausedForModal(false);
+        scannerResumeTimerRef.current = null;
+      }, 400);
+      const label = uploadedItem.sku || uploadedItem.upc || uploadedItem.description || 'Item';
+      showNotification(
+        'success',
+        '✓ ITEM IMAGE UPLOADED',
+        `Saved product photo for ${label} via Cloudinary (${ITEM_IMAGE_CLOUDINARY_UPLOAD_PRESET})`
+      );
+      playScanFeedback('success');
+      if (!scannedItemModal) {
+        refocusBluetoothInput();
+      }
+    },
+    [scannedItemModal, showNotification, refocusBluetoothInput]
+  );
+
   useFocusEffect(
     useCallback(() => {
+      setIsScreenFocused(true);
       loadSavedProgress();
+      return () => {
+        setIsScreenFocused(false);
+      };
     }, [loadSavedProgress])
   );
 
@@ -472,14 +1821,9 @@ export default function ScanningItemScreen({ navigation: propNavigation }: { nav
     input: string,
     list: ItemManifestRecord[]
   ): ItemManifestRecord[] => {
-    let raw = input.trim();
-    if (!raw) return [];
-
-    // Remove 3 leading zeros if present (e.g. "000309179" -> "309179")
-    if (raw.startsWith('000')) {
-      raw = raw.slice(3);
-    }
-    const cleanUpper = raw.toUpperCase();
+    const raw = input.trim();
+    const normalizedInput = normalizeScanCode(raw);
+    if (!normalizedInput) return [];
 
     const matches: ItemManifestRecord[] = [];
     const addedIds = new Set<string>();
@@ -493,68 +1837,42 @@ export default function ScanningItemScreen({ navigation: propNavigation }: { nav
       });
     };
 
-    // 1. Match by UPC (Exact / Case-insensitive, or stripped 3 leading zeros)
-    addMatches(
-      list.filter((i) => {
-        const u = i.upc.trim().toUpperCase();
-        return u === cleanUpper || (u.startsWith('000') && u.slice(3) === cleanUpper);
-      })
-    );
+    // 1. Match by UPC (case-insensitive, stripping any leading zeros)
+    addMatches(list.filter((i) => isMatchingScanCode(i.upc, normalizedInput)));
 
-    // 2. Match by SKU (Exact / Case-insensitive, or stripped 3 leading zeros)
-    addMatches(
-      list.filter((i) => {
-        const s = i.sku.trim().toUpperCase();
-        return s === cleanUpper || (s.startsWith('000') && s.slice(3) === cleanUpper);
-      })
-    );
+    // 2. Match by SKU (case-insensitive, stripping any leading zeros)
+    addMatches(list.filter((i) => isMatchingScanCode(i.sku, normalizedInput)));
 
-    // 3. Match by CID NO
-    addMatches(
-      list.filter((i) => {
-        const c = i.cid.trim().toUpperCase();
-        return c === cleanUpper || (c.startsWith('000') && c.slice(3) === cleanUpper);
-      })
-    );
+    // 3. Match by CID NO (case-insensitive, stripping any leading zeros)
+    addMatches(list.filter((i) => isMatchingScanCode(i.cid, normalizedInput)));
 
-    // 4. Match by TRF NO
-    addMatches(
-      list.filter((i) => {
-        const t = i.trf.trim().toUpperCase();
-        return t === cleanUpper || (t.startsWith('000') && t.slice(3) === cleanUpper);
-      })
-    );
+    // 4. Match by TRF NO (case-insensitive, stripping any leading zeros)
+    addMatches(list.filter((i) => isMatchingScanCode(i.trf, normalizedInput)));
 
-    // 5. Token extraction match for formatted barcodes (e.g. "SKU:123" or "UPC=456")
+    // 5. Token extraction match for formatted barcodes (e.g. "SKU:00260295" or "UPC=0260295")
     if (raw.includes(':') || raw.includes('=') || raw.includes('/')) {
-      const tokens = raw.split(/[:=/?#&]+/).map((t) => {
-        let tok = t.trim().toUpperCase();
-        if (tok.startsWith('000')) tok = tok.slice(3);
-        return tok;
-      });
-      addMatches(
-        list.filter((i) => {
-          const u = i.upc.trim().toUpperCase();
-          const s = i.sku.trim().toUpperCase();
-          const c = i.cid.trim().toUpperCase();
-          const t = i.trf.trim().toUpperCase();
-          const uClean = u.startsWith('000') ? u.slice(3) : u;
-          const sClean = s.startsWith('000') ? s.slice(3) : s;
-          const cClean = c.startsWith('000') ? c.slice(3) : c;
-          const tClean = t.startsWith('000') ? t.slice(3) : t;
+      const tokens = raw
+        .split(/[:=/?#&]+/)
+        .map((t) => normalizeScanCode(t))
+        .filter(Boolean);
 
-          return (
-            tokens.includes(u) ||
-            tokens.includes(uClean) ||
-            tokens.includes(s) ||
-            tokens.includes(sClean) ||
-            tokens.includes(c) ||
-            tokens.includes(cClean) ||
-            tokens.includes(t) ||
-            tokens.includes(tClean)
-          );
-        })
-      );
+      if (tokens.length > 0) {
+        addMatches(
+          list.filter((i) => {
+            const uClean = normalizeScanCode(i.upc);
+            const sClean = normalizeScanCode(i.sku);
+            const cClean = normalizeScanCode(i.cid);
+            const tClean = normalizeScanCode(i.trf);
+
+            return (
+              (Boolean(uClean) && tokens.includes(uClean)) ||
+              (Boolean(sClean) && tokens.includes(sClean)) ||
+              (Boolean(cClean) && tokens.includes(cClean)) ||
+              (Boolean(tClean) && tokens.includes(tClean))
+            );
+          })
+        );
+      }
     }
 
     return matches;
@@ -563,27 +1881,20 @@ export default function ScanningItemScreen({ navigation: propNavigation }: { nav
   /** Process scanned barcode or manual input */
   const handleScan = useCallback(
     (scannedCode: string) => {
-      let raw = scannedCode.trim();
-      if (!raw) return;
+      const rawInput = scannedCode.trim();
+      if (!rawInput) return;
 
-      // Remove 3 leading zeros if present (e.g. "000309179" -> "309179")
-      if (raw.startsWith('000')) {
-        raw = raw.slice(3);
-      }
-      if (!raw) return;
+      // Remove all leading zeros before comparing against manifest data
+      // (e.g. "000260295", "00260295", "0260295" -> "260295")
+      const normalizedCode = normalizeScanCode(rawInput);
+      if (!normalizedCode) return;
 
       const currentItems = itemsRef.current;
-      const cleanUpper = raw.toUpperCase();
 
       // 1. Check if scanned string matches a Box CID barcode directly
-      const matchedCidRecord = currentItems.find(
-        (i) =>
-          i.cid.trim().toUpperCase() === cleanUpper ||
-          (i.cid.trim().toUpperCase().startsWith('000') &&
-            i.cid.trim().toUpperCase().slice(3) === cleanUpper)
-      );
+      const matchedCidRecord = currentItems.find((i) => isMatchingScanCode(i.cid, normalizedCode));
 
-      const allMatches = findAllMatchingItems(raw, currentItems);
+      const allMatches = findAllMatchingItems(rawInput, currentItems);
 
       // If scanned code is a CID and not an item SKU/UPC barcode
       if (matchedCidRecord && allMatches.length === 0) {
@@ -602,9 +1913,7 @@ export default function ScanningItemScreen({ navigation: propNavigation }: { nav
 
       // If a CID filter is actively locked
       if (activeCid) {
-        const matchesInActiveCid = allMatches.filter(
-          (i) => i.cid.trim().toUpperCase() === activeCid.trim().toUpperCase()
-        );
+        const matchesInActiveCid = allMatches.filter((i) => isMatchingScanCode(i.cid, activeCid));
 
         if (matchesInActiveCid.length === 1) {
           const matchedItem = matchesInActiveCid[0];
@@ -625,7 +1934,7 @@ export default function ScanningItemScreen({ navigation: propNavigation }: { nav
 
         if (matchesInActiveCid.length > 1) {
           // Multiple matching items inside the active CID
-          setMultipleCidMatches({ barcode: raw, items: matchesInActiveCid });
+          setMultipleCidMatches({ barcode: normalizedCode, items: matchesInActiveCid });
           playScanFeedback('warning');
           return;
         }
@@ -662,7 +1971,7 @@ export default function ScanningItemScreen({ navigation: propNavigation }: { nav
 
         if (allMatches.length > 1) {
           // Found in multiple CIDs or multiple line items -> prompt operator to pick CID
-          setMultipleCidMatches({ barcode: raw, items: allMatches });
+          setMultipleCidMatches({ barcode: normalizedCode, items: allMatches });
           playScanFeedback('warning');
           showNotification(
             'info',
@@ -677,11 +1986,11 @@ export default function ScanningItemScreen({ navigation: propNavigation }: { nav
       showNotification(
         'error',
         '❌ NOT IN MANIFEST',
-        `Scanned code "${raw}" was not found in item manifest data`
+        `Scanned code "${normalizedCode}" was not found in item manifest data`
       );
       playScanFeedback('error');
     },
-    [showNotification]
+    [openItemModalWithDefaults, showNotification]
   );
 
   /** Camera barcode detected */
@@ -786,12 +2095,21 @@ export default function ScanningItemScreen({ navigation: propNavigation }: { nav
   const filteredAvailableCids = useMemo(() => {
     const q = cidInputText.trim().toUpperCase();
     if (!q) return availableCids;
-    return availableCids.filter((cid) => cid.toUpperCase().includes(q));
+    const qStripped = q.replace(/^0+/, '');
+    return availableCids.filter((cid) => {
+      const upperCid = cid.toUpperCase();
+      if (upperCid.includes(q)) return true;
+      if (qStripped) {
+        const cidStripped = upperCid.replace(/^0+/, '');
+        if (cidStripped && cidStripped.includes(qStripped)) return true;
+      }
+      return false;
+    });
   }, [availableCids, cidInputText]);
 
   // Filter items by active CID filter
   const filteredByCid = selectedCidFilter
-    ? items.filter((i) => i.cid.trim().toUpperCase() === selectedCidFilter.trim().toUpperCase())
+    ? items.filter((i) => isMatchingScanCode(i.cid, selectedCidFilter))
     : items;
 
   // Filter items for tabs based on receiving status
@@ -811,16 +2129,29 @@ export default function ScanningItemScreen({ navigation: propNavigation }: { nav
           ? shortList
           : overList;
 
-  // Apply search query filter
+  // Apply search query filter (also matches when leading zeros are present in query or manifest)
   const displayItems = activeList.filter((i) => {
     if (!searchQuery.trim()) return true;
     const q = searchQuery.trim().toLowerCase();
+    const qStripped = q.replace(/^0+/, '');
+    const matchesCodeField = (val?: string) => {
+      if (!val) return false;
+      const lower = val.trim().toLowerCase();
+      if (!lower) return false;
+      if (lower.includes(q)) return true;
+      if (qStripped) {
+        const lowerStripped = lower.replace(/^0+/, '');
+        if (lowerStripped && lowerStripped.includes(qStripped)) return true;
+      }
+      return false;
+    };
+
     return (
-      (i.sku && i.sku.toLowerCase().includes(q)) ||
-      (i.upc && i.upc.toLowerCase().includes(q)) ||
-      (i.cid && i.cid.toLowerCase().includes(q)) ||
-      (i.trf && i.trf.toLowerCase().includes(q)) ||
-      (i.description && i.description.toLowerCase().includes(q))
+      matchesCodeField(i.sku) ||
+      matchesCodeField(i.upc) ||
+      matchesCodeField(i.cid) ||
+      matchesCodeField(i.trf) ||
+      (Boolean(i.description) && i.description.toLowerCase().includes(q))
     );
   });
 
@@ -1087,6 +2418,7 @@ export default function ScanningItemScreen({ navigation: propNavigation }: { nav
               </TouchableOpacity>
             </View>
             <TextInput
+              keyboardType="number-pad"
               value={manualInput}
               onChangeText={setManualInput}
               placeholder="Enter UPC, SKU, CID, or TRF..."
@@ -1140,9 +2472,7 @@ export default function ScanningItemScreen({ navigation: propNavigation }: { nav
             {/* Search CID NO. Input */}
             <View
               className={`mb-3 flex-row items-center rounded-lg border px-3 ${
-                isDark
-                  ? 'border-[#3f3f46] bg-[#131316]'
-                  : 'border-[#d4d4d8] bg-[#fafafa]'
+                isDark ? 'border-[#3f3f46] bg-[#131316]' : 'border-[#d4d4d8] bg-[#fafafa]'
               }`}>
               <Search color={isDark ? '#a1a1aa' : '#71717a'} size={16} />
               <TextInput
@@ -1225,11 +2555,10 @@ export default function ScanningItemScreen({ navigation: propNavigation }: { nav
                 </View>
               }
               renderItem={({ item: cid }) => {
-                const isSelected =
-                  selectedCidFilter?.trim().toUpperCase() === cid.trim().toUpperCase();
-                const cidItemCount = items.filter(
-                  (i) => i.cid.trim().toUpperCase() === cid.trim().toUpperCase()
-                ).length;
+                const isSelected = Boolean(
+                  selectedCidFilter && isMatchingScanCode(selectedCidFilter, cid)
+                );
+                const cidItemCount = items.filter((i) => isMatchingScanCode(i.cid, cid)).length;
 
                 return (
                   <TouchableOpacity
@@ -1465,424 +2794,494 @@ export default function ScanningItemScreen({ navigation: propNavigation }: { nav
         </View>
       </Modal>
 
-      {/* Scanned Item QTY Input Modal */}
-      <Modal visible={scannedItemModal !== null} transparent animationType="fade">
-        <View className="flex-1 items-center justify-center bg-black/70 px-6">
-          <View
-            className={`w-full rounded-xl border p-5 shadow-2xl ${
-              isDark ? 'border-[#3f3f46] bg-[#1f1f22]' : 'border-[#e4e4e7] bg-[#ffffff]'
-            }`}>
-            <View className="mb-3 flex-row items-center justify-between">
-              <Text className={`font-hanken text-base font-bold ${textPrimaryClass}`}>
-                Item Barcode Scanned
-              </Text>
-              <TouchableOpacity
-                onPress={() => {
-                  setScannedItemModal(null);
-                  refocusBluetoothInput();
-                }}>
-                <X color={isDark ? '#a1a1aa' : '#71717a'} size={20} />
-              </TouchableOpacity>
-            </View>
+      {/* Item Image Zoom & Details Modal */}
+      <Modal
+        visible={imageZoomModal !== null && scannedItemModal === null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          setImageZoomModal(null);
+          refocusBluetoothInput();
+        }}>
+        {imageZoomModal && (
+          <ItemImageZoomModalContent
+            key={imageZoomModal.item.id}
+            data={imageZoomModal}
+            isDark={isDark}
+            scannedQty={scannedMap[imageZoomModal.item.id] || 0}
+            expiryDate={expiryDateMap[imageZoomModal.item.id]}
+            openedFromQtyModal={false}
+            onClose={() => {
+              setImageZoomModal(null);
+              refocusBluetoothInput();
+            }}
+            onOpenQtyModal={(targetItem) => {
+              setImageZoomModal(null);
+              openItemModalWithDefaults(targetItem);
+            }}
+          />
+        )}
+      </Modal>
 
-            {scannedItemModal && (
-              <>
-                {/* Visual Status Banner if item is already fulfilled or over-scanned */}
-                {(scannedMap[scannedItemModal.id] || 0) === scannedItemModal.qty &&
-                  scannedItemModal.qty > 0 && (
-                    <View className="mb-3 flex-row items-center gap-2 rounded-lg border border-[#22c55e]/50 bg-[#22c55e]/15 p-2.5">
-                      <CheckCircle color="#22c55e" size={16} />
-                      <Text className="flex-1 font-jetbrains text-xs font-bold text-[#22c55e]">
-                        ✓ THIS ITEM IS ALREADY FULLY FULFILLED ({scannedMap[scannedItemModal.id]} /{' '}
-                        {scannedItemModal.qty})
+      {/* Scanned Item QTY Input Modal */}
+      <Modal
+        visible={scannedItemModal !== null && uploadImageModalItem === null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          if (imageZoomModal) {
+            setImageZoomModal(null);
+          } else {
+            setScannedItemModal(null);
+            refocusBluetoothInput();
+          }
+        }}>
+        {imageZoomModal && scannedItemModal ? (
+          <ItemImageZoomModalContent
+            key={imageZoomModal.item.id}
+            data={imageZoomModal}
+            isDark={isDark}
+            scannedQty={scannedMap[imageZoomModal.item.id] || 0}
+            expiryDate={expiryDateMap[imageZoomModal.item.id]}
+            openedFromQtyModal={true}
+            onClose={() => setImageZoomModal(null)}
+            onOpenQtyModal={() => setImageZoomModal(null)}
+          />
+        ) : (
+          <View className="flex-1 items-center justify-center bg-black/70 px-6">
+            <View
+              className={`w-full rounded-xl border p-5 shadow-2xl ${
+                isDark ? 'border-[#3f3f46] bg-[#1f1f22]' : 'border-[#e4e4e7] bg-[#ffffff]'
+              }`}>
+              <View className="mb-3 flex-row items-center justify-between">
+                <Text className={`font-hanken text-base font-bold ${textPrimaryClass}`}>
+                  Item Barcode Scanned
+                </Text>
+                <TouchableOpacity
+                  onPress={() => {
+                    setScannedItemModal(null);
+                    refocusBluetoothInput();
+                  }}>
+                  <X color={isDark ? '#a1a1aa' : '#71717a'} size={20} />
+                </TouchableOpacity>
+              </View>
+
+              {scannedItemModal && (
+                <>
+                  {/* Visual Status Banner if item is already fulfilled or over-scanned */}
+                  {(scannedMap[scannedItemModal.id] || 0) === scannedItemModal.qty &&
+                    scannedItemModal.qty > 0 && (
+                      <View className="mb-3 flex-row items-center gap-2 rounded-lg border border-[#22c55e]/50 bg-[#22c55e]/15 p-2.5">
+                        <CheckCircle color="#22c55e" size={16} />
+                        <Text className="flex-1 font-jetbrains text-xs font-bold text-[#22c55e]">
+                          ✓ THIS ITEM IS ALREADY FULLY FULFILLED ({scannedMap[scannedItemModal.id]}{' '}
+                          / {scannedItemModal.qty})
+                        </Text>
+                      </View>
+                    )}
+
+                  {(scannedMap[scannedItemModal.id] || 0) > scannedItemModal.qty && (
+                    <View className="mb-3 flex-row items-center gap-2 rounded-lg border border-[#ef4444]/50 bg-[#ef4444]/15 p-2.5">
+                      <AlertTriangle color="#ef4444" size={16} />
+                      <Text className="flex-1 font-jetbrains text-xs font-bold text-[#ef4444]">
+                        ⚠️ THIS ITEM IS OVER-SCANNED (+
+                        {(scannedMap[scannedItemModal.id] || 0) - scannedItemModal.qty} OVER
+                        MANIFEST)
                       </Text>
                     </View>
                   )}
 
-                {(scannedMap[scannedItemModal.id] || 0) > scannedItemModal.qty && (
-                  <View className="mb-3 flex-row items-center gap-2 rounded-lg border border-[#ef4444]/50 bg-[#ef4444]/15 p-2.5">
-                    <AlertTriangle color="#ef4444" size={16} />
-                    <Text className="flex-1 font-jetbrains text-xs font-bold text-[#ef4444]">
-                      ⚠️ THIS ITEM IS OVER-SCANNED (+
-                      {(scannedMap[scannedItemModal.id] || 0) - scannedItemModal.qty} OVER MANIFEST)
-                    </Text>
-                  </View>
-                )}
+                  <Text className={`mb-3 font-hanken text-xs ${textSecondaryClass}`}>
+                    Verify or input the QTY of the item scanned to record to the receiving tabs:
+                  </Text>
 
-                <Text className={`mb-3 font-hanken text-xs ${textSecondaryClass}`}>
-                  Verify or input the QTY of the item scanned to record to the receiving tabs:
-                </Text>
-
-                <View
-                  className={`relative mb-3 overflow-hidden rounded-lg border p-3.5 ${
-                    isDark
-                      ? 'border-[#e5005c]/30 bg-[#e5005c]/10'
-                      : 'border-[#e5005c]/25 bg-[#e5005c]/5'
-                  }`}>
-                  <GhostItemImage upc={scannedItemModal.upc} />
-                  <View className="relative z-10 gap-1.5">
-                    {scannedItemModal.sku ? (
-                      <Text className={`font-jetbrains text-xs font-bold ${textPrimaryClass}`}>
-                        SKU: {scannedItemModal.sku}
-                      </Text>
-                    ) : null}
-                    {scannedItemModal.upc ? (
-                      <Text className="font-jetbrains text-xs font-semibold text-[#e5005c]">
-                        UPC: {scannedItemModal.upc}
-                      </Text>
-                    ) : null}
-                    {scannedItemModal.cid ? (
-                      <Text className={`font-jetbrains text-[11px] ${textSecondaryClass}`}>
-                        CID: {scannedItemModal.cid} | TRF: {scannedItemModal.trf}
-                      </Text>
-                    ) : null}
-                    {scannedItemModal.description ? (
-                      <Text
-                        className={`font-hanken text-xs ${textSecondaryClass}`}
-                        numberOfLines={2}>
-                        {scannedItemModal.description}
-                      </Text>
-                    ) : null}
-                    <View
-                      className={`mt-1 flex-row items-center justify-between border-t pt-2 ${
-                        isDark ? 'border-[#e5005c]/20' : 'border-[#e5005c]/15'
-                      }`}>
-                      <Text className={`font-jetbrains text-xs ${textSecondaryClass}`}>
-                        MANIFEST QTY:
-                      </Text>
-                      <Text className="font-jetbrains text-xs font-bold text-[#22c55e]">
-                        {scannedItemModal.qty}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-
-                {/* Standard Pack QTY Presets: [6, 8, 10, 12, 18, 24, 48] */}
-                <Text
-                  className={`mb-1.5 font-jetbrains text-[11px] font-bold uppercase tracking-wider ${textSecondaryClass}`}>
-                  Quick Pack Presets (Tap to Set):
-                </Text>
-                <View className="mb-3 flex-row flex-wrap gap-1.5">
-                  {[6, 8, 10, 12, 18, 24, 48].map((preset) => {
-                    const isSelected = qtyInputModalValue === String(preset);
-                    return (
-                      <TouchableOpacity
-                        key={preset}
-                        onPress={() => {
-                          setQtyInputModalValue(String(preset));
-                          try {
-                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                          } catch {}
-                        }}
-                        className={`rounded-lg border px-3 py-1.5 ${
-                          isSelected
-                            ? 'border-[#e5005c] bg-[#e5005c]'
-                            : isDark
-                              ? 'border-[#3f3f46] bg-[#2a2a2d] active:bg-[#3f3f46]'
-                              : 'border-[#d4d4d8] bg-[#f4f4f5] active:bg-[#e4e4e7]'
-                        }`}>
-                        <Text
-                          className={`font-jetbrains text-xs font-bold ${
-                            isSelected ? 'text-[#ffffff]' : textPrimaryClass
-                          }`}>
-                          {preset}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-
-                {/* Quick Actions: FULFILL ALL (Full Manifest Qty) & RESET (0) */}
-                <View className="mb-3 flex-row items-center gap-2">
-                  <TouchableOpacity
-                    onPress={() => {
-                      setQtyInputModalValue(String(scannedItemModal.qty));
-                      try {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                      } catch {}
-                    }}
-                    className={`flex-1 flex-row items-center justify-center gap-1.5 rounded-lg border border-[#22c55e]/40 py-2 active:opacity-80 ${
-                      isDark ? 'bg-[#22c55e]/15' : 'bg-[#22c55e]/10'
-                    }`}>
-                    <CheckCircle color="#22c55e" size={14} />
-                    <Text className="font-jetbrains text-xs font-bold text-[#22c55e]">
-                      FULFILL ALL ({scannedItemModal.qty})
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    onPress={() => {
-                      setQtyInputModalValue('0');
-                      try {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      } catch {}
-                    }}
-                    className={`flex-row items-center justify-center gap-1.5 rounded-lg border border-[#ef4444]/40 px-3 py-2 active:opacity-80 ${
-                      isDark ? 'bg-[#ef4444]/15' : 'bg-[#ef4444]/10'
-                    }`}>
-                    <RotateCcw color="#ef4444" size={14} />
-                    <Text className="font-jetbrains text-xs font-bold text-[#ef4444]">
-                      RESET (0)
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-
-                {/* Manual Input Row */}
-                <Text className={`mb-1.5 font-jetbrains text-xs font-semibold ${textPrimaryClass}`}>
-                  MANUAL INPUT QUANTITY:
-                </Text>
-                <View className="mb-4 flex-row items-center gap-2">
-                  <TouchableOpacity
-                    onPress={() => {
-                      const current = parseInt(qtyInputModalValue, 10) || 0;
-                      setQtyInputModalValue(String(Math.max(0, current - 1)));
-                    }}
-                    className={`h-11 w-11 items-center justify-center rounded-lg border ${
-                      isDark
-                        ? 'border-[#3f3f46] bg-[#2a2a2d] active:bg-[#3f3f46]'
-                        : 'border-[#d4d4d8] bg-[#f4f4f5] active:bg-[#e4e4e7]'
-                    }`}>
-                    <Minus color={isDark ? '#fafafa' : '#18181b'} size={18} />
-                  </TouchableOpacity>
-
-                  <TextInput
-                    value={qtyInputModalValue}
-                    onChangeText={setQtyInputModalValue}
-                    keyboardType="number-pad"
-                    className={`h-11 flex-1 rounded-lg border text-center font-jetbrains text-base font-bold ${
-                      isDark
-                        ? 'border-[#3f3f46] bg-[#131316] text-[#fafafa]'
-                        : 'border-[#d4d4d8] bg-[#fafafa] text-[#18181b]'
-                    }`}
-                  />
-
-                  <TouchableOpacity
-                    onPress={() => {
-                      const current = parseInt(qtyInputModalValue, 10) || 0;
-                      setQtyInputModalValue(String(current + 1));
-                    }}
-                    className={`h-11 w-11 items-center justify-center rounded-lg border ${
-                      isDark
-                        ? 'border-[#3f3f46] bg-[#2a2a2d] active:bg-[#3f3f46]'
-                        : 'border-[#d4d4d8] bg-[#f4f4f5] active:bg-[#e4e4e7]'
-                    }`}>
-                    <Plus color={isDark ? '#fafafa' : '#18181b'} size={18} />
-                  </TouchableOpacity>
-                </View>
-
-                {/* Expiry Date / Calendar Section with Toggle Button (Available for all CIDs) */}
-                {!showCalendarInput ? (
-                  <TouchableOpacity
-                    onPress={() => {
-                      setShowCalendarInput(true);
-                      try {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      } catch {}
-                    }}
-                    className={`mb-4 flex-row items-center justify-between rounded-xl border p-3 ${
-                      isDark
-                        ? 'border-[#3f3f46] bg-[#2a2a2d] active:bg-[#3f3f46]'
-                        : 'border-[#d4d4d8] bg-[#f4f4f5] active:bg-[#e4e4e7]'
-                    }`}>
-                    <View className="flex-row items-center gap-2.5">
-                      <View className="rounded-lg bg-[#e5005c]/10 p-2">
-                        <CalendarIcon color="#e5005c" size={16} />
-                      </View>
-                      <View>
-                        <Text className={`font-jetbrains text-xs font-bold ${textPrimaryClass}`}>
-                          {expiryInputModalValue ? `EXPIRY: ${expiryInputModalValue}` : 'EXPIRY DATE / CALENDAR'}
-                        </Text>
-                        <Text className={`font-hanken text-[10px] ${textSecondaryClass}`}>
-                          {expiryInputModalValue ? 'Tap to edit expiry date' : 'Optional · Tap to toggle calendar input'}
-                        </Text>
-                      </View>
-                    </View>
-                    <View className="flex-row items-center gap-1 rounded-lg bg-[#e5005c]/15 px-2.5 py-1.5">
-                      <Text className="font-jetbrains text-xs font-bold text-[#e5005c]">
-                        {expiryInputModalValue ? 'EDIT' : '+ ADD'}
-                      </Text>
-                      <ChevronDown color="#e5005c" size={14} />
-                    </View>
-                  </TouchableOpacity>
-                ) : (
+                  {/* Two-Column Item Summary Card (Left: Details, Right: Clickable Image) */}
                   <View
-                    className={`mb-4 rounded-xl border p-3.5 ${
+                    className={`mb-3 flex-row items-center gap-3 overflow-hidden rounded-lg border p-3.5 ${
                       isDark
-                        ? 'border-[#e5005c]/40 bg-[#e5005c]/10'
-                        : 'border-[#e5005c]/30 bg-[#e5005c]/5'
+                        ? 'border-[#e5005c]/30 bg-[#e5005c]/10'
+                        : 'border-[#e5005c]/25 bg-[#e5005c]/5'
                     }`}>
-                    <View className="mb-2 flex-row items-center justify-between">
-                      <View className="flex-row items-center gap-1.5">
-                        <CalendarIcon color="#e5005c" size={15} />
-                        <Text className="font-jetbrains text-xs font-bold text-[#e5005c]">
-                          EXPIRY DATE {scannedItemModal.cid ? `(CID: ${scannedItemModal.cid})` : ''}
+                    <View className="flex-1 justify-between gap-1.5">
+                      {scannedItemModal.sku ? (
+                        <Text className={`font-jetbrains text-xs font-bold ${textPrimaryClass}`}>
+                          SKU: {scannedItemModal.sku}
                         </Text>
-                      </View>
-                      <TouchableOpacity
-                        onPress={() => {
-                          setShowCalendarInput(false);
-                          try {
-                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                          } catch {}
-                        }}
-                        className="flex-row items-center gap-1 rounded bg-[#e5005c]/20 px-2 py-0.5 active:bg-[#e5005c]/30">
-                        <Text className="font-jetbrains text-[9px] font-bold text-[#e5005c]">
-                          HIDE
+                      ) : null}
+                      {scannedItemModal.upc ? (
+                        <Text className="font-jetbrains text-xs font-semibold text-[#e5005c]">
+                          UPC: {scannedItemModal.upc}
                         </Text>
-                        <ChevronUp color="#e5005c" size={12} />
-                      </TouchableOpacity>
-                    </View>
-
-                    <Text className={`mb-2 font-hanken text-[11px] ${textSecondaryClass}`}>
-                      Optional. Tap CALENDAR to pick a date (navigates 1 year ahead), or type date:
-                    </Text>
-
-                    <View className="flex-row items-center gap-2">
+                      ) : null}
+                      {scannedItemModal.cid ? (
+                        <Text className={`font-jetbrains text-[11px] ${textSecondaryClass}`}>
+                          CID: {scannedItemModal.cid} | TRF: {scannedItemModal.trf}
+                        </Text>
+                      ) : null}
+                      {scannedItemModal.description ? (
+                        <Text
+                          className={`font-hanken text-xs ${textSecondaryClass}`}
+                          numberOfLines={2}>
+                          {scannedItemModal.description}
+                        </Text>
+                      ) : null}
                       <View
-                        className={`h-11 flex-1 flex-row items-center rounded-lg border px-3 ${
-                          isDark
-                            ? 'border-[#3f3f46] bg-[#131316]'
-                            : 'border-[#d4d4d8] bg-[#ffffff]'
+                        className={`mt-1 flex-row items-center justify-between border-t pt-2 ${
+                          isDark ? 'border-[#e5005c]/20' : 'border-[#e5005c]/15'
                         }`}>
-                        <TextInput
-                          value={expiryInputModalValue}
-                          onChangeText={setExpiryInputModalValue}
-                          placeholder="Optional (YYYY-MM-DD)"
-                          placeholderTextColor={isDark ? '#71717a' : '#a1a1aa'}
-                          className={`h-11 flex-1 font-jetbrains text-xs font-bold ${
-                            isDark ? 'text-[#fafafa]' : 'text-[#18181b]'
-                          }`}
-                        />
-                        {expiryInputModalValue.length > 0 && (
-                          <TouchableOpacity
-                            onPress={() => setExpiryInputModalValue('')}
-                            className="p-1">
-                            <X color={isDark ? '#a1a1aa' : '#71717a'} size={14} />
-                          </TouchableOpacity>
-                        )}
-                      </View>
-                      <TouchableOpacity
-                        onPress={() => {
-                          const baseYear = new Date().getFullYear() + 1;
-                          setCalendarViewYear(baseYear);
-                          setCalendarViewMonth(new Date().getMonth());
-                          setShowCalendarModal(true);
-                        }}
-                        activeOpacity={0.8}
-                        className="h-11 flex-row items-center gap-1.5 rounded-lg bg-[#e5005c] px-3.5 active:bg-[#c20050]">
-                        <CalendarIcon color="#ffffff" size={16} />
-                        <Text className="font-jetbrains text-xs font-bold text-[#ffffff]">
-                          CALENDAR
+                        <Text className={`font-jetbrains text-xs ${textSecondaryClass}`}>
+                          MANIFEST QTY:
                         </Text>
-                      </TouchableOpacity>
+                        <Text className="font-jetbrains text-xs font-bold text-[#22c55e]">
+                          {scannedItemModal.qty}
+                        </Text>
+                      </View>
                     </View>
+
+                    <ItemImageColumn
+                      item={scannedItemModal}
+                      isDark={isDark}
+                      size="compact"
+                      uploadedImageUrl={uploadedImageMap[getItemImageKey(scannedItemModal)]}
+                      onPressImage={(payload) => setImageZoomModal(payload)}
+                      onPressUploadImage={openUploadImageModal}
+                    />
                   </View>
-                )}
 
-                <View className="flex-row items-center gap-3">
-                  <TouchableOpacity
-                    onPress={() => {
-                      setScannedItemModal(null);
-                      refocusBluetoothInput();
-                    }}
-                    className={`flex-1 items-center justify-center rounded-lg border py-3 ${
-                      isDark
-                        ? 'border-[#3f3f46] bg-[#2a2a2d] active:bg-[#3f3f46]'
-                        : 'border-[#d4d4d8] bg-[#f4f4f5] active:bg-[#e4e4e7]'
-                    }`}>
-                    <Text className={`font-jetbrains text-xs font-bold ${textSecondaryClass}`}>
-                      CANCEL
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    onPress={() => {
-                      const item = scannedItemModal;
-                      const enteredQty = parseInt(qtyInputModalValue, 10);
-                      if (isNaN(enteredQty) || enteredQty < 0) {
-                        showNotification(
-                          'error',
-                          'INVALID QTY',
-                          'Please enter a valid non-negative number'
-                        );
-                        return;
-                      }
-
-                      setScannedItemModal(null);
-                      refocusBluetoothInput();
-
-                      // Save updated QTY to scannedMap
-                      const updatedMap = { ...scannedMapRef.current };
-                      if (enteredQty === 0) {
-                        delete updatedMap[item.id];
-                      } else {
-                        updatedMap[item.id] = enteredQty;
-                      }
-                      setScannedMap(updatedMap);
-                      AsyncStorage.setItem(SCANNED_ITEMS_KEY, JSON.stringify(updatedMap)).catch(
-                        () => {}
+                  {/* Standard Pack QTY Presets: [6, 8, 10, 12, 18, 24, 48] */}
+                  <Text
+                    className={`mb-1.5 font-jetbrains text-[11px] font-bold uppercase tracking-wider ${textSecondaryClass}`}>
+                    Quick Pack Presets (Tap to Set):
+                  </Text>
+                  <View className="mb-3 flex-row flex-wrap gap-1.5">
+                    {[6, 8, 10, 12, 18, 24, 48].map((preset) => {
+                      const isSelected = qtyInputModalValue === String(preset);
+                      return (
+                        <TouchableOpacity
+                          key={preset}
+                          onPress={() => {
+                            setQtyInputModalValue(String(preset));
+                            try {
+                              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            } catch {}
+                          }}
+                          className={`rounded-lg border px-3 py-1.5 ${
+                            isSelected
+                              ? 'border-[#e5005c] bg-[#e5005c]'
+                              : isDark
+                                ? 'border-[#3f3f46] bg-[#2a2a2d] active:bg-[#3f3f46]'
+                                : 'border-[#d4d4d8] bg-[#f4f4f5] active:bg-[#e4e4e7]'
+                          }`}>
+                          <Text
+                            className={`font-jetbrains text-xs font-bold ${
+                              isSelected ? 'text-[#ffffff]' : textPrimaryClass
+                            }`}>
+                            {preset}
+                          </Text>
+                        </TouchableOpacity>
                       );
+                    })}
+                  </View>
 
-                      // Save expiry date for all CIDs
-                      const updatedExpiry = { ...expiryDateMapRef.current };
-                      if (expiryInputModalValue.trim()) {
-                        updatedExpiry[item.id] = expiryInputModalValue.trim();
-                      } else {
-                        delete updatedExpiry[item.id];
-                      }
-                      setExpiryDateMap(updatedExpiry);
-                      AsyncStorage.setItem(
-                        ITEM_EXPIRY_DATES_KEY,
-                        JSON.stringify(updatedExpiry)
-                      ).catch(() => {});
+                  {/* Quick Actions: FULFILL ALL (Full Manifest Qty) & RESET (0) */}
+                  <View className="mb-3 flex-row items-center gap-2">
+                    <TouchableOpacity
+                      onPress={() => {
+                        setQtyInputModalValue(String(scannedItemModal.qty));
+                        try {
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                        } catch {}
+                      }}
+                      className={`flex-1 flex-row items-center justify-center gap-1.5 rounded-lg border border-[#22c55e]/40 py-2 active:opacity-80 ${
+                        isDark ? 'bg-[#22c55e]/15' : 'bg-[#22c55e]/10'
+                      }`}>
+                      <CheckCircle color="#22c55e" size={14} />
+                      <Text className="font-jetbrains text-xs font-bold text-[#22c55e]">
+                        FULFILL ALL ({scannedItemModal.qty})
+                      </Text>
+                    </TouchableOpacity>
 
-                      const itemLabel = item.sku || item.upc || item.description || 'Item';
-                      setLastScanned(itemLabel);
+                    <TouchableOpacity
+                      onPress={() => {
+                        setQtyInputModalValue('0');
+                        try {
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        } catch {}
+                      }}
+                      className={`flex-row items-center justify-center gap-1.5 rounded-lg border border-[#ef4444]/40 px-3 py-2 active:opacity-80 ${
+                        isDark ? 'bg-[#ef4444]/15' : 'bg-[#ef4444]/10'
+                      }`}>
+                      <RotateCcw color="#ef4444" size={14} />
+                      <Text className="font-jetbrains text-xs font-bold text-[#ef4444]">
+                        RESET (0)
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
 
-                      if (enteredQty === item.qty) {
-                        setActiveTab('fulfilled');
-                        showNotification(
-                          'success',
-                          '✓ ITEM FULFILLED',
-                          `${itemLabel} marked as FULFILLED (QTY: ${enteredQty}/${item.qty})`
+                  {/* Manual Input Row */}
+                  <Text
+                    className={`mb-1.5 font-jetbrains text-xs font-semibold ${textPrimaryClass}`}>
+                    MANUAL INPUT QUANTITY:
+                  </Text>
+                  <View className="mb-4 flex-row items-center gap-2">
+                    <TouchableOpacity
+                      onPress={() => {
+                        const current = parseInt(qtyInputModalValue, 10) || 0;
+                        setQtyInputModalValue(String(Math.max(0, current - 1)));
+                      }}
+                      className={`h-11 w-11 items-center justify-center rounded-lg border ${
+                        isDark
+                          ? 'border-[#3f3f46] bg-[#2a2a2d] active:bg-[#3f3f46]'
+                          : 'border-[#d4d4d8] bg-[#f4f4f5] active:bg-[#e4e4e7]'
+                      }`}>
+                      <Minus color={isDark ? '#fafafa' : '#18181b'} size={18} />
+                    </TouchableOpacity>
+
+                    <TextInput
+                      value={qtyInputModalValue}
+                      onChangeText={setQtyInputModalValue}
+                      keyboardType="number-pad"
+                      className={`h-11 flex-1 rounded-lg border text-center font-jetbrains text-base font-bold ${
+                        isDark
+                          ? 'border-[#3f3f46] bg-[#131316] text-[#fafafa]'
+                          : 'border-[#d4d4d8] bg-[#fafafa] text-[#18181b]'
+                      }`}
+                    />
+
+                    <TouchableOpacity
+                      onPress={() => {
+                        const current = parseInt(qtyInputModalValue, 10) || 0;
+                        setQtyInputModalValue(String(current + 1));
+                      }}
+                      className={`h-11 w-11 items-center justify-center rounded-lg border ${
+                        isDark
+                          ? 'border-[#3f3f46] bg-[#2a2a2d] active:bg-[#3f3f46]'
+                          : 'border-[#d4d4d8] bg-[#f4f4f5] active:bg-[#e4e4e7]'
+                      }`}>
+                      <Plus color={isDark ? '#fafafa' : '#18181b'} size={18} />
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Expiry Date / Calendar Section with Toggle Button (Available for all CIDs) */}
+                  {!showCalendarInput ? (
+                    <TouchableOpacity
+                      onPress={() => {
+                        setShowCalendarInput(true);
+                        try {
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        } catch {}
+                      }}
+                      className={`mb-4 flex-row items-center justify-between rounded-xl border p-3 ${
+                        isDark
+                          ? 'border-[#3f3f46] bg-[#2a2a2d] active:bg-[#3f3f46]'
+                          : 'border-[#d4d4d8] bg-[#f4f4f5] active:bg-[#e4e4e7]'
+                      }`}>
+                      <View className="flex-row items-center gap-2.5">
+                        <View className="rounded-lg bg-[#e5005c]/10 p-2">
+                          <CalendarIcon color="#e5005c" size={16} />
+                        </View>
+                        <View>
+                          <Text className={`font-jetbrains text-xs font-bold ${textPrimaryClass}`}>
+                            {expiryInputModalValue
+                              ? `EXPIRY: ${expiryInputModalValue}`
+                              : 'EXPIRY DATE / CALENDAR'}
+                          </Text>
+                          <Text className={`font-hanken text-[10px] ${textSecondaryClass}`}>
+                            {expiryInputModalValue
+                              ? 'Tap to edit expiry date'
+                              : 'Optional · Tap to toggle calendar input'}
+                          </Text>
+                        </View>
+                      </View>
+                      <View className="flex-row items-center gap-1 rounded-lg bg-[#e5005c]/15 px-2.5 py-1.5">
+                        <Text className="font-jetbrains text-xs font-bold text-[#e5005c]">
+                          {expiryInputModalValue ? 'EDIT' : '+ ADD'}
+                        </Text>
+                        <ChevronDown color="#e5005c" size={14} />
+                      </View>
+                    </TouchableOpacity>
+                  ) : (
+                    <View
+                      className={`mb-4 rounded-xl border p-3.5 ${
+                        isDark
+                          ? 'border-[#e5005c]/40 bg-[#e5005c]/10'
+                          : 'border-[#e5005c]/30 bg-[#e5005c]/5'
+                      }`}>
+                      <View className="mb-2 flex-row items-center justify-between">
+                        <View className="flex-row items-center gap-1.5">
+                          <CalendarIcon color="#e5005c" size={15} />
+                          <Text className="font-jetbrains text-xs font-bold text-[#e5005c]">
+                            EXPIRY DATE{' '}
+                            {scannedItemModal.cid ? `(CID: ${scannedItemModal.cid})` : ''}
+                          </Text>
+                        </View>
+                        <TouchableOpacity
+                          onPress={() => {
+                            setShowCalendarInput(false);
+                            try {
+                              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            } catch {}
+                          }}
+                          className="flex-row items-center gap-1 rounded bg-[#e5005c]/20 px-2 py-0.5 active:bg-[#e5005c]/30">
+                          <Text className="font-jetbrains text-[9px] font-bold text-[#e5005c]">
+                            HIDE
+                          </Text>
+                          <ChevronUp color="#e5005c" size={12} />
+                        </TouchableOpacity>
+                      </View>
+
+                      <Text className={`mb-2 font-hanken text-[11px] ${textSecondaryClass}`}>
+                        Optional. Tap CALENDAR to pick a date (navigates 1 year ahead), or type
+                        date:
+                      </Text>
+
+                      <View className="flex-row items-center gap-2">
+                        <View
+                          className={`h-11 flex-1 flex-row items-center rounded-lg border px-3 ${
+                            isDark
+                              ? 'border-[#3f3f46] bg-[#131316]'
+                              : 'border-[#d4d4d8] bg-[#ffffff]'
+                          }`}>
+                          <TextInput
+                            value={expiryInputModalValue}
+                            onChangeText={setExpiryInputModalValue}
+                            placeholder="Optional (YYYY-MM-DD)"
+                            placeholderTextColor={isDark ? '#71717a' : '#a1a1aa'}
+                            className={`h-11 flex-1 font-jetbrains text-xs font-bold ${
+                              isDark ? 'text-[#fafafa]' : 'text-[#18181b]'
+                            }`}
+                          />
+                          {expiryInputModalValue.length > 0 && (
+                            <TouchableOpacity
+                              onPress={() => setExpiryInputModalValue('')}
+                              className="p-1">
+                              <X color={isDark ? '#a1a1aa' : '#71717a'} size={14} />
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                        <TouchableOpacity
+                          onPress={() => {
+                            const baseYear = new Date().getFullYear() + 1;
+                            setCalendarViewYear(baseYear);
+                            setCalendarViewMonth(new Date().getMonth());
+                            setShowCalendarModal(true);
+                          }}
+                          activeOpacity={0.8}
+                          className="h-11 flex-row items-center gap-1.5 rounded-lg bg-[#e5005c] px-3.5 active:bg-[#c20050]">
+                          <CalendarIcon color="#ffffff" size={16} />
+                          <Text className="font-jetbrains text-xs font-bold text-[#ffffff]">
+                            CALENDAR
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  )}
+
+                  <View className="flex-row items-center gap-3">
+                    <TouchableOpacity
+                      onPress={() => {
+                        setScannedItemModal(null);
+                        refocusBluetoothInput();
+                      }}
+                      className={`flex-1 items-center justify-center rounded-lg border py-3 ${
+                        isDark
+                          ? 'border-[#3f3f46] bg-[#2a2a2d] active:bg-[#3f3f46]'
+                          : 'border-[#d4d4d8] bg-[#f4f4f5] active:bg-[#e4e4e7]'
+                      }`}>
+                      <Text className={`font-jetbrains text-xs font-bold ${textSecondaryClass}`}>
+                        CANCEL
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      onPress={() => {
+                        const item = scannedItemModal;
+                        const enteredQty = parseInt(qtyInputModalValue, 10);
+                        if (isNaN(enteredQty) || enteredQty < 0) {
+                          showNotification(
+                            'error',
+                            'INVALID QTY',
+                            'Please enter a valid non-negative number'
+                          );
+                          return;
+                        }
+
+                        setScannedItemModal(null);
+                        refocusBluetoothInput();
+
+                        // Save updated QTY to scannedMap
+                        const updatedMap = { ...scannedMapRef.current };
+                        if (enteredQty === 0) {
+                          delete updatedMap[item.id];
+                        } else {
+                          updatedMap[item.id] = enteredQty;
+                        }
+                        setScannedMap(updatedMap);
+                        AsyncStorage.setItem(SCANNED_ITEMS_KEY, JSON.stringify(updatedMap)).catch(
+                          () => {}
                         );
-                        playScanFeedback('success');
-                      } else if (enteredQty > item.qty) {
-                        setActiveTab('over');
-                        showNotification(
-                          'error',
-                          '⚠️ OVER-SCANNED ITEM',
-                          `${itemLabel} OVER-SCANNED by +${enteredQty - item.qty} (Scanned: ${enteredQty}, Manifest: ${item.qty})`
-                        );
-                        playScanFeedback('warning');
-                      } else if (enteredQty > 0) {
-                        setActiveTab('short');
-                        showNotification(
-                          'warning',
-                          '⚡ SHORTAGE RECORDED',
-                          `${itemLabel} SHORT by -${item.qty - enteredQty} (Scanned: ${enteredQty}, Manifest: ${item.qty})`
-                        );
-                        playScanFeedback('warning');
-                      } else {
-                        setActiveTab('unscanned');
-                        showNotification(
-                          'info',
-                          'RESET TO UNSCANNED',
-                          `${itemLabel} quantity reset to 0 (Unscanned)`
-                        );
-                      }
-                    }}
-                    activeOpacity={0.8}
-                    className="flex-1 items-center justify-center rounded-lg bg-[#e5005c] py-3 active:bg-[#c20050]">
-                    <Text className="font-jetbrains text-xs font-bold text-[#ffffff]">
-                      SAVE RECORD
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </>
-            )}
+
+                        // Save expiry date for all CIDs
+                        const updatedExpiry = { ...expiryDateMapRef.current };
+                        if (expiryInputModalValue.trim()) {
+                          updatedExpiry[item.id] = expiryInputModalValue.trim();
+                        } else {
+                          delete updatedExpiry[item.id];
+                        }
+                        setExpiryDateMap(updatedExpiry);
+                        AsyncStorage.setItem(
+                          ITEM_EXPIRY_DATES_KEY,
+                          JSON.stringify(updatedExpiry)
+                        ).catch(() => {});
+
+                        const itemLabel = item.sku || item.upc || item.description || 'Item';
+                        setLastScanned(itemLabel);
+
+                        if (enteredQty === item.qty) {
+                          setActiveTab('fulfilled');
+                          showNotification(
+                            'success',
+                            '✓ ITEM FULFILLED',
+                            `${itemLabel} marked as FULFILLED (QTY: ${enteredQty}/${item.qty})`
+                          );
+                          playScanFeedback('success');
+                        } else if (enteredQty > item.qty) {
+                          setActiveTab('over');
+                          showNotification(
+                            'error',
+                            '⚠️ OVER-SCANNED ITEM',
+                            `${itemLabel} OVER-SCANNED by +${enteredQty - item.qty} (Scanned: ${enteredQty}, Manifest: ${item.qty})`
+                          );
+                          playScanFeedback('warning');
+                        } else if (enteredQty > 0) {
+                          setActiveTab('short');
+                          showNotification(
+                            'warning',
+                            '⚡ SHORTAGE RECORDED',
+                            `${itemLabel} SHORT by -${item.qty - enteredQty} (Scanned: ${enteredQty}, Manifest: ${item.qty})`
+                          );
+                          playScanFeedback('warning');
+                        } else {
+                          setActiveTab('unscanned');
+                          showNotification(
+                            'info',
+                            'RESET TO UNSCANNED',
+                            `${itemLabel} quantity reset to 0 (Unscanned)`
+                          );
+                        }
+                      }}
+                      activeOpacity={0.8}
+                      className="flex-1 items-center justify-center rounded-lg bg-[#e5005c] py-3 active:bg-[#c20050]">
+                      <Text className="font-jetbrains text-xs font-bold text-[#ffffff]">
+                        SAVE RECORD
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              )}
+            </View>
           </View>
-        </View>
+        )}
       </Modal>
 
       {/* Expiry Date Calendar Modal (Navigated 1 Year Ahead by default) */}
@@ -1903,13 +3302,12 @@ export default function ScanningItemScreen({ navigation: propNavigation }: { nav
                     Select Expiry Date
                   </Text>
                   <Text className={`font-jetbrains text-[10px] ${textSecondaryClass}`}>
-                    {scannedItemModal?.cid ? `CID: ${scannedItemModal.cid} · ` : ''}1 Year Ahead Default
+                    {scannedItemModal?.cid ? `CID: ${scannedItemModal.cid} · ` : ''}1 Year Ahead
+                    Default
                   </Text>
                 </View>
               </View>
-              <TouchableOpacity
-                onPress={() => setShowCalendarModal(false)}
-                className="p-1">
+              <TouchableOpacity onPress={() => setShowCalendarModal(false)} className="p-1">
                 <X color={isDark ? '#a1a1aa' : '#71717a'} size={20} />
               </TouchableOpacity>
             </View>
@@ -2271,8 +3669,21 @@ export default function ScanningItemScreen({ navigation: propNavigation }: { nav
                 </Text>
               </TouchableOpacity>
             </View>
+          ) : !isScreenFocused ||
+            uploadImageModalItem ||
+            isScannerPausedForModal ||
+            scannedItemModal ||
+            imageZoomModal ? (
+            <View className="flex-1 items-center justify-center bg-black">
+              <Text className={`font-jetbrains text-xs ${textSecondaryClass}`}>
+                {uploadImageModalItem || isScannerPausedForModal
+                  ? 'Scanner camera turned off for image upload...'
+                  : 'Scanner camera paused...'}
+              </Text>
+            </View>
           ) : (
             <CameraView
+              ref={scannerCameraRef}
               style={{ flex: 1 }}
               facing="back"
               onBarcodeScanned={onBarcodeScanned}
@@ -2434,98 +3845,155 @@ export default function ScanningItemScreen({ navigation: propNavigation }: { nav
         )}
       </TouchableOpacity>
 
-      {/* Bluetooth & Manual Barcode Scanner Input (Active when swiped up / Camera disabled) */}
+      {/* Optional Bluetooth & Manual Barcode Scanner Input (Toggle to activate when swiped up) */}
       {isFullScreenTabs && (
         <View
-          className={`border-b px-4 py-3 shadow-sm ${
+          className={`border-b px-4 py-2.5 shadow-sm ${
             isDark ? 'border-[#3f3f46] bg-[#1a1a1d]' : 'border-[#e4e4e7] bg-[#ffffff]'
           }`}>
-          <View className="mb-2 flex-row items-center justify-between">
-            <View className="flex-row items-center gap-1.5">
-              <View className="h-6 w-6 items-center justify-center rounded-md bg-[#e5005c]/15">
-                <Bluetooth color="#e5005c" size={14} />
-              </View>
-              <Text className="font-jetbrains text-[11px] font-bold text-[#e5005c]">
-                BLUETOOTH SCANNER ACTIVE
-              </Text>
-            </View>
-            <View
-              className={`flex-row items-center gap-1.5 rounded-full border px-2 py-0.5 ${
-                isBuffering
-                  ? 'border-[#eab308]/60 bg-[#eab308]/20'
-                  : 'border-[#22c55e]/30 bg-[#22c55e]/10'
-              }`}>
+          <View className="flex-row items-center justify-between">
+            <View className="flex-1 flex-row items-center gap-2 pr-2">
               <View
-                className={`h-1.5 w-1.5 rounded-full ${
-                  isBuffering ? 'bg-[#eab308]' : 'bg-[#22c55e]'
-                }`}
-              />
-              <Text
-                className={`font-jetbrains text-[9px] font-bold ${
-                  isBuffering ? 'text-[#eab308]' : 'text-[#22c55e]'
+                className={`h-7 w-7 items-center justify-center rounded-lg ${
+                  isBluetoothScannerActive
+                    ? 'bg-[#e5005c]/15'
+                    : isDark
+                      ? 'bg-[#2a2a2d]'
+                      : 'bg-[#f4f4f5]'
                 }`}>
+                <Bluetooth
+                  color={isBluetoothScannerActive ? '#e5005c' : isDark ? '#a1a1aa' : '#71717a'}
+                  size={14}
+                />
+              </View>
+              <View className="flex-1">
+                <Text
+                  className={`font-jetbrains text-[11px] font-bold ${
+                    isBluetoothScannerActive ? 'text-[#e5005c]' : textPrimaryClass
+                  }`}>
+                  {isBluetoothScannerActive ? 'BLUETOOTH SCANNER ACTIVE' : 'BLUETOOTH SCANNER'}
+                </Text>
+                {!isBluetoothScannerActive && (
+                  <Text
+                    className={`font-hanken text-[10px] ${textSecondaryClass}`}
+                    numberOfLines={1}>
+                    Optional · Tap toggle to activate scanner input
+                  </Text>
+                )}
+              </View>
+            </View>
+
+            <View className="flex-row items-center gap-2">
+              {isBluetoothScannerActive && (
+                <View
+                  className={`flex-row items-center gap-1.5 rounded-full border px-2 py-0.5 ${
+                    isBuffering
+                      ? 'border-[#eab308]/60 bg-[#eab308]/20'
+                      : 'border-[#22c55e]/30 bg-[#22c55e]/10'
+                  }`}>
+                  <View
+                    className={`h-1.5 w-1.5 rounded-full ${
+                      isBuffering ? 'bg-[#eab308]' : 'bg-[#22c55e]'
+                    }`}
+                  />
+                  <Text
+                    className={`font-jetbrains text-[9px] font-bold ${
+                      isBuffering ? 'text-[#eab308]' : 'text-[#22c55e]'
+                    }`}>
+                    {isBuffering ? 'READING...' : '0.5S READY'}
+                  </Text>
+                </View>
+              )}
+
+              <TouchableOpacity
+                onPress={toggleBluetoothScanner}
+                activeOpacity={0.8}
+                className={`flex-row items-center gap-2 rounded-full border px-2.5 py-1 ${
+                  isBluetoothScannerActive
+                    ? 'border-[#e5005c] bg-[#e5005c]'
+                    : isDark
+                      ? 'border-[#3f3f46] bg-[#2a2a2d]'
+                      : 'border-[#d4d4d8] bg-[#f4f4f5]'
+                }`}>
+                <Text
+                  className={`font-jetbrains text-[10px] font-bold ${
+                    isBluetoothScannerActive ? 'text-[#ffffff]' : textSecondaryClass
+                  }`}>
+                  {isBluetoothScannerActive ? 'ACTIVE' : 'OFF'}
+                </Text>
+                <View
+                  className={`h-4 w-7 justify-center rounded-full px-0.5 ${
+                    isBluetoothScannerActive
+                      ? 'items-end bg-white/30'
+                      : isDark
+                        ? 'items-start bg-[#131316]'
+                        : 'items-start bg-[#d4d4d8]'
+                  }`}>
+                  <View className="h-3 w-3 rounded-full bg-[#ffffff]" />
+                </View>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {isBluetoothScannerActive && (
+            <View className="mt-2.5">
+              <View className="flex-row items-center gap-2">
+                <View
+                  className={`flex-1 flex-row items-center rounded-xl border px-3 ${
+                    isBuffering
+                      ? 'border-[#eab308] bg-[#eab308]/5'
+                      : isDark
+                        ? 'border-[#e5005c]/40 bg-[#131316]'
+                        : 'border-[#e5005c]/50 bg-[#fafafa]'
+                  }`}>
+                  <Scan color={isBuffering ? '#eab308' : '#e5005c'} size={16} />
+                  <TextInput
+                    ref={bluetoothInputRef}
+                    value={bluetoothInput}
+                    onChangeText={handleBluetoothTextChange}
+                    placeholder="Scan or type SKU, UPC, CID NO..."
+                    placeholderTextColor={isDark ? '#71717a' : '#a1a1aa'}
+                    autoCapitalize="characters"
+                    autoCorrect={false}
+                    autoFocus={true}
+                    blurOnSubmit={false}
+                    className={`h-11 flex-1 px-2.5 font-jetbrains text-xs ${
+                      isDark ? 'text-[#fafafa]' : 'text-[#18181b]'
+                    }`}
+                  />
+                  {bluetoothInput.length > 0 && (
+                    <TouchableOpacity
+                      onPress={() => {
+                        if (scanBufferTimerRef.current) {
+                          clearTimeout(scanBufferTimerRef.current);
+                          scanBufferTimerRef.current = null;
+                        }
+                        setIsBuffering(false);
+                        liveBufferRef.current = '';
+                        setBluetoothInput('');
+                        bluetoothInputRef.current?.focus();
+                      }}
+                      className="p-1">
+                      <X color={isDark ? '#a1a1aa' : '#71717a'} size={15} />
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                <TouchableOpacity
+                  onPress={() => handleBluetoothSubmit()}
+                  activeOpacity={0.8}
+                  className="h-11 items-center justify-center rounded-xl bg-[#e5005c] px-4">
+                  <Text className="font-jetbrains text-xs font-bold text-[#ffffff]">SCAN</Text>
+                </TouchableOpacity>
+              </View>
+
+              <Text className={`mt-1.5 font-hanken text-[10px] ${textSecondaryClass}`}>
                 {isBuffering
-                  ? 'READING BARCODE...'
-                  : '0.5S AUTO-TRIGGER READY'}
+                  ? `⏳ Streaming barcode (${bluetoothInput.length} chars received)... Processing in 0.5s or tap SCAN.`
+                  : 'Scan barcodes with your Bluetooth scanner. 0.5s buffer captures all digits quickly and accurately.'}
               </Text>
             </View>
-          </View>
-
-          <View className="flex-row items-center gap-2">
-            <View
-              className={`flex-1 flex-row items-center rounded-xl border px-3 ${
-                isBuffering
-                  ? 'border-[#eab308] bg-[#eab308]/5'
-                  : isDark
-                    ? 'border-[#e5005c]/40 bg-[#131316]'
-                    : 'border-[#e5005c]/50 bg-[#fafafa]'
-              }`}>
-              <Scan color={isBuffering ? '#eab308' : '#e5005c'} size={16} />
-              <TextInput
-                ref={bluetoothInputRef}
-                value={bluetoothInput}
-                onChangeText={handleBluetoothTextChange}
-                placeholder="Scan or type SKU, UPC, CID NO..."
-                placeholderTextColor={isDark ? '#71717a' : '#a1a1aa'}
-                autoCapitalize="characters"
-                autoCorrect={false}
-                autoFocus={true}
-                blurOnSubmit={false}
-                className={`h-11 flex-1 px-2.5 font-jetbrains text-xs ${
-                  isDark ? 'text-[#fafafa]' : 'text-[#18181b]'
-                }`}
-              />
-              {bluetoothInput.length > 0 && (
-                <TouchableOpacity
-                  onPress={() => {
-                    if (scanBufferTimerRef.current) {
-                      clearTimeout(scanBufferTimerRef.current);
-                      scanBufferTimerRef.current = null;
-                    }
-                    setIsBuffering(false);
-                    liveBufferRef.current = '';
-                    setBluetoothInput('');
-                    bluetoothInputRef.current?.focus();
-                  }}
-                  className="p-1">
-                  <X color={isDark ? '#a1a1aa' : '#71717a'} size={15} />
-                </TouchableOpacity>
-              )}
-            </View>
-
-            <TouchableOpacity
-              onPress={() => handleBluetoothSubmit()}
-              activeOpacity={0.8}
-              className="h-11 items-center justify-center rounded-xl bg-[#e5005c] px-4 active:bg-[#c20050]">
-              <Text className="font-jetbrains text-xs font-bold text-[#ffffff]">SCAN</Text>
-            </TouchableOpacity>
-          </View>
-
-          <Text className={`mt-1.5 font-hanken text-[10px] ${textSecondaryClass}`}>
-            {isBuffering
-              ? `⏳ Streaming barcode (${bluetoothInput.length} chars received)... Processing in 0.5s or tap SCAN.`
-              : 'Scan barcodes with your Bluetooth scanner. 0.5s buffer captures all digits quickly and accurately.'}
-          </Text>
+          )}
         </View>
       )}
 
@@ -2775,12 +4243,8 @@ export default function ScanningItemScreen({ navigation: propNavigation }: { nav
             const remainingQty = Math.max(0, item.qty - currentQty);
 
             return (
-              <TouchableOpacity
-                onPress={() => {
-                  openItemModalWithDefaults(item);
-                }}
-                activeOpacity={0.7}
-                className={`relative mb-3 overflow-hidden rounded-lg border p-4 ${
+              <View
+                className={`mb-3 flex-row items-stretch gap-3 overflow-hidden rounded-lg border p-3.5 ${
                   isOverScanned
                     ? 'border-[#ef4444]/60 bg-[#ef4444]/10'
                     : isCompleted
@@ -2789,14 +4253,16 @@ export default function ScanningItemScreen({ navigation: propNavigation }: { nav
                         ? 'border-[#e5005c]/40 bg-[#e5005c]/5'
                         : itemRowBgClass
                 }`}>
-                {/* Ghost Background Item Image */}
-                <GhostItemImage upc={item.upc} />
-
-                {/* Card Content Layer */}
-                <View className="relative z-10">
-                  {/* Headers: CID & TRF & Expiry Date */}
-                  <View className="mb-1.5 flex-row flex-wrap items-center justify-between gap-1.5">
-                    <View className="flex-row flex-wrap items-center gap-2">
+                {/* Column 1: Item Details (Tap to open QTY input modal) */}
+                <TouchableOpacity
+                  onPress={() => {
+                    openItemModalWithDefaults(item);
+                  }}
+                  activeOpacity={0.7}
+                  className="flex-1 justify-between">
+                  <View>
+                    {/* Headers: CID & TRF & Expiry Date & Status */}
+                    <View className="mb-1.5 flex-row flex-wrap items-center gap-1.5">
                       {item.cid ? (
                         <View
                           className={`rounded px-2 py-0.5 ${isDark ? 'bg-[#2a2a2d]' : 'bg-[#e4e4e7]'}`}>
@@ -2821,55 +4287,55 @@ export default function ScanningItemScreen({ navigation: propNavigation }: { nav
                           </Text>
                         </View>
                       ) : null}
+
+                      {isOverScanned ? (
+                        <View className="flex-row items-center gap-1 rounded border border-[#ef4444]/40 bg-[#ef4444]/20 px-2 py-0.5">
+                          <AlertTriangle color="#ef4444" size={12} />
+                          <Text className="font-jetbrains text-[9px] font-extrabold text-[#ef4444]">
+                            OVER (+{overageAmount})
+                          </Text>
+                        </View>
+                      ) : isCompleted ? (
+                        <View className="flex-row items-center gap-1 rounded bg-[#22c55e]/20 px-2 py-0.5">
+                          <CheckCircle color="#22c55e" size={12} />
+                          <Text className="font-jetbrains text-[9px] font-bold text-[#22c55e]">
+                            FULFILLED
+                          </Text>
+                        </View>
+                      ) : null}
                     </View>
 
-                    {isOverScanned ? (
-                      <View className="flex-row items-center gap-1 rounded border border-[#ef4444]/40 bg-[#ef4444]/20 px-2 py-0.5">
-                        <AlertTriangle color="#ef4444" size={12} />
-                        <Text className="font-jetbrains text-[9px] font-extrabold text-[#ef4444]">
-                          OVER-SCANNED (+{overageAmount})
+                    {/* Identifiers: SKU & UPC */}
+                    <View className="mb-1">
+                      {item.sku ? (
+                        <Text className={`font-jetbrains text-sm font-bold ${textPrimaryClass}`}>
+                          SKU: {item.sku}
                         </Text>
-                      </View>
-                    ) : isCompleted ? (
-                      <View className="flex-row items-center gap-1 rounded bg-[#22c55e]/20 px-2 py-0.5">
-                        <CheckCircle color="#22c55e" size={12} />
-                        <Text className="font-jetbrains text-[9px] font-bold text-[#22c55e]">
-                          FULFILLED
+                      ) : null}
+                      {item.upc ? (
+                        <Text className={`font-jetbrains text-sm font-black ${textSecondaryClass}`}>
+                          UPC: {item.upc}
                         </Text>
-                      </View>
-                    ) : null}
-                  </View>
+                      ) : null}
+                    </View>
 
-                  {/* Identifiers: SKU & UPC */}
-                  <View className="mb-1">
-                    {item.sku ? (
-                      <Text className={`font-jetbrains text-sm font-bold ${textPrimaryClass}`}>
-                        SKU: {item.sku}
-                      </Text>
-                    ) : null}
-                    {item.upc ? (
-                      <Text className={`font-jetbrains text-xs ${textSecondaryClass}`}>
-                        UPC: {item.upc}
+                    {/* Description */}
+                    {item.description ? (
+                      <Text
+                        className={`mb-2 font-hanken text-xs ${textSecondaryClass}`}
+                        numberOfLines={2}>
+                        {item.description}
                       </Text>
                     ) : null}
                   </View>
-
-                  {/* Description */}
-                  {item.description ? (
-                    <Text
-                      className={`mb-3 font-hanken text-xs ${textSecondaryClass}`}
-                      numberOfLines={2}>
-                      {item.description}
-                    </Text>
-                  ) : null}
 
                   {/* QTY of the items & Remaining to Fulfill */}
-                  <View className="mt-1 flex-row flex-wrap items-center justify-between gap-2 border-t border-[#3f3f46]/30 pt-2.5">
-                    <View className="flex-row items-center gap-1.5">
+                  <View className="mt-1 flex-row flex-wrap items-center justify-between gap-1.5 border-t border-[#3f3f46]/30 pt-2">
+                    <View className="flex-row flex-wrap items-center gap-1.5">
                       <View
                         className={`rounded px-2 py-0.5 ${isDark ? 'bg-[#2a2a2d]' : 'bg-[#e4e4e7]'}`}>
                         <Text className={`font-jetbrains text-[9px] font-bold ${textPrimaryClass}`}>
-                          MANIFEST QTY: {item.qty}
+                          MANIFEST: {item.qty}
                         </Text>
                       </View>
 
@@ -2882,7 +4348,7 @@ export default function ScanningItemScreen({ navigation: propNavigation }: { nav
                             className={`font-jetbrains text-[9px] font-bold ${
                               isOverScanned ? 'text-[#ef4444]' : 'text-[#e5005c]'
                             }`}>
-                            SCANNED QTY: {currentQty}
+                            SCANNED: {currentQty}
                           </Text>
                         </View>
                       )}
@@ -2893,13 +4359,13 @@ export default function ScanningItemScreen({ navigation: propNavigation }: { nav
                       <View className="flex-row items-center gap-1 rounded border border-[#ef4444]/40 bg-[#ef4444]/20 px-2 py-0.5">
                         <AlertTriangle color="#ef4444" size={10} />
                         <Text className="font-jetbrains text-[9px] font-extrabold text-[#ef4444]">
-                          EXCEEDED BY +{overageAmount}
+                          +{overageAmount} OVER
                         </Text>
                       </View>
                     ) : remainingQty > 0 ? (
                       <View className="rounded border border-[#eab308]/30 bg-[#eab308]/10 px-2 py-0.5">
                         <Text className="font-jetbrains text-[9px] font-bold text-[#eab308]">
-                          REMAINING: {remainingQty}
+                          REM: {remainingQty}
                         </Text>
                       </View>
                     ) : (
@@ -2910,8 +4376,18 @@ export default function ScanningItemScreen({ navigation: propNavigation }: { nav
                       </View>
                     )}
                   </View>
-                </View>
-              </TouchableOpacity>
+                </TouchableOpacity>
+
+                {/* Column 2: Prominent Item Image (Tap to zoom/enlarge, or upload when missing) */}
+                <ItemImageColumn
+                  item={item}
+                  isDark={isDark}
+                  size="card"
+                  uploadedImageUrl={uploadedImageMap[getItemImageKey(item)]}
+                  onPressImage={(payload) => setImageZoomModal(payload)}
+                  onPressUploadImage={openUploadImageModal}
+                />
+              </View>
             );
           }}
         />
@@ -2938,6 +4414,21 @@ export default function ScanningItemScreen({ navigation: propNavigation }: { nav
           <View className="h-full rounded-full bg-[#e5005c]" style={{ width: `${progressPct}%` }} />
         </View>
       </View>
+
+      {/* In-Window Camera Capture & Cloudinary Upload Overlay (avoids Android Dialog SurfaceView black screen & scanner camera conflict) */}
+      {uploadImageModalItem && (
+        <View style={[StyleSheet.absoluteFill, { zIndex: 9999, elevation: 50 }]}>
+          <ItemImageCaptureModalContent
+            key={getItemImageKey(uploadImageModalItem)}
+            item={uploadImageModalItem}
+            isDark={isDark}
+            permission={permission}
+            onRequestPermission={requestPermission}
+            onClose={closeUploadImageModal}
+            onUploaded={handleItemImageUploaded}
+          />
+        </View>
+      )}
     </SafeAreaView>
   );
 }

@@ -1809,10 +1809,11 @@ export default function DamageLostRecordScreen({
               value={manualInput}
               onChangeText={setManualInput}
               placeholder="Enter SKU or UPC…"
+              
               placeholderTextColor="#71717a"
               autoFocus
               autoCapitalize="characters"
-              keyboardType="default"
+              keyboardType="number-pad"
               className={`mb-4 h-11 rounded-lg border px-3 font-jetbrains text-sm ${textPrimaryClass} ${inputBgClass}`}
             />
             <TouchableOpacity
