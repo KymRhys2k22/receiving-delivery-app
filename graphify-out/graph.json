@@ -2694,15 +2694,15 @@
       "norm_label": "expo"
     },
     {
-      "label": "expo-camera",
+      "label": "expo-application",
       "file_type": "code",
       "source_file": "package.json",
-      "source_location": "L26",
+      "source_location": "L24",
       "_origin": "ast",
-      "id": "package_dependencies_expo_camera",
+      "id": "package_dependencies_expo_application",
       "community": 23,
       "community_name": "dependencies",
-      "norm_label": "expo-camera"
+      "norm_label": "expo-application"
     },
     {
       "label": "@expo/vector-icons",
@@ -2749,15 +2749,15 @@
       "norm_label": "expo"
     },
     {
-      "label": "expo-camera",
+      "label": "expo-application",
       "file_type": "concept",
       "source_file": "package.json",
-      "source_location": "L26",
+      "source_location": "L24",
       "_origin": "ast",
-      "id": "expo_camera",
+      "id": "expo_application",
       "community": 23,
       "community_name": "dependencies",
-      "norm_label": "expo-camera"
+      "norm_label": "expo-application"
     },
     {
       "label": "@expo/vector-icons",
@@ -5334,26 +5334,26 @@
       "norm_label": "workflow: graphify"
     },
     {
-      "label": "expo-application",
+      "label": "expo-camera",
       "file_type": "code",
       "source_file": "package.json",
-      "source_location": "L24",
+      "source_location": "L26",
       "_origin": "ast",
-      "id": "package_dependencies_expo_application",
+      "id": "package_dependencies_expo_camera",
       "community": 55,
-      "community_name": "expo-application",
-      "norm_label": "expo-application"
+      "community_name": "expo-camera",
+      "norm_label": "expo-camera"
     },
     {
-      "label": "expo-application",
+      "label": "expo-camera",
       "file_type": "concept",
       "source_file": "package.json",
-      "source_location": "L24",
+      "source_location": "L26",
       "_origin": "ast",
-      "id": "expo_application",
+      "id": "expo_camera",
       "community": 55,
-      "community_name": "expo-application",
-      "norm_label": "expo-application"
+      "community_name": "expo-camera",
+      "norm_label": "expo-camera"
     },
     {
       "label": "README.md",
@@ -6041,7 +6041,7 @@
       "label": "Commit Scope & Modified Files",
       "file_type": "document",
       "source_file": "RELEASE.md",
-      "source_location": "L102",
+      "source_location": "L104",
       "_origin": "ast",
       "id": "release_commit_scope_modified_files",
       "community": 70,
@@ -6085,7 +6085,7 @@
       "label": "\ud83d\udce6 Supabase `app_updates` Release Checklist",
       "file_type": "document",
       "source_file": "RELEASE.md",
-      "source_location": "L111",
+      "source_location": "L126",
       "_origin": "ast",
       "id": "release_supabase_app_updates_release_checklist",
       "community": 70,
@@ -6096,7 +6096,7 @@
       "label": "\ud83d\udee0\ufe0f Verification & Commit Details",
       "file_type": "document",
       "source_file": "RELEASE.md",
-      "source_location": "L148",
+      "source_location": "L163",
       "_origin": "ast",
       "id": "release_verification_commit_details",
       "community": 70,
@@ -12707,7 +12707,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "RELEASE.md",
-      "source_location": "L102",
+      "source_location": "L104",
       "weight": 1.0,
       "_origin": "ast",
       "source": "release_git_commit_tag_instructions",
@@ -12718,7 +12718,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "RELEASE.md",
-      "source_location": "L111",
+      "source_location": "L126",
       "weight": 1.0,
       "_origin": "ast",
       "source": "release_receiving_scanner_app_release_v7_2_build_10",
@@ -12729,7 +12729,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "RELEASE.md",
-      "source_location": "L148",
+      "source_location": "L163",
       "weight": 1.0,
       "_origin": "ast",
       "source": "release_receiving_scanner_app_release_v7_2_build_10",
@@ -15925,5 +15925,5 @@
       "source_file": "assets/splash.png"
     }
   ],
-  "built_at_commit": "2ce3558819632fc79c65fd3a9a96c91222e06c74"
+  "built_at_commit": "e05f2e06fb44bad6359ce2c40c9f4a090013f99e"
 }

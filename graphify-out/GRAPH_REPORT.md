@@ -1,7 +1,7 @@
 # Graph Report - receiving-delivery-app  (2026-10-24)
 
 ## Corpus Check
-- 49 files · ~149,227 words
+- 49 files · ~149,433 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -10,7 +10,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `2ce35588`
+- Built from commit: `e05f2e06`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -65,7 +65,7 @@
 - session-ses_fc33.md
 - rules/graphify.md
 - workflows/graphify.md
-- expo-application
+- expo-camera
 - Receiving & Delivery Scanner App (Daizo)
 - react-native-screens
 - expo-file-system
@@ -180,7 +180,7 @@ Nodes (3): Application Branding and Visual Identity, Delivery Elephant Mascot, A
 
 ### Community 23 - "dependencies"
 Cohesion: 0.18
-Nodes (11): expo, expo-camera, @expo/vector-icons, lucide-react-native, dependencies, expo, expo-camera, @expo/vector-icons (+3 more)
+Nodes (11): expo, expo-application, @expo/vector-icons, lucide-react-native, dependencies, expo, expo-application, @expo/vector-icons (+3 more)
 
 ### Community 24 - "New session - 2026-08-26T06:38:56.026Z"
 Cohesion: 0.02
@@ -230,7 +230,7 @@ Nodes (20): 🏪 1. Multi-Store Isolation for Damage Lost Record (DLR), 📦 1. 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `dependencies` connect `dependencies` to `devDependencies`, `expo-document-picker`, `@react-native-async-storage/async-storage`, `expo-image`, `expo-sharing`, `expo-status-bar`, `expo-build-properties`, `expo-network`, `react`, `expo-web-browser`, `react-native-gesture-handler`, `react-native-reanimated`, `react-native-safe-area-context`, `expo-haptics`, `react-native-worklets`, `@react-navigation/native`, `nativewind`, `react-native-markdown-display`, `xlsx`, `expo-application`, `react-native-screens`, `expo-file-system`, `react-native-keyboard-controller`, `papaparse`, `react-native`, `@expo/ui`, `expo-image-manipulator`, `expo-splash-screen`, `llama.rn`, `expo-notifications`, `react-native-svg`, `@react-navigation/bottom-tabs`, `expo-font`, `@react-navigation/stack`?**
+- **Why does `dependencies` connect `dependencies` to `devDependencies`, `expo-document-picker`, `@react-native-async-storage/async-storage`, `expo-image`, `expo-sharing`, `expo-status-bar`, `expo-build-properties`, `expo-network`, `react`, `expo-web-browser`, `react-native-gesture-handler`, `react-native-reanimated`, `react-native-safe-area-context`, `expo-haptics`, `react-native-worklets`, `@react-navigation/native`, `nativewind`, `react-native-markdown-display`, `xlsx`, `expo-camera`, `react-native-screens`, `expo-file-system`, `react-native-keyboard-controller`, `papaparse`, `react-native`, `@expo/ui`, `expo-image-manipulator`, `expo-splash-screen`, `llama.rn`, `expo-notifications`, `react-native-svg`, `@react-navigation/bottom-tabs`, `expo-font`, `@react-navigation/stack`?**
   _High betweenness centrality (0.036) - this node is a cross-community bridge._
 - **Why does `New session - 2026-08-26T06:38:56.026Z` connect `New session - 2026-08-26T06:38:56.026Z` to `session-ses_fc33.md`?**
   _High betweenness centrality (0.026) - this node is a cross-community bridge._

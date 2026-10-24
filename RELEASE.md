@@ -91,20 +91,35 @@
 
 ## 📝 Git Commit & Tag Instructions
 
-Run the following commands to commit these fixes:
+Run the following commands to commit, tag, and publish these updates:
 
 ```bash
 git add .
-git commit -m "fix(ui): v7.2 resolve standalone APK keyboard overlap in LocalAiFabModal, mount safety in ThemeProvider, and softwareKeyboardLayoutMode"
+git commit -m "feat(release): v7.3 (build 11) - TRF items lookup, image zoom modal, in-app UPC web search, swipe navigation, and zero-normalization"
+git tag -a v7.3.0 -m "Release v7.3 (Build 11)"
 git push origin main
+git push origin v7.3.0
 ```
 
 ### Commit Scope & Modified Files
-- `components/LocalAiFabModal.tsx`: Removed `statusBarTranslucent`, added `onFocus` scroll, wrapped with clean `KeyboardAvoidingView`.
-- `app.json`: Added `"softwareKeyboardLayoutMode": "resize"` under `android`.
-- `context/theme.tsx`: Added `isMounted` guard and stabilized `useEffect` dependencies.
-- `App.tsx`: Added unmounted state update warning to `LogBox.ignoreLogs`.
-- `screens/damageLostRecord.tsx`: Store code isolation, `expo-image` named import, and shadow opacity fix.
+- `screens/scanningBox.tsx`:
+  - Implemented TRF Items Lookup modal with Item Manifest CSV intake and real-time filtering.
+  - Implemented interactive Large Image Preview modal with pinch-to-zoom (1.0x–4.0x), pan, double-tap, zoom controls (`+0.5x`, `-0.5x`, presets `1.0x` / `2.0x` / `3.0x`, and reset `RotateCcw`), and item technical specifications.
+  - Implemented conditional in-app Google Images search via `expo-web-browser` with dynamic button visibility (hidden when image is available; clickable when missing).
+  - Added horizontal swipe navigation to `ScanningItemScreen` and CameraX singleton lifecycle watchdog.
+  - Added Bluetooth Scanner toggle button.
+- `screens/scanningItem.tsx`:
+  - Resolved camera modal black screen during item image upload by pausing background scanner camera.
+  - Adjusted modal upload camera frame to 1:1 square aspect ratio.
+  - Added leading zero-normalization (`normalizeLookupCode`) for barcode and SKU scanning.
+  - Added Bluetooth Scanner toggle button.
+- `app.json`: Bumped version to `7.3`, incremented `versionCode` to `11`.
+- `package.json`: Bumped version to `7.3.0`, added `expo-web-browser`.
+- `android/app/build.gradle`: Updated `versionCode 11`, `versionName "7.3.0"`.
+- `services/appUpdateService.ts`: Synchronized development fallback version code to `11` and version name to `'7.3'`.
+- `screens/three.tsx`: Updated Settings dashboard version display to `v7.3` and footer to `Version 7.3`.
+- `screens/login.tsx`: Updated login system engine badge to `System v7.3`.
+- `RELEASE.md`: Comprehensive release notes and deployment documentation for v7.3 (Build 11).
 
 ---
 
@@ -112,15 +127,15 @@ git push origin main
 
 When publishing this release to production:
 
-1. **Build the APK**:
+1. **Build the Production APK**:
    ```bash
    eas build -p android --profile production
    ```
 
 2. **Upload APK to GitHub Releases**:
-   - Create release tag: `v7.2.0` (or `v7.2`).
-   - Title: `v7.2.0 — Keyboard Controller Sync & System Version Update`.
-   - Attach the built APK: `receiving-scanner-v7.2.0.apk`.
+   - Create release tag: `v7.3.0` (or `v7.3`).
+   - Title: `v7.3.0 — TRF Item Lookup, Interactive Image Zoom, In-App Web Search & Camera Handoff`.
+   - Attach the built APK: `receiving-scanner-v7.3.0.apk`.
    - Copy the Direct Download URL of the attached APK.
 
 3. **Register in Supabase**:
@@ -134,10 +149,10 @@ When publishing this release to production:
      is_mandatory,
      released_at
    ) VALUES (
-     10,
-     '7.2.0',
-     'v7.2.0: Smooth frame-synced keyboard handling, store-filtered DLR records, and bidirectional SKU ↔ UPC lookup in Daizo.',
-     'https://github.com/KymRhys2k22/receiving-delivery-app/releases/download/v7.2.0/receiving-scanner-v7.2.0.apk',
+     11,
+     '7.3.0',
+     'v7.3.0: TRF item manifest lookup, interactive image zoom & pan, conditional in-app UPC web search, fast swipe navigation, and scanner camera lifecycle fixes.',
+     'https://github.com/KymRhys2k22/receiving-delivery-app/releases/download/v7.3.0/receiving-scanner-v7.3.0.apk',
      false,
      NOW()
    );
@@ -147,7 +162,9 @@ When publishing this release to production:
 
 ## 🛠️ Verification & Commit Details
 
-- **Android Version Code**: `10`
-- **Application Version Name**: `7.2.0`
+- **Android Version Code**: `11`
+- **Application Version Name**: `7.3.0`
 - **TypeScript**: `npx tsc --noEmit` passing (0 errors)
-- **Live Device Verification**: Tested and verified on connected physical Android device (Redmi Note 10 Pro)
+- **ESLint**: `npx eslint` passing (0 errors)
+- **Live Device Verification**: Tested and verified on connected physical Android device (`M2101K6G`, Redmi Note 10 Pro)
+- **Knowledge Graph**: Rebuilt and synchronized via `graphify update .`
