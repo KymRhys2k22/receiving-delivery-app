@@ -1,16 +1,16 @@
 # Graph Report - receiving-delivery-app  (2026-10-24)
 
 ## Corpus Check
-- 49 files · ~142,895 words
+- 49 files · ~148,864 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 556 nodes · 775 edges · 70 communities (30 shown, 40 thin omitted)
+- 567 nodes · 799 edges · 71 communities (30 shown, 41 thin omitted)
 - Extraction: 98% EXTRACTED · 2% INFERRED · 0% AMBIGUOUS · INFERRED: 18 edges (avg confidence: 0.76)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `2db43759`
+- Built from commit: `2ce35588`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -22,7 +22,7 @@
 - patch-llama-rn.js
 - Industrial Verification Logic Design System
 - ScreenContent.tsx
-- expo-build-properties
+- expo-document-picker
 - tsconfig.json
 - BackButton.tsx
 - Button.tsx
@@ -37,7 +37,7 @@
 - TabBarIcon.tsx
 - eslint.config.js
 - css-env.d.ts
-- expo-application
+- @react-native-async-storage/async-storage
 - dependencies
 - New session - 2026-08-26T06:38:56.026Z
 - appUpdateService.ts
@@ -46,11 +46,11 @@
 - expo-sharing
 - App Releases, Supabase Updates & Notifications Guidelines
 - expo-status-bar
-- @expo/vector-icons
+- expo-build-properties
 - expo-network
 - TASK.md
 - react
-- @react-native-async-storage/async-storage
+- expo-web-browser
 - react-native-gesture-handler
 - react-native-reanimated
 - react-native-safe-area-context
@@ -59,16 +59,15 @@
 - scanningItem.tsx
 - @react-navigation/native
 - nativewind
-- @supabase/supabase-js
+- react-native-markdown-display
 - xlsx
 - DESIGN.md
 - session-ses_fc33.md
 - rules/graphify.md
 - workflows/graphify.md
-- expo-document-picker
 - Receiving & Delivery Scanner App (Daizo)
 - react-native-screens
-- expo-font
+- expo-file-system
 - react-native-keyboard-controller
 - papaparse
 - react-native
@@ -79,7 +78,9 @@
 - expo-notifications
 - react-native-svg
 - @react-navigation/bottom-tabs
+- expo-font
 - 🚀 What's New in v7.2
+- @react-navigation/stack
 
 ## God Nodes (most connected - your core abstractions)
 1. `New session - 2026-08-26T06:38:56.026Z` - 90 edges
@@ -90,8 +91,8 @@
 6. `scripts` - 10 edges
 7. `LocalAiFabModal()` - 9 edges
 8. `processDlrSyncQueue()` - 9 edges
-9. `ScanningItemScreen()` - 8 edges
-10. `checkForAppUpdate()` - 8 edges
+9. `ItemManifestRecord` - 9 edges
+10. `ScanningBoxScreen()` - 8 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `ProductCard()` --calls--> `useTheme()`  [EXTRACTED]
@@ -102,8 +103,8 @@
   session-ses_fc33.md → DESIGN.md
 - `AppContent()` --calls--> `useTheme()`  [EXTRACTED]
   App.tsx → context/theme.tsx
-- `LocalAiFabModal()` --calls--> `askLocalHybridAssistant()`  [EXTRACTED]
-  components/LocalAiFabModal.tsx → services/localAiService.ts
+- `LocalAiFabModal()` --calls--> `useAuth()`  [EXTRACTED]
+  components/LocalAiFabModal.tsx → context/auth.tsx
 
 ## Import Cycles
 - None detected.
@@ -114,19 +115,19 @@
 - **App Branding and Mascot Design** — assets_icon_app_icon, assets_icon_delivery_elephant_mascot, assets_icon_branding_visual_identity [INFERRED 0.85]
 - **Splash Screen and Mascot Visual Identity** — assets_splash_png_splash_screen, assets_splash_png_delivery_elephant_mascot, assets_splash_png_branding_visual_identity [INFERRED 0.85]
 
-## Communities (70 total, 40 thin omitted)
+## Communities (71 total, 41 thin omitted)
 
 ### Community 0 - "useTheme"
-Cohesion: 0.08
-Nodes (36): DAIZO_LOADING_ASSET, LocalAiFabModal(), LocalAiFabModalProps, Message, useGradualAnimation(), AiAssistantContext, AiAssistantContextType, AiAssistantProvider() (+28 more)
+Cohesion: 0.10
+Nodes (29): AiAssistantContext, AiAssistantContextType, AiAssistantProvider(), useAiAssistant(), AuthContext, AuthContextType, AuthProvider(), useAuth() (+21 more)
 
 ### Community 1 - "dlr.ts"
-Cohesion: 0.07
-Nodes (53): DamageLostRecordScreen(), feedback(), formatRecordTime(), ProductCard(), ReasonPickerModal(), Step, STEP_LIST, askLocalHybridAssistant() (+45 more)
+Cohesion: 0.06
+Nodes (60): DAIZO_LOADING_ASSET, LocalAiFabModal(), LocalAiFabModalProps, Message, useGradualAnimation(), useLlamaModel(), DamageLostRecordScreen(), feedback() (+52 more)
 
 ### Community 2 - "expo"
-Cohesion: 0.06
-Nodes (38): backgroundColor, foregroundImage, adaptiveIcon, package, permissions, softwareKeyboardLayoutMode, splash, versionCode (+30 more)
+Cohesion: 0.05
+Nodes (39): backgroundColor, foregroundImage, adaptiveIcon, package, permissions, softwareKeyboardLayoutMode, splash, versionCode (+31 more)
 
 ### Community 3 - "devDependencies"
 Cohesion: 0.05
@@ -178,7 +179,7 @@ Nodes (3): Application Branding and Visual Identity, Delivery Elephant Mascot, A
 
 ### Community 23 - "dependencies"
 Cohesion: 0.18
-Nodes (11): expo, expo-file-system, lucide-react-native, dependencies, expo, expo-file-system, lucide-react-native, react-native-markdown-display (+3 more)
+Nodes (11): expo, expo-application, @expo/vector-icons, lucide-react-native, dependencies, expo, expo-application, @expo/vector-icons (+3 more)
 
 ### Community 24 - "New session - 2026-08-26T06:38:56.026Z"
 Cohesion: 0.02
@@ -197,8 +198,8 @@ Cohesion: 0.25
 Nodes (7): Step 2: Configure `app.json`, Step 3: Implement Model Download & Lifecycle Hook, Step 4: Implement Hybrid (Supabase + Local Storage) Service, Step 5: Implement FAB & Chat Modal Component with NativeWind, Step 6: Mount in Screen / Layout, Step 7: Prebuild and Compile, VERIFICATION CHECKLIST
 
 ### Community 41 - "scanningItem.tsx"
-Cohesion: 0.10
-Nodes (30): Box, INITIAL_BOXES, Item, ProgressState, playScanFeedback(), ScanningBoxScreen(), cropImageToSquare(), getItemImageKey() (+22 more)
+Cohesion: 0.09
+Nodes (36): Box, INITIAL_BOXES, Item, ProgressState, deduplicateBoxes(), failedItemImagesCache, getItemImageKey(), ItemImagePreviewPayload (+28 more)
 
 ### Community 51 - "DESIGN.md"
 Cohesion: 0.15
@@ -217,24 +218,24 @@ Cohesion: 0.14
 Nodes (13): 🏪 1. Multi-Store Isolation for Damage Lost Record (DLR), 🔍 2. Intelligent Bidirectional SKU ↔ UPC Lookup, 📱 3. Standalone APK Keyboard & Modal UI Fix, 🔄 4. Semantic Versioning in App Update Service, 🖼️ 5. `expo-image` Named Import Fix, 🎨 6. Assistant Branding & UI Polish, 🛡️ 7. ThemeProvider Mount Safety & LogBox Cleanup, Commit Scope & Modified Files (+5 more)
 
 ## Knowledge Gaps
-- **290 isolated node(s):** `name`, `slug`, `version`, `favicon`, `tsconfigPaths` (+285 more)
+- **292 isolated node(s):** `name`, `slug`, `version`, `favicon`, `tsconfigPaths` (+287 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **40 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **41 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `dependencies` connect `dependencies` to `devDependencies`, `expo-build-properties`, `expo-application`, `expo-camera`, `expo-image`, `expo-sharing`, `expo-status-bar`, `@expo/vector-icons`, `expo-network`, `react`, `@react-native-async-storage/async-storage`, `react-native-gesture-handler`, `react-native-reanimated`, `react-native-safe-area-context`, `expo-haptics`, `react-native-worklets`, `@react-navigation/native`, `nativewind`, `@supabase/supabase-js`, `xlsx`, `expo-document-picker`, `react-native-screens`, `expo-font`, `react-native-keyboard-controller`, `papaparse`, `react-native`, `@expo/ui`, `expo-image-manipulator`, `expo-splash-screen`, `llama.rn`, `expo-notifications`, `react-native-svg`, `@react-navigation/bottom-tabs`?**
+- **Why does `dependencies` connect `dependencies` to `devDependencies`, `expo-document-picker`, `@react-native-async-storage/async-storage`, `expo-camera`, `expo-image`, `expo-sharing`, `expo-status-bar`, `expo-build-properties`, `expo-network`, `react`, `expo-web-browser`, `react-native-gesture-handler`, `react-native-reanimated`, `react-native-safe-area-context`, `expo-haptics`, `react-native-worklets`, `@react-navigation/native`, `nativewind`, `react-native-markdown-display`, `xlsx`, `react-native-screens`, `expo-file-system`, `react-native-keyboard-controller`, `papaparse`, `react-native`, `@expo/ui`, `expo-image-manipulator`, `expo-splash-screen`, `llama.rn`, `expo-notifications`, `react-native-svg`, `@react-navigation/bottom-tabs`, `expo-font`, `@react-navigation/stack`?**
   _High betweenness centrality (0.037) - this node is a cross-community bridge._
 - **Why does `New session - 2026-08-26T06:38:56.026Z` connect `New session - 2026-08-26T06:38:56.026Z` to `session-ses_fc33.md`?**
-  _High betweenness centrality (0.028) - this node is a cross-community bridge._
+  _High betweenness centrality (0.027) - this node is a cross-community bridge._
 - **What connects `name`, `slug`, `version` to the rest of the system?**
-  _290 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _292 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `useTheme` be split into smaller, more focused modules?**
-  _Cohesion score 0.07993966817496229 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.09872241579558652 - nodes in this community are weakly interconnected._
 - **Should `dlr.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.07422559906487435 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.06265984654731457 - nodes in this community are weakly interconnected._
 - **Should `expo` be split into smaller, more focused modules?**
-  _Cohesion score 0.0553306342780027 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.05384615384615385 - nodes in this community are weakly interconnected._
 - **Should `devDependencies` be split into smaller, more focused modules?**
   _Cohesion score 0.05 - nodes in this community are weakly interconnected._

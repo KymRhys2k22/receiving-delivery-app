@@ -1,3 +1,39 @@
+# Receiving Scanner App — Release v7.3 (Build 11)
+
+**Release Date:** October 24, 2026  
+**Tag:** `v7.3` (or `v7.3.0`)  
+**Target:** Android (`arm64-v8a` APK)  
+**SDK:** Expo SDK 56 · React Native 0.85.3  
+
+---
+
+## 🚀 What's New in v7.3
+
+### 📦 1. TRF Items Lookup & Cross-Reference Modal
+- **TRF Item Lookup from Boxes**: In `screens/scanningBox.tsx`, users can tap any box card or quick chip to instantly cross-reference its items directly against uploaded manifest CSV records (`CID NO, TRF NO, UPC, SKU, DESCRIPTION, QTY`).
+- **Direct CSV Upload/Refresh**: Manage and upload scanning items manifest CSV files straight from the TRF lookup header.
+- **Search & Filtering**: Real-time filtering by SKU, UPC, or description with live scanned progress per item.
+
+### 🖼️ 2. Interactive Large Image Preview & Gestures
+- **Pinch-to-Zoom & Pan**: Full interactive modal allowing users to zoom in (up to `4.0x`) and pan around high-resolution product images.
+- **Dedicated Zoom Controls**: Stepwise zoom in (`+0.5x`), zoom out (`-0.5x`), preset toggle (`1.0x` / `2.0x` / `3.0x`), and reset button (`RotateCcw`).
+- **Detailed Specifications**: Displays full item description, technical identifiers (`SKU`, `UPC`, `BOX CID`, `TRF NO`), and quantity breakdown (`MANIFEST QTY`, `SCANNED QTY`, `REMAINING / OVERAGE`).
+
+### 🌐 3. Conditional In-App Web Browser Search
+- **External Web Search via `expo-web-browser`**: For items missing from Daiso and Cloudinary CDNs, the card presents a dedicated `SEARCH` button that opens Google Images using the item's UPC in an in-app Chrome Custom Tab.
+- **Smart Conditional Visibility**: If an image is available, the search button is hidden and tapping enlarges the image instead.
+
+### 🔄 4. Fast Swipe Tab Navigation & Camera Lifecycle Handoff
+- **Swipe Gestures**: Quick horizontal swipe between `ScanningBoxScreen` and `ScanningItemScreen`.
+- **Android CameraX Lifecycle Guard**: Automated watchdog preview revival and singleton `ProcessCameraProvider` self-healing to eliminate blank camera previews during rapid tab switches.
+
+### 🎯 5. Barcode Zero-Normalization & Bluetooth Scanner Toggle
+- **Zero-Stripping**: Normalizes barcode/SKU strings with leading zeros (e.g. `000260295` -> `260295`) before comparing against manifest data.
+- **Bluetooth Scanner Toggle**: Dedicated toggle button on scanning screens to activate or pause the background Bluetooth physical scanner keyboard buffer.
+- **1:1 Image Upload Modal**: Fixed camera modal black screen in `screens/scanningItem.tsx` by pausing background scanner camera, with a standard 1:1 camera upload frame.
+
+---
+
 # Receiving Scanner App — Release v7.2 (Build 10)
 
 **Release Date:** September 5, 2026  

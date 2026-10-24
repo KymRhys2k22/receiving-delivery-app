@@ -67,8 +67,8 @@ export function getCurrentAppVersion(): AppVersionInfo {
     const configCode = appConfig?.expo?.android?.versionCode;
     const configVersion = appConfig?.expo?.version;
     return {
-      versionCode: typeof configCode === 'number' ? configCode : 10,
-      versionName: configVersion || '7.2',
+      versionCode: typeof configCode === 'number' ? configCode : 11,
+      versionName: configVersion || '7.3',
     };
   }
 
@@ -253,10 +253,7 @@ export function compareSemver(
  * 1. Checks semantic version of version_name first (e.g. v7.2 > 7.1).
  * 2. If semantic versions match, checks numeric build versionCode (e.g. 9 > 8).
  */
-export function isUpdateAvailable(
-  current: AppVersionInfo,
-  latest: AppUpdateRecord
-): boolean {
+export function isUpdateAvailable(current: AppVersionInfo, latest: AppUpdateRecord): boolean {
   if (!latest) return false;
 
   const semverDiff = compareSemver(latest.version_name, current.versionName);
@@ -361,15 +358,10 @@ export async function checkForAppUpdate(options?: CheckUpdateOptions): Promise<v
     const updateAvailable = isUpdateAvailable(current, latestRelease);
 
     if (!updateAvailable) {
-      console.log(
-        `[appUpdateService] App is up to date (${currentLabel} >= ${latestLabel})`
-      );
+      console.log(`[appUpdateService] App is up to date (${currentLabel} >= ${latestLabel})`);
       // ONLY alert if the user explicitly clicked the "CHECK FOR UPDATES" button in Settings!
       if (isManual) {
-        Alert.alert(
-          'App Up to Date',
-          `You are running the latest version (${currentLabel}).`
-        );
+        Alert.alert('App Up to Date', `You are running the latest version (${currentLabel}).`);
       }
       return;
     }
