@@ -67,8 +67,8 @@ export function getCurrentAppVersion(): AppVersionInfo {
     const configCode = appConfig?.expo?.android?.versionCode;
     const configVersion = appConfig?.expo?.version;
     return {
-      versionCode: typeof configCode === 'number' ? configCode : 11,
-      versionName: configVersion || '7.3',
+      versionCode: typeof configCode === 'number' ? configCode : 12,
+      versionName: configVersion || '7.4',
     };
   }
 

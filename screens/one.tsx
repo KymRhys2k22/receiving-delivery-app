@@ -24,12 +24,14 @@ import {
   ChevronRight,
   RotateCcw,
   Trash2,
+  History,
 } from 'lucide-react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import Papa from 'papaparse';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../context/auth';
 import { useTheme } from '../context/theme';
+import HistoryModal from '../components/HistoryModal';
 import {
   MANIFEST_CIDS_KEY,
   SCANNED_CIDS_KEY,
@@ -250,6 +252,9 @@ export default function TabOneScreen({ navigation: propNavigation }: { navigatio
   // Upload manifest state
   const [isUploading, setIsUploading] = useState(false);
 
+  // History modal state
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+
   const showToast = (text: string, type: 'success' | 'error' | 'info' = 'info') => {
     setToast({ text, type });
   };
@@ -278,8 +283,7 @@ export default function TabOneScreen({ navigation: propNavigation }: { navigatio
         const rawManifest = JSON.parse(storedManifest) as any[];
         const rawScanned = storedScanned ? (JSON.parse(storedScanned) as any[]) : [];
 
-        const getCidStr = (item: any) =>
-          (typeof item === 'string' ? item : item?.cid || '').trim();
+        const getCidStr = (item: any) => (typeof item === 'string' ? item : item?.cid || '').trim();
 
         const uniqueManifest = Array.from(
           new Set((Array.isArray(rawManifest) ? rawManifest : []).map(getCidStr).filter(Boolean))
@@ -761,39 +765,49 @@ export default function TabOneScreen({ navigation: propNavigation }: { navigatio
                 </View>
               </View>
             </View>
-            <View
-              className={`max-w-[190px] flex-row items-center gap-1.5 rounded-lg border px-2.5 py-1.5 ${innerCardBgClass}`}>
-              <Store color="#e5005c" size={14} />
-              <Text
-                className={`font-jetbrains text-xs font-bold ${textPrimaryClass}`}
-                numberOfLines={1}>
-                {storeName ? `${storeName} (${storeCode})` : storeCode || 'N/A'}
-              </Text>
+            <View className="flex-row items-center gap-2">
+              
+
+              <View
+                className={`max-w-[150px] flex-row items-center gap-1.5 rounded-lg border px-2.5 py-1.5 ${innerCardBgClass}`}>
+                <Store color="#e5005c" size={14} />
+                <Text
+                  className={`font-jetbrains text-xs font-bold ${textPrimaryClass}`}
+                  numberOfLines={1}>
+                  {storeName ? `${storeName} (${storeCode})` : storeCode || 'N/A'}
+                </Text>
+              </View>
             </View>
           </View>
 
           <ScrollView className="flex-1 px-4 py-4" showsVerticalScrollIndicator={false}>
             {/* Quick Actions Shortcuts (Stitch UI Grid) */}
-            <View className="mb-4 flex-row gap-2.5">
+            <View className="mb-4 flex-row gap-2">
               <TouchableOpacity
                 onPress={() => navigation.navigate('ScanningBox' as never)}
                 activeOpacity={0.8}
-                className="flex-1 flex-col items-center justify-center rounded-xl border border-[#ff80ab]/30 bg-[#ff80ab]/10 p-3 active:bg-[#ff80ab]/20">
-                <View className="mb-1.5 h-8 w-8 items-center justify-center rounded-lg bg-[#ff80ab]/20">
-                  <BoxIcon color="#ff80ab" size={18} />
+                className="flex-1 flex-col items-center justify-center rounded-xl border border-[#ff80ab]/30 bg-[#ff80ab]/10 p-2.5 active:bg-[#ff80ab]/20">
+                <View className="mb-1 h-7 w-7 items-center justify-center rounded-lg bg-[#ff80ab]/20">
+                  <BoxIcon color="#ff80ab" size={16} />
                 </View>
-                <Text className="font-jetbrains text-xs font-bold text-[#ff80ab]">Box Scanner</Text>
+                <Text
+                  className="font-jetbrains text-[11px] font-bold text-[#ff80ab]"
+                  numberOfLines={1}>
+                  Box Scanner
+                </Text>
                 <Text className={`font-jetbrains text-[8px] ${textSecondaryClass}`}>SCAN CIDS</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 onPress={() => navigation.navigate('ScanningItem' as never)}
                 activeOpacity={0.8}
-                className="flex-1 flex-col items-center justify-center rounded-xl border border-[#e5005c]/30 bg-[#e5005c]/10 p-3 active:bg-[#e5005c]/20">
-                <View className="mb-1.5 h-8 w-8 items-center justify-center rounded-lg bg-[#e5005c]/20">
-                  <Scan color="#e5005c" size={18} />
+                className="flex-1 flex-col items-center justify-center rounded-xl border border-[#e5005c]/30 bg-[#e5005c]/10 p-2.5 active:bg-[#e5005c]/20">
+                <View className="mb-1 h-7 w-7 items-center justify-center rounded-lg bg-[#e5005c]/20">
+                  <Scan color="#e5005c" size={16} />
                 </View>
-                <Text className="font-jetbrains text-xs font-bold text-[#e5005c]">
+                <Text
+                  className="font-jetbrains text-[11px] font-bold text-[#e5005c]"
+                  numberOfLines={1}>
                   Item Scanner
                 </Text>
                 <Text className={`font-jetbrains text-[8px] ${textSecondaryClass}`}>SKU & UPC</Text>
@@ -802,19 +816,35 @@ export default function TabOneScreen({ navigation: propNavigation }: { navigatio
               <TouchableOpacity
                 onPress={() => navigation.navigate('DamageLostRecord' as never)}
                 activeOpacity={0.8}
-                className="flex-1 flex-col items-center justify-center rounded-xl border border-[#fabc4e]/30 bg-[#fabc4e]/10 p-3 active:bg-[#fabc4e]/20">
-                <View className="mb-1.5 h-8 w-8 items-center justify-center rounded-lg bg-[#fabc4e]/20">
-                  <FileText color="#fabc4e" size={18} />
+                className="flex-1 flex-col items-center justify-center rounded-xl border border-[#fabc4e]/30 bg-[#fabc4e]/10 p-2.5 active:bg-[#fabc4e]/20">
+                <View className="mb-1 h-7 w-7 items-center justify-center rounded-lg bg-[#fabc4e]/20">
+                  <FileText color="#fabc4e" size={16} />
                 </View>
-                <Text className="font-jetbrains text-xs font-bold text-[#fabc4e]">DLR Tool</Text>
-                <Text className={`font-jetbrains text-[8px] ${textSecondaryClass}`}>
-                  DAMAGE & LOSS
+                <Text
+                  className="font-jetbrains text-[11px] font-bold text-[#fabc4e]"
+                  numberOfLines={1}>
+                  DLR Tool
                 </Text>
+                <Text className={`font-jetbrains text-[8px] ${textSecondaryClass}`}>DAMAGE</Text>
               </TouchableOpacity>
+
+              
             </View>
 
             {/* ACTIVE SESSIONS */}
-            {(savedProgress || savedItemProgress) && <SectionLabel>Active Sessions</SectionLabel>}
+            <View className="mb-1 flex-row items-center justify-between">
+              <SectionLabel>
+                {savedProgress || savedItemProgress ? 'Active Sessions' : 'Session Quick Access'}
+              </SectionLabel>
+              <TouchableOpacity
+                onPress={() => setShowHistoryModal(true)}
+                className="flex-row items-center gap-1 py-1">
+                <History color="#ff80ab" size={12} />
+                <Text className="font-jetbrains text-[10px] font-bold text-[#ff80ab]">
+                  VIEW HISTORY
+                </Text>
+              </TouchableOpacity>
+            </View>
 
             {/* Active Box (CID) Session Resume Banner */}
             {savedProgress && savedProgress.total > 0 && (
@@ -1161,6 +1191,16 @@ export default function TabOneScreen({ navigation: propNavigation }: { navigatio
           </ScrollView>
         </View>
       )}
+
+      {/* Scanning History Modal */}
+      <HistoryModal
+        visible={showHistoryModal}
+        onClose={() => {
+          setShowHistoryModal(false);
+          checkProgress();
+        }}
+        navigation={navigation}
+      />
     </SafeAreaView>
   );
 }

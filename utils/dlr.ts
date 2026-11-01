@@ -303,6 +303,21 @@ export async function lookupProduct(
   return match;
 }
 
+export async function findProductInCatalog(
+  scannedCode: string,
+  catalog?: ProductItem[]
+): Promise<ProductItem | null> {
+  try {
+    const list = catalog ?? (await fetchCatalog());
+    const code = (scannedCode || '').trim();
+    if (!code) return null;
+    const match = list.find((item) => codesMatch(item.sku, code) || codesMatch(item.upc, code));
+    return match || null;
+  } catch {
+    return null;
+  }
+}
+
 export type DLRStatus = 'DRAFT' | 'PENDING_SYNC' | 'SYNCED';
 export type DLRPhotoKey = 'quantity' | 'damage' | 'barcode';
 
@@ -462,7 +477,11 @@ export function buildDlrImageName(
   return `${code}_${toSafeFileNamePart(record.id)}_${photoKey}`;
 }
 
-export async function uploadToCloudinary(imageUri: string, imageName: string): Promise<string> {
+export async function uploadToCloudinary(
+  imageUri: string,
+  imageName: string,
+  folder = 'dlr_records'
+): Promise<string> {
   try {
     const base64Data = await FileSystem.readAsStringAsync(imageUri, {
       encoding: FileSystem.EncodingType.Base64,
@@ -471,7 +490,7 @@ export async function uploadToCloudinary(imageUri: string, imageName: string): P
     const formData = new FormData();
     formData.append('file', `data:image/jpeg;base64,${base64Data}`);
     formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
-    formData.append('folder', 'dlr_records');
+    formData.append('folder', folder);
     formData.append('public_id', toSafeFileNamePart(imageName));
 
     const res = await fetch(CLOUDINARY_UPLOAD_ENDPOINT, {

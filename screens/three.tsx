@@ -278,7 +278,7 @@ export default function SettingsScreen() {
                 className={`font-jetbrains text-[8px] font-bold uppercase tracking-wider ${textSecondaryClass}`}>
                 Scanner Engine
               </Text>
-              <Text className="mt-0.5 font-jetbrains text-xs font-bold text-[#e5005c]">v7.3</Text>
+              <Text className="mt-0.5 font-jetbrains text-xs font-bold text-[#e5005c]">v7.4</Text>
             </View>
             <View className={`flex-1 rounded-lg px-2.5 py-2 ${innerRowBgClass}`}>
               <Text
@@ -382,7 +382,7 @@ export default function SettingsScreen() {
             Made by Kym Rhys Mallari
           </Text>
           <Text className={`mt-0.5 font-jetbrains text-[9px] ${textSecondaryClass}`}>
-            Version 7.3 · All Rights Reserved
+            Version 7.4 · All Rights Reserved
           </Text>
         </View>
       </ScrollView>

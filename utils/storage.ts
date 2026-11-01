@@ -10,6 +10,8 @@ export const UPLOADED_ITEM_IMAGES_KEY = 'uploaded_item_images';
 export const SCAN_HISTORY_KEY = 'scan_history';
 export const ACTIVE_BOX_FILE_KEY = 'active_box_filename';
 export const ACTIVE_ITEM_FILE_KEY = 'active_item_filename';
+export const REBOX_CONTAINERS_KEY = 'rebox_containers_records';
+export const ACTIVE_REBOX_CONTAINER_KEY = 'active_rebox_container';
 
 // Shared Interfaces
 export interface BoxManifestRecord {
@@ -25,6 +27,35 @@ export interface ItemManifestRecord {
   sku: string;
   description: string;
   qty: number;
+}
+
+export interface ReboxItemRecord {
+  id: string;
+  itemId?: string;
+  sku: string;
+  upc: string;
+  description: string;
+  qty: number;
+  reason: string;
+  addedAt: string;
+  packedAt?: string;
+  cid?: string;
+  trf?: string;
+  notes?: string;
+}
+
+export interface ReboxContainerRecord {
+  id: string;
+  boxCid: string;
+  destinationTrf?: string;
+  notes?: string;
+  status: 'open' | 'sealed';
+  createdAt: string;
+  sealedAt?: string;
+  items: ReboxItemRecord[];
+  totalQty: number;
+  totalUnits?: number;
+  operatorId?: string;
 }
 
 export interface HistorySessionRecord {

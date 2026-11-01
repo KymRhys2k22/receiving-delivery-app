@@ -6,6 +6,7 @@ import OnBoardingGreet from '../screens/onBoardingGreet';
 import Modal from '../screens/modal';
 import ScanningBox from '../screens/scanningBox';
 import ScanningItem from '../screens/scanningItem';
+import ReboxScanner from '../screens/reboxScanner';
 import DamageLostRecord from '../screens/damageLostRecord';
 import TabNavigator from './tab-navigator';
 
@@ -62,6 +63,12 @@ const Stack = createStackNavigator({
         },
         ScanningItem: {
           screen: ScanningItem,
+          options: {
+            headerShown: false,
+          },
+        },
+        ReboxScanner: {
+          screen: ReboxScanner,
           options: {
             headerShown: false,
           },

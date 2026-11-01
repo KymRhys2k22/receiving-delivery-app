@@ -17,7 +17,7 @@ import {
   StyleSheet,
   BackHandler,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   ArrowLeft,
   Keyboard,
@@ -1450,6 +1450,7 @@ export default function ScanningItemScreen({
   const navigation = propNavigation || contextNavigation;
   const { operatorId, storeCode, storeName, loginDate } = useAuth();
   const { isDark } = useTheme();
+  const insets = useSafeAreaInsets();
 
   const bgClass = isDark ? 'bg-[#131316]' : 'bg-[#f4f4f5]';
   const headerBgClass = isDark ? 'bg-[#131316] border-[#3f3f46]' : 'bg-[#ffffff] border-[#e4e4e7]';
@@ -4394,7 +4395,9 @@ export default function ScanningItemScreen({
       )}
 
       {/* Progress Footer */}
-      <View className={`border-t px-4 py-4 pb-6 ${footerBgClass}`}>
+      <View
+        className={`border-t px-4 ${footerBgClass}`}
+        style={{ paddingTop: 12, paddingBottom: Math.max(insets.bottom, 12) }}>
         <View className="mb-2 flex-row items-end justify-between">
           <View className="flex-row items-baseline gap-2">
             <Text className={`font-jetbrains text-xs font-bold ${textSecondaryClass}`}>

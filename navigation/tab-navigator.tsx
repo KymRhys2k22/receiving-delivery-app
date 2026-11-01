@@ -1,6 +1,7 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { LogIn, History, Settings, FileWarning, Bot } from 'lucide-react-native';
+import { LogIn, Boxes, Settings, FileWarning } from 'lucide-react-native';
 import { View, Text, TouchableOpacity, Image } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import One from '../screens/one';
 import Three from '../screens/three';
@@ -111,15 +112,18 @@ function CenterAiTabButton() {
 const Tab = createBottomTabNavigator({
   screenOptions: function ScreenOptions() {
     const { isDark } = useTheme();
+    const insets = useSafeAreaInsets();
+    const topPadding = 8;
+    const bottomPadding = insets.bottom > 0 ? insets.bottom + 4 : 8;
     return {
       tabBarShowLabel: false,
       tabBarStyle: {
         backgroundColor: isDark ? '#131316' : '#ffffff',
         borderTopColor: isDark ? '#2a2a2d' : '#e4e4e7',
         borderTopWidth: 1,
-        height: 76,
-        paddingBottom: 12,
-        paddingTop: 12,
+        height: 48 + topPadding + bottomPadding,
+        paddingBottom: bottomPadding,
+        paddingTop: topPadding,
         elevation: 0,
         shadowOpacity: 0,
       },
@@ -139,11 +143,9 @@ const Tab = createBottomTabNavigator({
     Two: {
       screen: Two,
       options: {
-        title: 'History',
+        title: 'Rebox',
         headerShown: false,
-        tabBarIcon: ({ focused }) => (
-          <TabBarIcon focused={focused} icon={History} label="History" />
-        ),
+        tabBarIcon: ({ focused }) => <TabBarIcon focused={focused} icon={Boxes} label="Rebox" />,
       },
     },
     AiAssistant: {

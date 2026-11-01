@@ -18,7 +18,7 @@ import {
   Linking,
   StyleSheet,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   ArrowLeft,
   Keyboard,
@@ -365,8 +365,8 @@ function TrfLookupItemCard({
         </View>
 
         <Text className={`mt-1 font-jetbrains text-[10px] ${textSecondaryClass}`} numberOfLines={1}>
-          TRF: {item.trf || '—'}
-          {item.cid ? `  •  CID: ${item.cid}` : ''}
+          CID: {item.cid || '—'}
+          {item.trf ? `  •  TRF: ${item.trf}` : ''}
         </Text>
       </View>
 
@@ -872,6 +872,7 @@ export default function ScanningBoxScreen({
   const contextNavigation = useContext(NavigationContext);
   const navigation = propNavigation || contextNavigation;
   const { isDark } = useTheme();
+  const insets = useSafeAreaInsets();
 
   const bgClass = isDark ? 'bg-[#131316]' : 'bg-[#f4f4f5]';
   const headerBgClass = isDark ? 'bg-[#131316] border-[#3f3f46]' : 'bg-[#ffffff] border-[#e4e4e7]';
@@ -897,6 +898,8 @@ export default function ScanningBoxScreen({
   const [showTrfLookupModal, setShowTrfLookupModal] = useState(false);
   const [imageZoomModal, setImageZoomModal] = useState<ItemImagePreviewPayload | null>(null);
   const [trfLookupBox, setTrfLookupBox] = useState<BoxManifestRecord | null>(null);
+  const [lookupMode, setLookupMode] = useState<'cid' | 'trf'>('cid');
+  const [autoSwitchedFromCid, setAutoSwitchedFromCid] = useState<string | null>(null);
   const [trfLookupQuery, setTrfLookupQuery] = useState('');
   const [trfItemSearchQuery, setTrfItemSearchQuery] = useState('');
   const [isUploadingItemsCsv, setIsUploadingItemsCsv] = useState(false);
@@ -1375,6 +1378,22 @@ export default function ScanningBoxScreen({
     navigateToItemScanner,
   ]);
 
+  // O(1) index of Scanning Items manifest records grouped by normalized CID NO
+  const itemsByCidMap = useMemo(() => {
+    const map = new Map<string, ItemManifestRecord[]>();
+    for (const item of manifestItems) {
+      const normCid = normalizeLookupCode(item.cid);
+      if (!normCid) continue;
+      const existing = map.get(normCid);
+      if (existing) {
+        existing.push(item);
+      } else {
+        map.set(normCid, [item]);
+      }
+    }
+    return map;
+  }, [manifestItems]);
+
   // O(1) index of Scanning Items manifest records grouped by normalized TRF NO
   const itemsByTrfMap = useMemo(() => {
     const map = new Map<string, ItemManifestRecord[]>();
@@ -1391,6 +1410,27 @@ export default function ScanningBoxScreen({
     return map;
   }, [manifestItems]);
 
+  // O(1) index of Box Manifest records by normalized CID NO (for CID -> TRF conditional fallback)
+  const boxByCidMap = useMemo(() => {
+    const map = new Map<string, BoxManifestRecord>();
+    for (const box of [...unscannedBoxes, ...scannedBoxes]) {
+      const normCid = normalizeLookupCode(box.cid);
+      if (normCid && !map.has(normCid)) {
+        map.set(normCid, box);
+      }
+    }
+    return map;
+  }, [unscannedBoxes, scannedBoxes]);
+
+  const getItemsForCid = useCallback(
+    (cid?: string | null): ItemManifestRecord[] => {
+      const normCid = normalizeLookupCode(cid);
+      if (!normCid) return [];
+      return itemsByCidMap.get(normCid) || [];
+    },
+    [itemsByCidMap]
+  );
+
   const getItemsForTrf = useCallback(
     (trf?: string | null): ItemManifestRecord[] => {
       const normTrf = normalizeLookupCode(trf);
@@ -1399,6 +1439,86 @@ export default function ScanningBoxScreen({
     },
     [itemsByTrfMap]
   );
+
+  /**
+   * Conditional Box Lookup:
+   * 1. Start with CID NO lookup.
+   * 2. If nothing matches CID NO, automatically switch to TRF NO.
+   */
+  const resolveConditionalBoxItems = useCallback(
+    (
+      box?: BoxManifestRecord | null
+    ): {
+      items: ItemManifestRecord[];
+      mode: 'cid' | 'trf';
+      query: string;
+      switchedToTrf: boolean;
+    } => {
+      if (!box) {
+        return { items: [], mode: 'cid', query: '', switchedToTrf: false };
+      }
+
+      const cidRaw = (box.cid || '').trim();
+      const trfRaw = (box.trf || '').trim();
+
+      if (cidRaw) {
+        const cidMatches = getItemsForCid(cidRaw);
+        if (cidMatches.length > 0) {
+          return {
+            items: cidMatches,
+            mode: 'cid',
+            query: cidRaw,
+            switchedToTrf: false,
+          };
+        }
+      }
+
+      if (trfRaw) {
+        const trfMatches = getItemsForTrf(trfRaw);
+        return {
+          items: trfMatches,
+          mode: 'trf',
+          query: trfRaw,
+          switchedToTrf: Boolean(cidRaw),
+        };
+      }
+
+      return { items: [], mode: 'cid', query: cidRaw, switchedToTrf: false };
+    },
+    [getItemsForCid, getItemsForTrf]
+  );
+
+  const availableCidNumbers = useMemo(() => {
+    const seen = new Set<string>();
+    const list: string[] = [];
+    const activeBoxCid = (trfLookupBox?.cid || '').trim();
+    const activeNorm = normalizeLookupCode(activeBoxCid);
+    if (activeNorm) {
+      seen.add(activeNorm);
+      list.push(activeBoxCid);
+    }
+    for (const box of [...unscannedBoxes, ...scannedBoxes]) {
+      const rawCid = (box.cid || '').trim();
+      const norm = normalizeLookupCode(rawCid);
+      if (norm && !seen.has(norm)) {
+        seen.add(norm);
+        list.push(rawCid);
+      }
+      if (list.length >= 24) break;
+    }
+    if (list.length < 24) {
+      for (const item of manifestItems) {
+        const rawCid = (item.cid || '').trim();
+        const norm = normalizeLookupCode(rawCid);
+        if (norm && !seen.has(norm)) {
+          seen.add(norm);
+          list.push(rawCid);
+        }
+        if (list.length >= 24) break;
+      }
+    }
+    return list.slice(0, 24);
+  }, [trfLookupBox, unscannedBoxes, scannedBoxes, manifestItems]);
 
   const availableTrfNumbers = useMemo(() => {
     const seen = new Set<string>();
@@ -1432,10 +1552,85 @@ export default function ScanningBoxScreen({
     return list.slice(0, 24);
   }, [trfLookupBox, unscannedBoxes, scannedBoxes, manifestItems]);
 
-  const matchedTrfItems = useMemo(
-    () => getItemsForTrf(trfLookupQuery),
-    [getItemsForTrf, trfLookupQuery]
-  );
+  /**
+   * Conditional Query Resolution:
+   * - When in CID NO mode (default): checks CID NO first; if nothing matches CID NO,
+   *   automatically switches to TRF NO (either matching TRF NO directly or bridging Box CID -> Box TRF NO).
+   * - When toggled to TRF NO mode: looks up by TRF NO directly (and falls back to CID NO only if TRF has 0 matches and CID matches).
+   */
+  const resolvedLookupResult = useMemo((): {
+    items: ItemManifestRecord[];
+    effectiveMode: 'cid' | 'trf';
+    effectiveCode: string;
+    switchedFallback: boolean;
+  } => {
+    const rawQ = trfLookupQuery.trim();
+    if (!rawQ) {
+      return {
+        items: [],
+        effectiveMode: lookupMode,
+        effectiveCode: '',
+        switchedFallback: false,
+      };
+    }
+
+    if (lookupMode === 'cid') {
+      // Step 1: Lookup with CID NO first
+      const cidMatches = getItemsForCid(rawQ);
+      if (cidMatches.length > 0) {
+        return {
+          items: cidMatches,
+          effectiveMode: 'cid',
+          effectiveCode: rawQ,
+          switchedFallback: false,
+        };
+      }
+
+      // Step 2: Nothing matched CID NO -> Switch to TRF NO
+      const directTrfMatches = getItemsForTrf(rawQ);
+      if (directTrfMatches.length > 0) {
+        return {
+          items: directTrfMatches,
+          effectiveMode: 'trf',
+          effectiveCode: rawQ,
+          switchedFallback: true,
+        };
+      }
+
+      const linkedBox =
+        (trfLookupBox && normalizeLookupCode(trfLookupBox.cid) === normalizeLookupCode(rawQ)
+          ? trfLookupBox
+          : null) || boxByCidMap.get(normalizeLookupCode(rawQ));
+      const linkedTrf = (linkedBox?.trf || '').trim();
+      if (linkedTrf) {
+        const bridgedTrfMatches = getItemsForTrf(linkedTrf);
+        return {
+          items: bridgedTrfMatches,
+          effectiveMode: 'trf',
+          effectiveCode: linkedTrf,
+          switchedFallback: true,
+        };
+      }
+
+      return {
+        items: [],
+        effectiveMode: 'trf',
+        effectiveCode: rawQ,
+        switchedFallback: true,
+      };
+    }
+
+    // Explicit TRF NO toggle mode
+    const trfMatches = getItemsForTrf(rawQ);
+    return {
+      items: trfMatches,
+      effectiveMode: 'trf',
+      effectiveCode: rawQ,
+      switchedFallback: false,
+    };
+  }, [trfLookupQuery, lookupMode, getItemsForCid, getItemsForTrf, trfLookupBox, boxByCidMap]);
+
+  const matchedTrfItems = resolvedLookupResult.items;
 
   const filteredTrfItems = useMemo(() => {
     const q = trfItemSearchQuery.trim();
@@ -1447,11 +1642,13 @@ export default function ScanningBoxScreen({
       const upcUpper = (item.upc || '').toUpperCase();
       const descUpper = (item.description || '').toUpperCase();
       const cidUpper = (item.cid || '').toUpperCase();
+      const trfUpper = (item.trf || '').toUpperCase();
       if (
         skuUpper.includes(upperQ) ||
         upcUpper.includes(upperQ) ||
         descUpper.includes(upperQ) ||
-        cidUpper.includes(upperQ)
+        cidUpper.includes(upperQ) ||
+        trfUpper.includes(upperQ)
       ) {
         return true;
       }
@@ -1476,17 +1673,57 @@ export default function ScanningBoxScreen({
     [matchedTrfItems, scannedItemsMap]
   );
 
-  const openTrfLookupModal = useCallback((box?: BoxManifestRecord | null, customTrf?: string) => {
-    try {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    } catch {}
-    setConfirmCidModal(null);
-    setShowManual(false);
-    setTrfLookupBox(box || null);
-    setTrfLookupQuery((customTrf ?? box?.trf ?? '').trim());
-    setTrfItemSearchQuery('');
-    setShowTrfLookupModal(true);
-  }, []);
+  const handleToggleLookupMode = useCallback(
+    (nextMode: 'cid' | 'trf') => {
+      try {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      } catch {}
+      setAutoSwitchedFromCid(null);
+      setLookupMode(nextMode);
+      setTrfItemSearchQuery('');
+      if (trfLookupBox) {
+        if (nextMode === 'cid') {
+          setTrfLookupQuery((trfLookupBox.cid || '').trim());
+        } else {
+          setTrfLookupQuery((trfLookupBox.trf || '').trim());
+        }
+      }
+    },
+    [trfLookupBox]
+  );
+
+  const openTrfLookupModal = useCallback(
+    (box?: BoxManifestRecord | null, customQuery?: string) => {
+      try {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      } catch {}
+      setConfirmCidModal(null);
+      setShowManual(false);
+      setTrfLookupBox(box || null);
+      setTrfItemSearchQuery('');
+
+      if (box) {
+        // Conditional lookup: Start with CID NO; if nothing matches, switch to TRF NO
+        const conditional = resolveConditionalBoxItems(box);
+        setLookupMode(conditional.mode);
+        setAutoSwitchedFromCid(conditional.switchedToTrf ? box.cid : null);
+        setTrfLookupQuery(conditional.query);
+      } else {
+        const initialQ = (customQuery || '').trim();
+        if (initialQ && getItemsForCid(initialQ).length === 0 && getItemsForTrf(initialQ).length > 0) {
+          setLookupMode('trf');
+          setAutoSwitchedFromCid(initialQ);
+        } else {
+          setLookupMode('cid');
+          setAutoSwitchedFromCid(null);
+        }
+        setTrfLookupQuery(initialQ);
+      }
+
+      setShowTrfLookupModal(true);
+    },
+    [resolveConditionalBoxItems, getItemsForCid, getItemsForTrf]
+  );
 
   const closeTrfLookupModal = useCallback(() => {
     setImageZoomModal(null);
@@ -1954,24 +2191,27 @@ export default function ScanningBoxScreen({
               ) : null}
             </View>
 
-            {confirmCidModal && (
-              <TouchableOpacity
-                activeOpacity={0.75}
-                onPress={() => openTrfLookupModal(confirmCidModal)}
-                className={`mb-4 flex-row items-center justify-center gap-2 rounded-lg border py-2.5 ${
-                  isDark ? 'border-[#ff80ab]/40 bg-[#131316]' : 'border-[#e5005c]/30 bg-[#fff5f8]'
-                }`}>
-                <Package color={isDark ? '#ff80ab' : '#e5005c'} size={15} />
-                <Text
-                  className={`font-jetbrains text-xs font-bold ${
-                    isDark ? 'text-[#ff80ab]' : 'text-[#e5005c]'
+            {confirmCidModal && (() => {
+              const condInfo = resolveConditionalBoxItems(confirmCidModal);
+              return (
+                <TouchableOpacity
+                  activeOpacity={0.75}
+                  onPress={() => openTrfLookupModal(confirmCidModal)}
+                  className={`mb-4 flex-row items-center justify-center gap-2 rounded-lg border py-2.5 ${
+                    isDark ? 'border-[#ff80ab]/40 bg-[#131316]' : 'border-[#e5005c]/30 bg-[#fff5f8]'
                   }`}>
-                  {confirmCidModal.trf && getItemsForTrf(confirmCidModal.trf).length > 0
-                    ? `LOOKUP TRF ITEMS (${getItemsForTrf(confirmCidModal.trf).length})`
-                    : 'LOOKUP TRF ITEMS'}
-                </Text>
-              </TouchableOpacity>
-            )}
+                  <Package color={isDark ? '#ff80ab' : '#e5005c'} size={15} />
+                  <Text
+                    className={`font-jetbrains text-xs font-bold ${
+                      isDark ? 'text-[#ff80ab]' : 'text-[#e5005c]'
+                    }`}>
+                    {condInfo.items.length > 0
+                      ? `LOOKUP ${condInfo.mode.toUpperCase()} ITEMS (${condInfo.items.length})`
+                      : 'LOOKUP CID / TRF ITEMS'}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })()}
 
             <View className="flex-row items-center gap-3">
               <TouchableOpacity
@@ -2029,7 +2269,7 @@ export default function ScanningBoxScreen({
                 </View>
                 <View className="flex-1">
                   <Text className={`font-hanken text-base font-bold ${textPrimaryClass}`}>
-                    TRF Items Lookup
+                    CID / TRF Items Lookup
                   </Text>
                   <Text
                     className={`font-jetbrains text-[10px] ${textSecondaryClass}`}
@@ -2123,14 +2363,71 @@ export default function ScanningBoxScreen({
               </View>
             )}
 
-            {/* TRF NO Search Input + Quick TRF Chips */}
+            {/* CID NO / TRF NO Toggle + Conditional Search Input + Quick Chips */}
             <View
               className={`border-b px-4 py-3 ${
                 isDark ? 'border-[#3f3f46] bg-[#18181b]' : 'border-[#e4e4e7] bg-[#ffffff]'
               }`}>
-              <Text className={`mb-1.5 font-jetbrains text-[10px] font-bold ${textSecondaryClass}`}>
-                LOOKUP BY TRF NO
-              </Text>
+              <View className="mb-2 flex-row items-center justify-between gap-2">
+                <View className="flex-1">
+                  <Text className={`font-jetbrains text-[10px] font-bold ${textSecondaryClass}`}>
+                    {lookupMode === 'cid'
+                      ? 'LOOKUP BY CID NO (FALLBACK → TRF NO)'
+                      : 'LOOKUP BY TRF NO'}
+                  </Text>
+                </View>
+
+                {/* CID NO / TRF NO Toggle Button */}
+                <View
+                  className={`flex-row items-center rounded-lg border p-0.5 ${
+                    isDark ? 'border-[#3f3f46] bg-[#131316]' : 'border-[#e4e4e7] bg-[#f4f4f5]'
+                  }`}>
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={() => handleToggleLookupMode('cid')}
+                    className={`rounded-md px-2.5 py-1 ${
+                      lookupMode === 'cid'
+                        ? isDark
+                          ? 'bg-[#ff80ab]'
+                          : 'bg-[#e5005c]'
+                        : 'bg-transparent'
+                    }`}>
+                    <Text
+                      className={`font-jetbrains text-[10px] font-bold ${
+                        lookupMode === 'cid'
+                          ? isDark
+                            ? 'text-[#131316]'
+                            : 'text-[#ffffff]'
+                          : textSecondaryClass
+                      }`}>
+                      CID NO
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={() => handleToggleLookupMode('trf')}
+                    className={`rounded-md px-2.5 py-1 ${
+                      lookupMode === 'trf'
+                        ? isDark
+                          ? 'bg-[#ff80ab]'
+                          : 'bg-[#e5005c]'
+                        : 'bg-transparent'
+                    }`}>
+                    <Text
+                      className={`font-jetbrains text-[10px] font-bold ${
+                        lookupMode === 'trf'
+                          ? isDark
+                            ? 'text-[#131316]'
+                            : 'text-[#ffffff]'
+                          : textSecondaryClass
+                      }`}>
+                      TRF NO
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
               <View
                 className={`flex-row items-center rounded-xl border px-3 ${
                   isDark ? 'border-[#3f3f46] bg-[#131316]' : 'border-[#d4d4d8] bg-[#fafafa]'
@@ -2139,14 +2436,19 @@ export default function ScanningBoxScreen({
                 <TextInput
                   value={trfLookupQuery}
                   onChangeText={(val) => {
+                    setAutoSwitchedFromCid(null);
                     setTrfLookupQuery(val);
                     setTrfItemSearchQuery('');
                   }}
-                  placeholder="Enter TRF NO (e.g. 2311699)..."
+                  placeholder={
+                    lookupMode === 'cid'
+                      ? 'Enter CID NO (switches to TRF NO if no match)...'
+                      : 'Enter TRF NO (e.g. 2311699)...'
+                  }
                   placeholderTextColor={isDark ? '#71717a' : '#a1a1aa'}
                   autoCapitalize="characters"
                   autoCorrect={false}
-                  className={`h-10 flex-1 px-2.5 font-jetbrains text-xs font-bold ${
+                  className={`h-10 flex-1 px-2.5 py-0 font-jetbrains text-xs font-bold ${
                     isDark ? 'text-[#fafafa]' : 'text-[#18181b]'
                   }`}
                 />
@@ -2163,53 +2465,65 @@ export default function ScanningBoxScreen({
                 )}
               </View>
 
-              {availableTrfNumbers.length > 0 && (
+              {(lookupMode === 'cid' ? availableCidNumbers : availableTrfNumbers).length > 0 && (
                 <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
                   className="mt-2.5"
                   contentContainerStyle={{ gap: 6 }}>
-                  {availableTrfNumbers.map((trfCode) => {
-                    const isSelected =
-                      normalizeLookupCode(trfCode) === normalizeLookupCode(trfLookupQuery);
-                    const count = getItemsForTrf(trfCode).length;
-                    return (
-                      <TouchableOpacity
-                        key={trfCode}
-                        activeOpacity={0.75}
-                        onPress={() => {
-                          setTrfLookupQuery(trfCode);
-                          setTrfItemSearchQuery('');
-                        }}
-                        className={`flex-row items-center gap-1 rounded-full border px-2.5 py-1 ${
-                          isSelected
-                            ? 'border-[#ff80ab] bg-[#ff80ab]'
-                            : isDark
-                              ? 'border-[#3f3f46] bg-[#1f1f22]'
-                              : 'border-[#e4e4e7] bg-[#f4f4f5]'
-                        }`}>
-                        <Text
-                          className={`font-jetbrains text-[10px] font-bold ${
-                            isSelected ? 'text-[#131316]' : textPrimaryClass
+                  {(lookupMode === 'cid' ? availableCidNumbers : availableTrfNumbers).map(
+                    (codeVal) => {
+                      const isSelected =
+                        normalizeLookupCode(codeVal) === normalizeLookupCode(trfLookupQuery);
+                      const count =
+                        lookupMode === 'cid'
+                          ? (() => {
+                              const directCidCount = getItemsForCid(codeVal).length;
+                              if (directCidCount > 0) return directCidCount;
+                              const linkedTrf = boxByCidMap.get(normalizeLookupCode(codeVal))?.trf;
+                              return linkedTrf ? getItemsForTrf(linkedTrf).length : 0;
+                            })()
+                          : getItemsForTrf(codeVal).length;
+
+                      return (
+                        <TouchableOpacity
+                          key={`${lookupMode}_${codeVal}`}
+                          activeOpacity={0.75}
+                          onPress={() => {
+                            setAutoSwitchedFromCid(null);
+                            setTrfLookupQuery(codeVal);
+                            setTrfItemSearchQuery('');
+                          }}
+                          className={`flex-row items-center gap-1 rounded-full border px-2.5 py-1 ${
+                            isSelected
+                              ? 'border-[#ff80ab] bg-[#ff80ab]'
+                              : isDark
+                                ? 'border-[#3f3f46] bg-[#1f1f22]'
+                                : 'border-[#e4e4e7] bg-[#f4f4f5]'
                           }`}>
-                          {trfCode}
-                        </Text>
-                        {manifestItems.length > 0 && (
                           <Text
-                            className={`font-jetbrains text-[9px] font-bold ${
-                              isSelected ? 'text-[#131316]/80' : textSecondaryClass
+                            className={`font-jetbrains text-[10px] font-bold ${
+                              isSelected ? 'text-[#131316]' : textPrimaryClass
                             }`}>
-                            ({count})
+                            {codeVal}
                           </Text>
-                        )}
-                      </TouchableOpacity>
-                    );
-                  })}
+                          {manifestItems.length > 0 && (
+                            <Text
+                              className={`font-jetbrains text-[9px] font-bold ${
+                                isSelected ? 'text-[#131316]/80' : textSecondaryClass
+                              }`}>
+                              ({count})
+                            </Text>
+                          )}
+                        </TouchableOpacity>
+                      );
+                    }
+                  )}
                 </ScrollView>
               )}
             </View>
 
-            {/* Summary Stats & In-TRF Item Filter */}
+            {/* Summary Stats & In-Result Item Filter */}
             {manifestItems.length > 0 && trfLookupQuery.trim().length > 0 && (
               <View
                 className={`border-b px-4 py-2.5 ${
@@ -2218,9 +2532,17 @@ export default function ScanningBoxScreen({
                 <View className="flex-row flex-wrap items-center gap-2">
                   <View className="rounded-md border border-[#ff80ab]/30 bg-[#ff80ab]/10 px-2 py-1">
                     <Text className="font-jetbrains text-[10px] font-bold text-[#ff80ab]">
-                      TRF: {trfLookupQuery.trim().toUpperCase()}
+                      {resolvedLookupResult.effectiveMode.toUpperCase()}:{' '}
+                      {resolvedLookupResult.effectiveCode.toUpperCase()}
                     </Text>
                   </View>
+                  {(resolvedLookupResult.switchedFallback || Boolean(autoSwitchedFromCid)) && (
+                    <View className="rounded-md border border-[#eab308]/40 bg-[#eab308]/10 px-2 py-1">
+                      <Text className="font-jetbrains text-[9px] font-bold text-[#eab308]">
+                        NO CID MATCH · SWITCHED TO TRF
+                      </Text>
+                    </View>
+                  )}
                   <View
                     className={`rounded-md border px-2 py-1 ${
                       isDark ? 'border-[#3f3f46] bg-[#131316]' : 'border-[#e4e4e7] bg-[#ffffff]'
@@ -2259,7 +2581,7 @@ export default function ScanningBoxScreen({
                       placeholderTextColor={isDark ? '#71717a' : '#a1a1aa'}
                       autoCapitalize="characters"
                       autoCorrect={false}
-                      className={`h-8 flex-1 px-2 font-jetbrains text-[11px] ${
+                      className={`h-9 flex-1 px-2 py-0 font-jetbrains text-[11px] ${
                         isDark ? 'text-[#fafafa]' : 'text-[#18181b]'
                       }`}
                     />
@@ -2289,7 +2611,7 @@ export default function ScanningBoxScreen({
                 <Text
                   className={`mb-5 text-center font-hanken text-xs leading-4 ${textSecondaryClass}`}>
                   Upload your Scanning Items manifest CSV file (CID NO, TRF NO, UPC, SKU,
-                  DESCRIPTION, QTY) to lookup items by TRF NO.
+                  DESCRIPTION, QTY) to lookup items by CID NO or TRF NO.
                 </Text>
                 <TouchableOpacity
                   activeOpacity={0.8}
@@ -2311,11 +2633,11 @@ export default function ScanningBoxScreen({
                 <Search color={isDark ? '#52525b' : '#a1a1aa'} size={32} />
                 <Text
                   className={`mt-3 text-center font-hanken text-sm font-bold ${textPrimaryClass}`}>
-                  Enter or Select a TRF NO
+                  {lookupMode === 'cid' ? 'Enter or Select a CID NO' : 'Enter or Select a TRF NO'}
                 </Text>
                 <Text className={`mt-1 text-center font-hanken text-xs ${textSecondaryClass}`}>
-                  {trfLookupBox && !trfLookupBox.trf
-                    ? `Box CID ${trfLookupBox.cid} does not have a TRF NO in the Box Manifest. Type or tap a TRF NO above to inspect items.`
+                  {lookupMode === 'cid'
+                    ? 'Starts with CID NO lookup and automatically switches to TRF NO if nothing matches.'
                     : 'Type a TRF NO above or tap one of the quick TRF chips to view its manifest items.'}
                 </Text>
               </View>
@@ -2324,13 +2646,17 @@ export default function ScanningBoxScreen({
                 <AlertTriangle color="#eab308" size={32} />
                 <Text
                   className={`mt-3 text-center font-hanken text-sm font-bold ${textPrimaryClass}`}>
-                  No Items Found for TRF {trfLookupQuery.trim().toUpperCase()}
+                  {`No Items Found for ${trfLookupQuery.trim().toUpperCase()}`}
                 </Text>
                 <Text
                   className={`mt-1.5 text-center font-hanken text-xs leading-4 ${textSecondaryClass}`}>
-                  {`No rows matched TRF NO "${trfLookupQuery.trim()}" in ${
-                    activeItemFileName || 'the uploaded Scanning Items CSV'
-                  }.`}
+                  {lookupMode === 'cid'
+                    ? `Checked CID NO first and switched to TRF NO — no rows matched "${trfLookupQuery.trim()}" in ${
+                        activeItemFileName || 'the uploaded Scanning Items CSV'
+                      }.`
+                    : `No rows matched TRF NO "${trfLookupQuery.trim()}" in ${
+                        activeItemFileName || 'the uploaded Scanning Items CSV'
+                      }.`}
                 </Text>
                 <TouchableOpacity
                   activeOpacity={0.8}
@@ -2359,7 +2685,7 @@ export default function ScanningBoxScreen({
                 ListEmptyComponent={
                   <View className="items-center justify-center py-12">
                     <Text className={`font-hanken text-xs ${textSecondaryClass}`}>
-                      {`No items in TRF ${trfLookupQuery.trim()} match "${trfItemSearchQuery.trim()}".`}
+                      {`No items in ${resolvedLookupResult.effectiveMode.toUpperCase()} ${resolvedLookupResult.effectiveCode} match "${trfItemSearchQuery.trim()}".`}
                     </Text>
                   </View>
                 }
@@ -2409,7 +2735,7 @@ export default function ScanningBoxScreen({
               const matchedBox = [...scannedBoxes, ...unscannedBoxes].find(
                 (b) => b.cid.toUpperCase() === lastScanned.toUpperCase()
               );
-              openTrfLookupModal(matchedBox || null, matchedBox?.trf || '');
+              openTrfLookupModal(matchedBox || null, matchedBox ? undefined : lastScanned);
             }}
             className="flex-row items-center gap-1.5 rounded-lg border border-[#22c55e]/40 bg-[#22c55e]/10 px-2.5 py-1.5">
             <CheckCircle color="#22c55e" size={13} />
@@ -2429,7 +2755,7 @@ export default function ScanningBoxScreen({
             className={`font-jetbrains text-[10px] font-bold ${
               isDark ? 'text-[#ff80ab]' : 'text-[#e5005c]'
             }`}>
-            TRF LOOKUP
+            CID / TRF
           </Text>
         </TouchableOpacity>
       </View>
@@ -2760,14 +3086,14 @@ export default function ScanningBoxScreen({
             <View className="flex-row items-center gap-1">
               <ChevronDown color="#ff80ab" size={14} />
               <Text className="font-jetbrains text-[10px] font-bold text-[#ff80ab]">
-                SWIPE DOWN / TAP TO SHOW CAMERA
+                TAP TO SHOW CAMERA
               </Text>
             </View>
           ) : (
             <View className="flex-row items-center gap-1">
               <ChevronUp color={isDark ? '#a1a1aa' : '#71717a'} size={14} />
               <Text className={`font-jetbrains text-[10px] font-bold ${textSecondaryClass}`}>
-                SWIPE UP FOR FULL SCREEN TABS
+                TAP FOR FULL SCREEN TABS
               </Text>
             </View>
           )}
@@ -2986,7 +3312,7 @@ export default function ScanningBoxScreen({
               </View>
             }
             renderItem={({ item: box }) => {
-              const trfItemsCount = box.trf ? getItemsForTrf(box.trf).length : 0;
+              const boxMatchedItemsCount = resolveConditionalBoxItems(box).items.length;
               return (
                 <TouchableOpacity
                   onPress={() =>
@@ -3020,7 +3346,7 @@ export default function ScanningBoxScreen({
                         className={`font-jetbrains text-[10px] font-bold ${
                           isDark ? 'text-[#ff80ab]' : 'text-[#e5005c]'
                         }`}>
-                        {trfItemsCount > 0 ? `ITEMS (${trfItemsCount})` : 'ITEMS'}
+                        {boxMatchedItemsCount > 0 ? `ITEMS (${boxMatchedItemsCount})` : 'ITEMS'}
                       </Text>
                     </TouchableOpacity>
 
@@ -3040,7 +3366,9 @@ export default function ScanningBoxScreen({
         )}
 
         {/* Progress Footer */}
-        <View className={`border-t px-4 py-4 pb-6 ${footerBgClass}`}>
+        <View
+          className={`border-t px-4 ${footerBgClass}`}
+          style={{ paddingTop: 12, paddingBottom: Math.max(insets.bottom, 12) }}>
           <View className="mb-2 flex-row items-end justify-between">
             <View className="flex-row items-baseline gap-2">
               <Text className={`font-jetbrains text-xs font-bold ${textSecondaryClass}`}>
