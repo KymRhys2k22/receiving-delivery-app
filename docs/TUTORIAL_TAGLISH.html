@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Gabay sa Paggamit ng Receiving & Delivery App (Daiso Japan)</title>
+<style>
+  @page {
+    size: A4;
+    margin: 16mm 14mm 16mm 14mm;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #1e1e24;
+    line-height: 1.55;
+    font-size: 10pt;
+    background: #fff;
+    margin: 0;
+    padding: 0;
+  }
+  h1 {
+    color: #e5005c;
+    font-size: 18pt;
+    margin-bottom: 3pt;
+    border-bottom: 2.5px solid #e5005c;
+    padding-bottom: 6pt;
+  }
+  h2 {
+    color: #111;
+    font-size: 13pt;
+    margin-top: 18pt;
+    margin-bottom: 6pt;
+    padding-bottom: 4pt;
+    border-bottom: 1.5px solid #ff80ab;
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+  h3 {
+    color: #e5005c;
+    font-size: 10.5pt;
+    margin-top: 10pt;
+    margin-bottom: 4pt;
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+  p {
+    margin: 4pt 0;
+  }
+  ul, ol {
+    margin: 4pt 0 8pt 20pt;
+    padding: 0;
+  }
+  li {
+    margin-bottom: 3pt;
+  }
+  code {
+    background-color: #fce4ec;
+    color: #c2185b;
+    padding: 1.5pt 4pt;
+    border-radius: 3pt;
+    font-size: 9pt;
+    font-family: Menlo, Monaco, Consolas, monospace;
+    font-weight: 600;
+  }
+  blockquote {
+    border-left: 4px solid #e5005c;
+    margin: 6pt 0;
+    padding: 5pt 10pt;
+    background: #fff0f5;
+    font-size: 9.5pt;
+    color: #444;
+  }
+  .screenshot-container {
+    text-align: center;
+    margin: 10pt 0;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  .screenshot-container img {
+    max-width: 250px;
+    height: auto;
+    border-radius: 8pt;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    border: 1px solid #e0e0e0;
+  }
+  .footer-note {
+    margin-top: 24pt;
+    text-align: center;
+    font-size: 8.5pt;
+    color: #777;
+    border-top: 1px solid #eee;
+    padding-top: 10pt;
+    page-break-before: avoid;
+  }
+</style>
+</head>
+<body>
+<h1>📖 Gabay sa Paggamit ng Receiving & Delivery App (Daiso Japan)</h1>
+<h3>*Tutorial para sa mga Stockroom Clerks, Receivers, at Store Operations Team*</h3>
+<p><strong>Bersyon ng App:</strong> v7.4 (Build 12) · <strong>May-akda:</strong> Kym Rhys Mallari</p>
+<hr style="border:none; border-top:1px solid #ffd1dc; margin: 12pt 0;">
+<h2>🌸 Maligayang Pagdating sa Daizo Receiving Scanner!</h2>
+<p>Ginawa ang app na ito para mapadali, mapabilis, at maging 100% accurate ang ating delivery receiving, box verification, item tallying, at stockroom reboxing sa <strong>Daiso Japan</strong>.</p>
+<p>Hindi mo na kailangang mag-mano-mano ng papel na packing list o magbilang sa notebook. Diretso na sa phone ang barcode scanning, automatic catalog lookup, at <strong>pag-download ng PDF manifest na may kasamang pictures ng mga items</strong>!</p>
+<hr style="border:none; border-top:1px solid #ffd1dc; margin: 12pt 0;">
+<h2>📑 Talaan ng Nilalaman (Quick Links)</h2>
+<li>[Hakbang 1: Pag-login sa Scanner Terminal](#hakbang-1-pag-login-sa-scanner-terminal)</li>
+<li>[Hakbang 2: Pag-upload ng Manifest CSV](#hakbang-2-pag-upload-ng-manifest-csv)</li>
+<li>[Hakbang 3: Box (Carton) Scanning at CID / TRF Lookup](#hakbang-3-box-carton-scanning-at-cid--trf-lookup)</li>
+<li>[Hakbang 4: Item Scanning at Discrepancy Tracking](#hakbang-4-item-scanning-at-discrepancy-tracking)</li>
+<li>[Hakbang 5: Rebox Stockroom Packing (Box-First Workflow)](#hakbang-5-rebox-stockroom-packing-box-first-workflow)</li>
+<li>[Hakbang 6: Pag-upload ng Picture ng Item sa Cloudinary (daisoimage)](#hakbang-6-pag-upload-ng-picture-ng-item-sa-cloudinary-daisoimage)</li>
+<li>[Hakbang 7: Pag-delete ng Item gamit ang 3-Seconds Hold Gesture](#hakbang-7-pag-delete-ng-item-gamit-ang-3-seconds-hold-gesture)</li>
+<li>[Hakbang 8: Pag-export at Pag-download ng PDF na may Pictures](#hakbang-8-pag-export-at-pag-download-ng-pdf-na-may-pictures)</li>
+<li>[Hakbang 9: Find for Refill (Paghahanap ng Items sa Stockroom)](#hakbang-9-find-for-refill-paghahanap-ng-items-sa-stockroom)</li>
+<li>[Hakbang 10: DLR (Damage & Lost Record Tool)](#hakbang-10-dlr-damage--lost-record-tool)</li>
+<li>[Hakbang 11: Pagtatanong kay Daizo (Offline AI Assistant)](#hakbang-11-pagtatanong-kay-daizo-offline-ai-assistant)</li>
+<hr style="border:none; border-top:1px solid #ffd1dc; margin: 12pt 0;">
+<h2>Hakbang 1: Pag-login sa Scanner Terminal</h2>
+<p>Bago mag-umpisa mag-scan, kailangan munang mag-login para malaman ng system kung anong store branch at sino ang nagre-receive.</p>
+<div class="screenshot-container"><img src="file:///Users/sirstyx/Documents/KymRhys/Projects/receiving-delivery-app/docs/screenshots/01-login-terminal.png" /></div>
+<li><strong>OPERATOR NAME</strong>: I-type ang iyong pangalan (Halimbawa: <code>JUAN DELA CRUZ</code>).</li>
+<li><strong>STORE CODE</strong>: Ilagay ang official 3-digit store code ng iyong branch (Halimbawa: <code>202</code> para sa <em>RDSI - PAVILLION</em>).</li>
+<blockquote>*Paalala:* Naka-link ito sa ating official store directory (`store.json`). Kung mali ang nailagay na code, magkakaroon ng red warning banner.</blockquote>
+<li><strong>WORK DATE</strong>: Kusa itong naka-set sa petsa ngayon (<code>YYYY-MM-DD</code>).</li>
+<li>Pindutin ang pink button na <strong><code>AUTHENTICATE TERMINAL</code></strong>. Magpapakita ang welcome screen at dadalhin ka sa Receiving Dashboard.</li>
+<hr style="border:none; border-top:1px solid #ffd1dc; margin: 12pt 0;">
+<h2>Hakbang 2: Pag-upload ng Manifest CSV</h2>
+<p>Sa <strong>Receiving Dashboard</strong>, dito natin ilalagay ang delivery manifest para alam ng app kung aling mga kahon at piraso ang inaasahan mula sa warehouse o delivery truck.</p>
+<div class="screenshot-container"><img src="file:///Users/sirstyx/Documents/KymRhys/Projects/receiving-delivery-app/docs/screenshots/02-receiving-dashboard.png" /></div>
+<li>Mag-scroll pababa sa seksyon ng <strong>MANIFEST INTAKE & UPLOAD</strong>:</li>
+<li><strong>STEP 1 · Upload Box Manifest</strong>: Piliin ang file na naglalaman ng mga carton box numbers (<code>CID NO</code> at <code>TRF NO</code>, halimbawa: <code>BOX_10-20-2026.csv</code>).</li>
+<li><strong>STEP 2 · Upload Scanning Items</strong>: Piliin ang file na naglalaman ng listahan ng mga items (<code>UPC</code>, <code>SKU</code>, <code>DESCRIPTION</code>, at <code>QTY</code>, halimbawa: <code>ITEM_10-20-2026.csv</code>).</li>
+<li>Kapag na-upload na, lalabas sa itaas ang <strong>Active Sessions</strong> na may kulay pink na card:</li>
+<li>Makikita mo agad kung ilang kahon ang natitira (<code>0/52 scanned (52 remaining)</code>).</li>
+<li>Makikita rin kung ilang total units ang kailangang i-tally (<code>0/2474 total units</code>).</li>
+<li>Pindutin ang <strong><code>START SCANNING</code></strong> para mag-umpisa!</li>
+<hr style="border:none; border-top:1px solid #ffd1dc; margin: 12pt 0;">
+<h2>Hakbang 3: Box (Carton) Scanning at CID / TRF Lookup</h2>
+<p>Ito ang screen kung saan natin chine-check ang mga master box / delivery cartons.</p>
+<div class="screenshot-container"><img src="file:///Users/sirstyx/Documents/KymRhys/Projects/receiving-delivery-app/docs/screenshots/03-box-scanner.png" /></div>
+<h3>Paano mag-scan ng Box:</h3>
+<li><strong>Camera Scanning</strong>: Itapat ang camera sa barcode ng kahon at <strong>pindutin at i-hold ang <code>HOLD TO SCAN</code></strong>. Magkakaroon ng red laser guide habang naka-hold.</li>
+<li><strong>Manual Input</strong>: Kung punit o malabo ang barcode, pindutin ang <strong><code>MANUAL</code></strong> sa ibaba at i-type ang numero ng kahon.</li>
+<li><strong>Bluetooth Scanner Gun</strong>: Kung may wireless barcode gun ka, i-swipe pataas ang tabs at i-on ang <strong><code>BLUETOOTH SCANNER</code></strong>. Mabilis nitong babasahin ang mga sunod-sunod na scan sa loob ng 0.5 segundo.</li>
+<hr style="border:none; border-top:1px solid #ffd1dc; margin: 12pt 0;">
+<h3>Paano malaman kung anong laman ng Box? (`CID / TRF Items Lookup`)</h3>
+<p>Minsan ang isang kahon (<code>CID NO</code>) ay may laman na items mula sa iba't ibang transfer numbers (<code>TRF NO</code>). May bagong feature ang ating app para dito!</p>
+<div class="screenshot-container"><img src="file:///Users/sirstyx/Documents/KymRhys/Projects/receiving-delivery-app/docs/screenshots/04-cid-trf-lookup.png" /></div>
+<li>Pindutin ang <strong><code>ITEMS (N)</code></strong> button sa tabi ng kahon, o pindutin ang <strong><code>CID / TRF</code></strong> sa kanang itaas ng header.</li>
+<li><strong>Automatic Conditional Fallback (<code>CID NO</code> → <code>TRF NO</code>)</strong>:</li>
+<li>Uunahin ng app na hanapin ang laman gamit ang <strong>CID NO</strong>.</li>
+<li>Kapag walang direct CID match sa CSV, <strong>kusa itong magpapalit sa TRF NO</strong> at magpapakita ng dilaw na badge: <strong><code>NO CID MATCH · SWITCHED TO TRF</code></strong>.</li>
+<li><strong>Manual Toggle Button</strong>:</li>
+<li>Pwede mong pindutin ang toggle button sa itaas: <strong><code>CID NO</code></strong> o <strong><code>TRF NO</code></strong> para magpalit ng paraan ng paghahanap.</li>
+<li>Pwede mo ring i-tap ang mga quick chips sa ilalim ng search bar para mabilisang tingnan ang ibang kahon.</li>
+<li><strong>Pagsilip sa Picture ng Item</strong>:</li>
+<li>I-tap ang card ng item para buksan ang <strong>Item Image Preview</strong> (pwede mong i-pinch para i-zoom hanggang <code>4.0x</code>).</li>
+<li>Kung walang litrato ang item sa database, may lalabas na pink button na <strong><code>SEARCH</code></strong>. Pag pinindot mo ito, bubuksan nito ang Google Images gamit ang UPC ng item sa loob mismo ng app!</li>
+<div class="screenshot-container"><img src="file:///Users/sirstyx/Documents/KymRhys/Projects/receiving-delivery-app/docs/screenshots/05-item-image-zoom.png" /></div>
+<hr style="border:none; border-top:1px solid #ffd1dc; margin: 12pt 0;">
+<h2>Hakbang 4: Item Scanning at Discrepancy Tracking</h2>
+<p>Pagkatapos i-verify ang mga kahon, i-tally naman natin ang bawat piraso ng produkto sa loob.</p>
+<div class="screenshot-container"><img src="file:///Users/sirstyx/Documents/KymRhys/Projects/receiving-delivery-app/docs/screenshots/06-item-scanner.png" /></div>
+<li><strong>Mabilisang Paglipat</strong>: Mula sa Box Scanner, i-swipe lang pakaliwa ang screen (o i-tap ang <strong><code>ITEM SCANNER</code></strong> tab sa itaas).</li>
+<li><strong>I-scan ang Bawat Produkto</strong>:</li>
+<li>I-scan ang barcode gamit ang <strong><code>HOLD TO SCAN</code></strong> o ang Bluetooth gun.</li>
+<li>Kusa nang tinatanggal ng system ang leading zeros (halimbawa: <code>000260295</code> ay babasahin bilang <code>260295</code>), kaya tugma agad sa system kahit iba ang format ng barcode sa packaging.</li>
+<li><strong>Subaybayan ang Discrepancies</strong>:</li>
+<li><strong><code>UNSCANNED</code></strong>: Mga items na hindi pa nabibilang.</li>
+<li><strong><code>FULFILLED</code></strong>: Kumpleto ang bilang base sa manifest.</li>
+<li><strong><code>SHORT</code></strong>: Kulang ang delivery kumpara sa order.</li>
+<li><strong><code>OVER</code></strong>: Sobra ang delivery kaysa sa manifest.</li>
+<li>Pindutin ang <strong><code>EXPORT EXCEL</code></strong> sa kanang itaas kung kailangan mong ipadala ang receiving tally report sa head office.</li>
+<hr style="border:none; border-top:1px solid #ffd1dc; margin: 12pt 0;">
+<h2>Hakbang 5: Rebox Stockroom Packing (Box-First Workflow)</h2>
+<p>Kapag nag-aayos tayo ng stockroom o nagba-box ng excess inventory papunta sa bodega, gamitin ang <strong>Rebox</strong> tab (pangalawang icon sa ibabang menu).</p>
+<div class="screenshot-container"><img src="file:///Users/sirstyx/Documents/KymRhys/Projects/receiving-delivery-app/docs/screenshots/07-rebox-stockroom-hub.png" /></div>
+<h3>Step-by-Step sa Pag-Rebox:</h3>
+<li><strong>Gumawa o Pumili ng Kahon Muna (Box-First)</strong>:</li>
+<li>Sa <strong>Rebox Stockroom Hub</strong>, ilagay ang pangalan o code ng pisikal na kahon (halimbawa: <code>BOX-01</code>, <code>B-02</code>, o i-tap ang <strong><code>SUGGEST BOX-03</code></strong>).</li>
+<li>Pindutin ang <strong><code>+ ADD BOX</code></strong>.</li>
+<li><strong>Buksan ang Scanner para sa Kahon</strong>:</li>
+<li>Pindutin ang <strong><code>SCAN ITEMS</code></strong> sa card ng kahon.</li>
+<li>Bubukas ang <strong>Rebox Scanner</strong> na nakatutok lang sa kahong iyon (halimbawa: <code>BOX-02</code>).</li>
+<div class="screenshot-container"><img src="file:///Users/sirstyx/Documents/KymRhys/Projects/receiving-delivery-app/docs/screenshots/08-rebox-scanner.png" /></div>
+<li><strong>I-scan ang mga Produkto</strong>:</li>
+<li>Itapat sa barcode at i-hold ang <strong><code>HOLD TO SCAN</code></strong>.</li>
+<li><strong>Kusa nitong kukunin ang Description, SKU, UPC, at picture</strong> galing sa ating Daiso OpenSheet catalog at manifest!</li>
+<li>Gamitin ang <strong><code>+</code></strong> at <strong><code>-</code></strong> buttons sa card kung gusto mong dagdagan o bawasan ang dami ng naipasok sa kahon.</li>
+<hr style="border:none; border-top:1px solid #ffd1dc; margin: 12pt 0;">
+<h2>Hakbang 6: Pag-upload ng Picture ng Item sa Cloudinary (daisoimage)</h2>
+<p>Minsan may mga bagong items sa Daiso na wala pang litrato sa online catalog. Pwede mong kuhanan ng litrato para magkaroon ng picture sa Rebox at PDF!</p>
+<div class="screenshot-container"><img src="file:///Users/sirstyx/Documents/KymRhys/Projects/receiving-delivery-app/docs/screenshots/08-rebox-scanner.png" /></div>
+<li>Kapag walang picture ang item sa card, makikita mo ang may tuldok-tuldok na pink box na may nakasulat na <strong><code>UPLOAD</code></strong>.</li>
+<li><strong>Automatic Checking</strong>: Pag pinindot mo ito, chine-check muna ng app kung may existing picture sa Daiso CDN o Cloudinary para hindi mag-doble.</li>
+<li>Kapag kumpirmadong wala, magbubukas ang camera:</li>
+<li>Itapat sa produkto at kuhanan ng malinaw na litrato (kuwadradong 1:1 frame).</li>
+<li>Kusa itong i-a-upload sa Cloudinary gamit ang preset na <strong><code>daisoimage</code></strong>, at ipapangalan ito sa <strong>UPC</strong> ng item.</li>
+<li>Pagkatapos ma-upload, makikita mo agad ang picture sa screen at maisasama na rin ito sa PDF report!</li>
+<hr style="border:none; border-top:1px solid #ffd1dc; margin: 12pt 0;">
+<h2>Hakbang 7: Pag-delete ng Item gamit ang 3-Seconds Hold Gesture</h2>
+<p>Para maiwasan ang aksidenteng pagbura habang mabilisang nagbubuhat at nag-aayos sa stockroom, may safety hold feature ang bawat item card.</p>
+<div class="screenshot-container"><img src="file:///Users/sirstyx/Documents/KymRhys/Projects/receiving-delivery-app/docs/screenshots/08-rebox-scanner.png" /></div>
+<li>Hanapin ang item na gusto mong tanggalin sa kahon.</li>
+<li><strong>Pindutin at idiin ang card nang 3 segundo (Hold for 3s)</strong>:</li>
+<li>Magkakaroon ng vibration haptic feedback.</li>
+<li>May lalabas na pulang banner sa itaas na may nakasulat na: <strong><code>HOLD 3S TO DELETE...</code></strong>.</li>
+<li>Magkakaroon ng animated red progress bar na pupuno sa ilalim ng card.</li>
+<li><strong>Safety Cancel</strong>: Kung nabitawan mo bago matapos ang 3 segundo (halimbawa aksidenteng napindot lang), <strong>hindi mabubura ang item</strong> at babalik ito sa dati.</li>
+<li>Kapag nakumpleto ang buong 3 segundo, may haptic buzz at mabubura ang item sa phone at sa cloud database!</li>
+<hr style="border:none; border-top:1px solid #ffd1dc; margin: 12pt 0;">
+<h2>Hakbang 8: Pag-export at Pag-download ng PDF na may Pictures</h2>
+<p>Ito ang isa sa pinakamahalagang feature para sa reporting at inventory auditing: <strong>pag-print o pag-save ng PDF na may kasamang malinaw na litrato ng bawat item</strong>!</p>
+<div class="screenshot-container"><img src="file:///Users/sirstyx/Documents/KymRhys/Projects/receiving-delivery-app/docs/screenshots/09-rebox-pdf-export.png" /></div>
+<h3>Paano mag-download ng PDF:</h3>
+<li>Pindutin ang berdeng button na <strong><code>PDF</code></strong>:</li>
+<li>Sa <strong>Rebox Stockroom Hub</strong> — magge-generate ng PDF para sa <strong>lahat ng kahon</strong> sa iyong store.</li>
+<li>Sa loob ng <strong>Rebox Scanner</strong> — magge-generate ng PDF para sa <strong>kasalukuyang kahon</strong> lang.</li>
+<li>Lalabas ang dialog box na <strong><code>Export Rebox PDF</code></strong>:</li>
+<li>Piliin ang <strong><code>SAVE TO PHONE</code></strong>:</li>
+<li>Bubuksan nito ang Android folder selector.</li>
+<li>Pumunta sa iyong <strong><code>Documents</code></strong> folder (o gumawa ng folder na <code>PDF</code>).</li>
+<li>Pindutin ang <strong><code>USE THIS FOLDER</code></strong> sa ibaba at i-tap ang <strong><code>ALLOW</code></strong>.</li>
+<li>Kusa nitong ise-save ang file (Halimbawa: <code>Rebox_AllBoxes_202_2026-11-01.pdf</code>).</li>
+<li>Piliin ang <strong><code>SHARE / PRINT</code></strong>:</li>
+<li>Bubuksan nito ang sharing menu ng phone.</li>
+<li>Pwede mo itong i-send diretso sa <strong>Viber</strong>, <strong>Gmail</strong>, <strong>Google Drive</strong>, o mag-print sa wireless office printer!</li>
+<h3>Ano ang makikita sa loob ng na-download na PDF?</h3>
+<li><strong>Header</strong>: Daiso Store Code, Pangalan ng Branch, Operator Name, at Petsa/Oras.</li>
+<li><strong>KPI Summary Cards</strong>: Kabuuang bilang ng Boxes, natatanging SKUs, at total units.</li>
+<li><strong>Kada Kahon</strong>: Naka-grupo bawat box number (Halimbawa: <code>BOX-01</code>, <code>BOX-02</code>).</li>
+<li><strong>Product Picture</strong>: May naka-embed na picture ng produkto sa kaliwa ng bawat row! Kung walang litrato, may maayos na box placeholder icon para malinis pa rin tingnan.</li>
+<li><strong>Product Details</strong>: Deskripsyon, SKU, UPC, at kabuuang QTY.</li>
+<hr style="border:none; border-top:1px solid #ffd1dc; margin: 12pt 0;">
+<h2>Hakbang 9: Find for Refill (Paghahanap ng Items sa Stockroom)</h2>
+<p>Kapag may customer na naghahanap o kailangan nang mag-refill sa sales floor gondola:</p>
+<li>Sa <strong>Rebox Stockroom Hub</strong> o sa loob ng <strong>Rebox Scanner</strong>, i-tap ang tab na <strong><code>FIND FOR REFILL</code></strong> o <strong><code>REFILL SEARCH</code></strong>.</li>
+<li>I-type o i-scan ang barcode ng hinahanap na item (SKU, UPC, o kahit parte ng description tulad ng <em>"color pen"</em> o <em>"slippers"</em>).</li>
+<li>Agad na ilalabas ng app kung <strong>saang kahon nakatago ang item</strong> (Halimbawa: nasa <code>BOX-01</code> o <code>BOX-04</code>) at kung ilang piraso pa ang available!</li>
+<hr style="border:none; border-top:1px solid #ffd1dc; margin: 12pt 0;">
+<h2>Hakbang 10: DLR (Damage & Lost Record Tool)</h2>
+<p>Para sa mga items na basag, sira ang packaging, nabasa, o nawawala sa delivery truck:</p>
+<li>Pindutin ang <strong><code>DLR</code></strong> tab sa ibabang menu (o ang dilaw na <strong><code>DLR Tool</code></strong> sa dashboard).</li>
+<li>I-scan ang barcode ng sirang item para kusa nitong kunin ang description at SKU.</li>
+<li>Piliin ang dahilan ng sira (Damage, Defect, Missing, etc.) at ilagay ang dami ng apektadong piraso.</li>
+<li>Kuhanan ang <strong>3 required photo proofs</strong>:</li>
+<li>Litrato 1: <strong>Quantity</strong> (kabuuang dami ng sirang items)</li>
+<li>Litrato 2: <strong>Damage</strong> (malapitang kuha ng sira o basag)</li>
+<li>Litrato 3: <strong>Barcode</strong> (malinaw na barcode label ng item)</li>
+<li>Pindutin ang <strong>Submit</strong> para mai-sync sa store cloud records para sa replacement o credit claim.</li>
+<hr style="border:none; border-top:1px solid #ffd1dc; margin: 12pt 0;">
+<h2>Hakbang 11: Pagtatanong kay Daizo (Offline AI Assistant)</h2>
+<p>May kailangan kang malaman tungkol sa delivery pero walang internet sa sulok ng stockroom?</p>
+<li>Pindutin ang bilog na mukha ni <strong>Daizo</strong> (nasa gitna ng ibabang tab bar).</li>
+<li>Magtanong gamit ang <strong>Taglish o English</strong>:</li>
+<li><em>"Anong SKU nito UPC 4550480272467?"</em></li>
+<li><em>"Anong UPC ng SKU 322462?"</em></li>
+<li><em>"Ilan pang kahon ang hindi pa nai-scan?"</em></li>
+<li>Sasagutin ka agad ni Daizo gamit ang on-device local AI na hindi nangangailangan ng Wi-Fi o mobile data!</li>
+<hr style="border:none; border-top:1px solid #ffd1dc; margin: 12pt 0;">
+<h2>💡 Quick Tips para sa Mabilis na Trabaho</h2>
+<li><strong>Mabilisang Pagbasa ng Barcode</strong>: Panatilihing malinis ang camera lens ng scanner phone bago mag-umpisa.</li>
+<li><strong>Battery Saver</strong>: Pwede mong i-set sa <strong>Dark Mode</strong> sa <em>Settings</em> tab para mas tumagal ang battery habang nag-i-scan maghapon.</li>
+<li><strong>Palaging Mag-Sync</strong>: Pagkatapos mag-rebox, pindutin ang <strong><code>SYNC</code></strong> button sa kanang itaas kapag nakakonekta sa Wi-Fi para updated ang cloud records ng branch.</li>
+<hr style="border:none; border-top:1px solid #ffd1dc; margin: 12pt 0;">
+<p><em>Para sa mga tanong o technical support, mag-message kay <strong>Kym Rhys Mallari</strong>.</em></p>
+<p><em>Daiso Japan Store Operations & Receiving System · v7.4</em></p>
+
+<div class="footer-note">
+  <strong>Daiso Japan Store Operations & Receiving System · Version 7.4</strong><br>
+  Inihanda para sa mga Store Clerks at Receiving Associates · Mobile App & PDF Generator ni Kym Rhys Mallari
+</div>
+</body>
+</html>

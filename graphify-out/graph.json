@@ -167,6 +167,45 @@
       "norm_label": "rootparamlist"
     },
     {
+      "label": "AppUpdateRecord",
+      "file_type": "code",
+      "source_file": "services/appUpdateService.ts",
+      "source_location": "L10",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "services_appupdateservice_appupdaterecord",
+      "community": 0,
+      "community_name": "useTheme",
+      "norm_label": "appupdaterecord"
+    },
+    {
+      "label": "AppVersionInfo",
+      "file_type": "code",
+      "source_file": "services/appUpdateService.ts",
+      "source_location": "L21",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "services_appupdateservice_appversioninfo",
+      "community": 0,
+      "community_name": "useTheme",
+      "norm_label": "appversioninfo"
+    },
+    {
+      "label": "CheckUpdateOptions",
+      "file_type": "code",
+      "source_file": "services/appUpdateService.ts",
+      "source_location": "L275",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "services_appupdateservice_checkupdateoptions",
+      "community": 0,
+      "community_name": "useTheme",
+      "norm_label": "checkupdateoptions"
+    },
+    {
       "label": "Step",
       "file_type": "code",
       "source_file": "screens/damageLostRecord.tsx",
@@ -336,45 +375,6 @@
       "norm_label": "buttonprops"
     },
     {
-      "label": "AppUpdateRecord",
-      "file_type": "code",
-      "source_file": "services/appUpdateService.ts",
-      "source_location": "L10",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "services_appupdateservice_appupdaterecord",
-      "community": 31,
-      "community_name": "appUpdateService.ts",
-      "norm_label": "appupdaterecord"
-    },
-    {
-      "label": "AppVersionInfo",
-      "file_type": "code",
-      "source_file": "services/appUpdateService.ts",
-      "source_location": "L21",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "services_appupdateservice_appversioninfo",
-      "community": 31,
-      "community_name": "appUpdateService.ts",
-      "norm_label": "appversioninfo"
-    },
-    {
-      "label": "CheckUpdateOptions",
-      "file_type": "code",
-      "source_file": "services/appUpdateService.ts",
-      "source_location": "L275",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "services_appupdateservice_checkupdateoptions",
-      "community": 31,
-      "community_name": "appUpdateService.ts",
-      "norm_label": "checkupdateoptions"
-    },
-    {
       "label": "HistoryModalProps",
       "file_type": "code",
       "source_file": "components/HistoryModal.tsx",
@@ -384,7 +384,7 @@
       "_origin": "ast",
       "id": "components_historymodal_historymodalprops",
       "community": 41,
-      "community_name": "scanningItem.tsx",
+      "community_name": "one.tsx",
       "norm_label": "historymodalprops"
     },
     {
@@ -397,7 +397,7 @@
       "_origin": "ast",
       "id": "screens_one_box",
       "community": 41,
-      "community_name": "scanningItem.tsx",
+      "community_name": "one.tsx",
       "norm_label": "box"
     },
     {
@@ -410,7 +410,7 @@
       "_origin": "ast",
       "id": "screens_one_item",
       "community": 41,
-      "community_name": "scanningItem.tsx",
+      "community_name": "one.tsx",
       "norm_label": "item"
     },
     {
@@ -423,7 +423,7 @@
       "_origin": "ast",
       "id": "screens_one_progressstate",
       "community": 41,
-      "community_name": "scanningItem.tsx",
+      "community_name": "one.tsx",
       "norm_label": "progressstate"
     },
     {
@@ -436,7 +436,7 @@
       "_origin": "ast",
       "id": "screens_scanningbox_itemimagepreviewpayload",
       "community": 41,
-      "community_name": "scanningItem.tsx",
+      "community_name": "one.tsx",
       "norm_label": "itemimagepreviewpayload"
     },
     {
@@ -449,7 +449,7 @@
       "_origin": "ast",
       "id": "screens_scanningitem_itemimagepreviewpayload",
       "community": 41,
-      "community_name": "scanningItem.tsx",
+      "community_name": "one.tsx",
       "norm_label": "itemimagepreviewpayload"
     },
     {
@@ -462,21 +462,8 @@
       "_origin": "ast",
       "id": "utils_storage_boxmanifestrecord",
       "community": 41,
-      "community_name": "scanningItem.tsx",
+      "community_name": "one.tsx",
       "norm_label": "boxmanifestrecord"
-    },
-    {
-      "label": "HistorySessionRecord",
-      "file_type": "code",
-      "source_file": "utils/storage.ts",
-      "source_location": "L61",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "utils_storage_historysessionrecord",
-      "community": 41,
-      "community_name": "scanningItem.tsx",
-      "norm_label": "historysessionrecord"
     },
     {
       "label": "ItemManifestRecord",
@@ -488,7 +475,7 @@
       "_origin": "ast",
       "id": "utils_storage_itemmanifestrecord",
       "community": 41,
-      "community_name": "scanningItem.tsx",
+      "community_name": "one.tsx",
       "norm_label": "itemmanifestrecord"
     },
     {
@@ -501,7 +488,7 @@
       "_origin": "ast",
       "id": "utils_storage_reboxcontainerrecord",
       "community": 41,
-      "community_name": "scanningItem.tsx",
+      "community_name": "one.tsx",
       "norm_label": "reboxcontainerrecord"
     },
     {
@@ -514,7 +501,7 @@
       "_origin": "ast",
       "id": "utils_storage_reboxitemrecord",
       "community": 41,
-      "community_name": "scanningItem.tsx",
+      "community_name": "one.tsx",
       "norm_label": "reboxitemrecord"
     },
     {
@@ -659,6 +646,19 @@
       "community": 7,
       "community_name": "rebox.ts",
       "norm_label": "registeredreboxbox"
+    },
+    {
+      "label": "HistorySessionRecord",
+      "file_type": "code",
+      "source_file": "utils/storage.ts",
+      "source_location": "L61",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "utils_storage_historysessionrecord",
+      "community": 7,
+      "community_name": "rebox.ts",
+      "norm_label": "historysessionrecord"
     },
     {
       "label": "BackButtonProps",
@@ -890,6 +890,30 @@
       "norm_label": "tabbaricon()"
     },
     {
+      "label": "ProductCard()",
+      "file_type": "code",
+      "source_file": "screens/damageLostRecord.tsx",
+      "source_location": "L171",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "screens_damagelostrecord_productcard",
+      "community": 0,
+      "community_name": "useTheme",
+      "norm_label": "productcard()"
+    },
+    {
+      "label": "ReasonPickerModal()",
+      "file_type": "code",
+      "source_file": "screens/damageLostRecord.tsx",
+      "source_location": "L221",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "screens_damagelostrecord_reasonpickermodal",
+      "community": 0,
+      "community_name": "useTheme",
+      "norm_label": "reasonpickermodal()"
+    },
+    {
       "label": "LoginScreen()",
       "file_type": "code",
       "source_file": "screens/login.tsx",
@@ -914,30 +938,6 @@
       "norm_label": "onboardinggreetscreen()"
     },
     {
-      "label": "SessionBanner()",
-      "file_type": "code",
-      "source_file": "screens/one.tsx",
-      "source_location": "L73",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "screens_one_sessionbanner",
-      "community": 0,
-      "community_name": "useTheme",
-      "norm_label": "sessionbanner()"
-    },
-    {
-      "label": "TabOneScreen()",
-      "file_type": "code",
-      "source_file": "screens/one.tsx",
-      "source_location": "L224",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "screens_one_tabonescreen",
-      "community": 0,
-      "community_name": "useTheme",
-      "norm_label": "tabonescreen()"
-    },
-    {
       "label": "SectionLabel()",
       "file_type": "code",
       "source_file": "screens/three.tsx",
@@ -960,6 +960,126 @@
       "community": 0,
       "community_name": "useTheme",
       "norm_label": "settingsscreen()"
+    },
+    {
+      "label": "checkForAppUpdate()",
+      "file_type": "code",
+      "source_file": "services/appUpdateService.ts",
+      "source_location": "L287",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "services_appupdateservice_checkforappupdate",
+      "community": 0,
+      "community_name": "useTheme",
+      "norm_label": "checkforappupdate()"
+    },
+    {
+      "label": "compareSemver()",
+      "file_type": "code",
+      "source_file": "services/appUpdateService.ts",
+      "source_location": "L235",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "services_appupdateservice_comparesemver",
+      "community": 0,
+      "community_name": "useTheme",
+      "norm_label": "comparesemver()"
+    },
+    {
+      "label": "getApplication()",
+      "file_type": "code",
+      "source_file": "services/appUpdateService.ts",
+      "source_location": "L50",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "services_appupdateservice_getapplication",
+      "community": 0,
+      "community_name": "useTheme",
+      "norm_label": "getapplication()"
+    },
+    {
+      "label": "getCurrentAppVersion()",
+      "file_type": "code",
+      "source_file": "services/appUpdateService.ts",
+      "source_location": "L64",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "services_appupdateservice_getcurrentappversion",
+      "community": 0,
+      "community_name": "useTheme",
+      "norm_label": "getcurrentappversion()"
+    },
+    {
+      "label": "getNotifications()",
+      "file_type": "code",
+      "source_file": "services/appUpdateService.ts",
+      "source_location": "L34",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "services_appupdateservice_getnotifications",
+      "community": 0,
+      "community_name": "useTheme",
+      "norm_label": "getnotifications()"
+    },
+    {
+      "label": "initAppUpdateChecker()",
+      "file_type": "code",
+      "source_file": "services/appUpdateService.ts",
+      "source_location": "L458",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "services_appupdateservice_initappupdatechecker",
+      "community": 0,
+      "community_name": "useTheme",
+      "norm_label": "initappupdatechecker()"
+    },
+    {
+      "label": "isUpdateAvailable()",
+      "file_type": "code",
+      "source_file": "services/appUpdateService.ts",
+      "source_location": "L256",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "services_appupdateservice_isupdateavailable",
+      "community": 0,
+      "community_name": "useTheme",
+      "norm_label": "isupdateavailable()"
+    },
+    {
+      "label": "parseVersionSegments()",
+      "file_type": "code",
+      "source_file": "services/appUpdateService.ts",
+      "source_location": "L210",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "services_appupdateservice_parseversionsegments",
+      "community": 0,
+      "community_name": "useTheme",
+      "norm_label": "parseversionsegments()"
+    },
+    {
+      "label": "setupNotificationChannelAndHandler()",
+      "file_type": "code",
+      "source_file": "services/appUpdateService.ts",
+      "source_location": "L112",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "services_appupdateservice_setupnotificationchannelandhandler",
+      "community": 0,
+      "community_name": "useTheme",
+      "norm_label": "setupnotificationchannelandhandler()"
+    },
+    {
+      "label": "setupNotificationListeners()",
+      "file_type": "code",
+      "source_file": "services/appUpdateService.ts",
+      "source_location": "L145",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "services_appupdateservice_setupnotificationlisteners",
+      "community": 0,
+      "community_name": "useTheme",
+      "norm_label": "setupnotificationlisteners()"
     },
     {
       "label": "getCachedDaizoDataset()",
@@ -1020,30 +1140,6 @@
       "community": 1,
       "community_name": "dlr.ts",
       "norm_label": "loadingbar()"
-    },
-    {
-      "label": "ProductCard()",
-      "file_type": "code",
-      "source_file": "screens/damageLostRecord.tsx",
-      "source_location": "L171",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "screens_damagelostrecord_productcard",
-      "community": 1,
-      "community_name": "dlr.ts",
-      "norm_label": "productcard()"
-    },
-    {
-      "label": "ReasonPickerModal()",
-      "file_type": "code",
-      "source_file": "screens/damageLostRecord.tsx",
-      "source_location": "L221",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "screens_damagelostrecord_reasonpickermodal",
-      "community": 1,
-      "community_name": "dlr.ts",
-      "norm_label": "reasonpickermodal()"
     },
     {
       "label": "StepIndicator()",
@@ -1142,6 +1238,18 @@
       "norm_label": "codesmatch()"
     },
     {
+      "label": "compressImage()",
+      "file_type": "code",
+      "source_file": "utils/dlr.ts",
+      "source_location": "L405",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "utils_dlr_compressimage",
+      "community": 1,
+      "community_name": "dlr.ts",
+      "norm_label": "compressimage()"
+    },
+    {
       "label": "createDlrId()",
       "file_type": "code",
       "source_file": "utils/dlr.ts",
@@ -1166,6 +1274,18 @@
       "norm_label": "deletesupabasedlrrecord()"
     },
     {
+      "label": "fetchCatalog()",
+      "file_type": "code",
+      "source_file": "utils/dlr.ts",
+      "source_location": "L279",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "utils_dlr_fetchcatalog",
+      "community": 1,
+      "community_name": "dlr.ts",
+      "norm_label": "fetchcatalog()"
+    },
+    {
       "label": "fetchSupabaseDlrRecords()",
       "file_type": "code",
       "source_file": "utils/dlr.ts",
@@ -1176,6 +1296,18 @@
       "community": 1,
       "community_name": "dlr.ts",
       "norm_label": "fetchsupabasedlrrecords()"
+    },
+    {
+      "label": "findProductInCatalog()",
+      "file_type": "code",
+      "source_file": "utils/dlr.ts",
+      "source_location": "L306",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "utils_dlr_findproductincatalog",
+      "community": 1,
+      "community_name": "dlr.ts",
+      "norm_label": "findproductincatalog()"
     },
     {
       "label": "getDepartmentName()",
@@ -1248,6 +1380,18 @@
       "community": 1,
       "community_name": "dlr.ts",
       "norm_label": "lookupproduct()"
+    },
+    {
+      "label": "matchRecordStore()",
+      "file_type": "code",
+      "source_file": "utils/dlr.ts",
+      "source_location": "L61",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "utils_dlr_matchrecordstore",
+      "community": 1,
+      "community_name": "dlr.ts",
+      "norm_label": "matchrecordstore()"
     },
     {
       "label": "normalizeSheetItem()",
@@ -1334,6 +1478,18 @@
       "norm_label": "upsertdlrrecord()"
     },
     {
+      "label": "findProductInOpenSheet()",
+      "file_type": "code",
+      "source_file": "utils/rebox.ts",
+      "source_location": "L34",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "utils_rebox_findproductinopensheet",
+      "community": 1,
+      "community_name": "dlr.ts",
+      "norm_label": "findproductinopensheet()"
+    },
+    {
       "label": "TabBarIcon()",
       "file_type": "code",
       "source_file": "components/TabBarIcon.tsx",
@@ -1346,246 +1502,6 @@
       "norm_label": "tabbaricon()"
     },
     {
-      "label": "checkForAppUpdate()",
-      "file_type": "code",
-      "source_file": "services/appUpdateService.ts",
-      "source_location": "L287",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "services_appupdateservice_checkforappupdate",
-      "community": 31,
-      "community_name": "appUpdateService.ts",
-      "norm_label": "checkforappupdate()"
-    },
-    {
-      "label": "compareSemver()",
-      "file_type": "code",
-      "source_file": "services/appUpdateService.ts",
-      "source_location": "L235",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "services_appupdateservice_comparesemver",
-      "community": 31,
-      "community_name": "appUpdateService.ts",
-      "norm_label": "comparesemver()"
-    },
-    {
-      "label": "getApplication()",
-      "file_type": "code",
-      "source_file": "services/appUpdateService.ts",
-      "source_location": "L50",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "services_appupdateservice_getapplication",
-      "community": 31,
-      "community_name": "appUpdateService.ts",
-      "norm_label": "getapplication()"
-    },
-    {
-      "label": "getCurrentAppVersion()",
-      "file_type": "code",
-      "source_file": "services/appUpdateService.ts",
-      "source_location": "L64",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "services_appupdateservice_getcurrentappversion",
-      "community": 31,
-      "community_name": "appUpdateService.ts",
-      "norm_label": "getcurrentappversion()"
-    },
-    {
-      "label": "getNotifications()",
-      "file_type": "code",
-      "source_file": "services/appUpdateService.ts",
-      "source_location": "L34",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "services_appupdateservice_getnotifications",
-      "community": 31,
-      "community_name": "appUpdateService.ts",
-      "norm_label": "getnotifications()"
-    },
-    {
-      "label": "initAppUpdateChecker()",
-      "file_type": "code",
-      "source_file": "services/appUpdateService.ts",
-      "source_location": "L458",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "services_appupdateservice_initappupdatechecker",
-      "community": 31,
-      "community_name": "appUpdateService.ts",
-      "norm_label": "initappupdatechecker()"
-    },
-    {
-      "label": "isUpdateAvailable()",
-      "file_type": "code",
-      "source_file": "services/appUpdateService.ts",
-      "source_location": "L256",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "services_appupdateservice_isupdateavailable",
-      "community": 31,
-      "community_name": "appUpdateService.ts",
-      "norm_label": "isupdateavailable()"
-    },
-    {
-      "label": "parseVersionSegments()",
-      "file_type": "code",
-      "source_file": "services/appUpdateService.ts",
-      "source_location": "L210",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "services_appupdateservice_parseversionsegments",
-      "community": 31,
-      "community_name": "appUpdateService.ts",
-      "norm_label": "parseversionsegments()"
-    },
-    {
-      "label": "setupNotificationChannelAndHandler()",
-      "file_type": "code",
-      "source_file": "services/appUpdateService.ts",
-      "source_location": "L112",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "services_appupdateservice_setupnotificationchannelandhandler",
-      "community": 31,
-      "community_name": "appUpdateService.ts",
-      "norm_label": "setupnotificationchannelandhandler()"
-    },
-    {
-      "label": "setupNotificationListeners()",
-      "file_type": "code",
-      "source_file": "services/appUpdateService.ts",
-      "source_location": "L145",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "services_appupdateservice_setupnotificationlisteners",
-      "community": 31,
-      "community_name": "appUpdateService.ts",
-      "norm_label": "setupnotificationlisteners()"
-    },
-    {
-      "label": "HistoryModal()",
-      "file_type": "code",
-      "source_file": "components/HistoryModal.tsx",
-      "source_location": "L49",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "components_historymodal_historymodal",
-      "community": 41,
-      "community_name": "scanningItem.tsx",
-      "norm_label": "historymodal()"
-    },
-    {
-      "label": "SectionLabel()",
-      "file_type": "code",
-      "source_file": "screens/one.tsx",
-      "source_location": "L188",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "screens_one_sectionlabel",
-      "community": 41,
-      "community_name": "scanningItem.tsx",
-      "norm_label": "sectionlabel()"
-    },
-    {
-      "label": "deduplicateBoxes()",
-      "file_type": "code",
-      "source_file": "screens/scanningBox.tsx",
-      "source_location": "L154",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "screens_scanningbox_deduplicateboxes",
-      "community": 41,
-      "community_name": "scanningItem.tsx",
-      "norm_label": "deduplicateboxes()"
-    },
-    {
-      "label": "getItemImageKey()",
-      "file_type": "code",
-      "source_file": "screens/scanningBox.tsx",
-      "source_location": "L182",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "screens_scanningbox_getitemimagekey",
-      "community": 41,
-      "community_name": "scanningItem.tsx",
-      "norm_label": "getitemimagekey()"
-    },
-    {
-      "label": "ItemImageZoomModalContent()",
-      "file_type": "code",
-      "source_file": "screens/scanningBox.tsx",
-      "source_location": "L400",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "screens_scanningbox_itemimagezoommodalcontent",
-      "community": 41,
-      "community_name": "scanningItem.tsx",
-      "norm_label": "itemimagezoommodalcontent()"
-    },
-    {
-      "label": "normalizeBox()",
-      "file_type": "code",
-      "source_file": "screens/scanningBox.tsx",
-      "source_location": "L143",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "screens_scanningbox_normalizebox",
-      "community": 41,
-      "community_name": "scanningItem.tsx",
-      "norm_label": "normalizebox()"
-    },
-    {
-      "label": "normalizeLookupCode()",
-      "file_type": "code",
-      "source_file": "screens/scanningBox.tsx",
-      "source_location": "L173",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "screens_scanningbox_normalizelookupcode",
-      "community": 41,
-      "community_name": "scanningItem.tsx",
-      "norm_label": "normalizelookupcode()"
-    },
-    {
-      "label": "playScanFeedback()",
-      "file_type": "code",
-      "source_file": "screens/scanningBox.tsx",
-      "source_location": "L62",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "screens_scanningbox_playscanfeedback",
-      "community": 41,
-      "community_name": "scanningItem.tsx",
-      "norm_label": "playscanfeedback()"
-    },
-    {
-      "label": "ScanningBoxScreen()",
-      "file_type": "code",
-      "source_file": "screens/scanningBox.tsx",
-      "source_location": "L869",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "screens_scanningbox_scanningboxscreen",
-      "community": 41,
-      "community_name": "scanningItem.tsx",
-      "norm_label": "scanningboxscreen()"
-    },
-    {
-      "label": "TrfLookupItemCard()",
-      "file_type": "code",
-      "source_file": "screens/scanningBox.tsx",
-      "source_location": "L198",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "screens_scanningbox_trflookupitemcard",
-      "community": 41,
-      "community_name": "scanningItem.tsx",
-      "norm_label": "trflookupitemcard()"
-    },
-    {
       "label": "cropImageToSquare()",
       "file_type": "code",
       "source_file": "screens/scanningItem.tsx",
@@ -1593,7 +1509,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "screens_scanningitem_cropimagetosquare",
-      "community": 41,
+      "community": 31,
       "community_name": "scanningItem.tsx",
       "norm_label": "cropimagetosquare()"
     },
@@ -1605,7 +1521,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "screens_scanningitem_getitemimagekey",
-      "community": 41,
+      "community": 31,
       "community_name": "scanningItem.tsx",
       "norm_label": "getitemimagekey()"
     },
@@ -1617,7 +1533,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "screens_scanningitem_getoneyearaheaddate",
-      "community": 41,
+      "community": 31,
       "community_name": "scanningItem.tsx",
       "norm_label": "getoneyearaheaddate()"
     },
@@ -1629,7 +1545,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "screens_scanningitem_ismatchingscancode",
-      "community": 41,
+      "community": 31,
       "community_name": "scanningItem.tsx",
       "norm_label": "ismatchingscancode()"
     },
@@ -1641,7 +1557,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "screens_scanningitem_itemimagecapturemodalcontent",
-      "community": 41,
+      "community": 31,
       "community_name": "scanningItem.tsx",
       "norm_label": "itemimagecapturemodalcontent()"
     },
@@ -1653,7 +1569,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "screens_scanningitem_itemimagecolumn",
-      "community": 41,
+      "community": 31,
       "community_name": "scanningItem.tsx",
       "norm_label": "itemimagecolumn()"
     },
@@ -1665,7 +1581,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "screens_scanningitem_itemimagezoommodalcontent",
-      "community": 41,
+      "community": 31,
       "community_name": "scanningItem.tsx",
       "norm_label": "itemimagezoommodalcontent()"
     },
@@ -1677,7 +1593,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "screens_scanningitem_normalizescancode",
-      "community": 41,
+      "community": 31,
       "community_name": "scanningItem.tsx",
       "norm_label": "normalizescancode()"
     },
@@ -1689,7 +1605,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "screens_scanningitem_playscanfeedback",
-      "community": 41,
+      "community": 31,
       "community_name": "scanningItem.tsx",
       "norm_label": "playscanfeedback()"
     },
@@ -1701,7 +1617,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "screens_scanningitem_scanningitemscreen",
-      "community": 41,
+      "community": 31,
       "community_name": "scanningItem.tsx",
       "norm_label": "scanningitemscreen()"
     },
@@ -1713,7 +1629,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "screens_scanningitem_touploaddatauri",
-      "community": 41,
+      "community": 31,
       "community_name": "scanningItem.tsx",
       "norm_label": "touploaddatauri()"
     },
@@ -1725,21 +1641,153 @@
       "_callable": true,
       "_origin": "ast",
       "id": "screens_scanningitem_uploaditemimagetocloudinary",
-      "community": 41,
+      "community": 31,
       "community_name": "scanningItem.tsx",
       "norm_label": "uploaditemimagetocloudinary()"
     },
     {
-      "label": "compressImage()",
+      "label": "HistoryModal()",
       "file_type": "code",
-      "source_file": "utils/dlr.ts",
-      "source_location": "L405",
+      "source_file": "components/HistoryModal.tsx",
+      "source_location": "L49",
       "_callable": true,
       "_origin": "ast",
-      "id": "utils_dlr_compressimage",
+      "id": "components_historymodal_historymodal",
       "community": 41,
-      "community_name": "scanningItem.tsx",
-      "norm_label": "compressimage()"
+      "community_name": "one.tsx",
+      "norm_label": "historymodal()"
+    },
+    {
+      "label": "SectionLabel()",
+      "file_type": "code",
+      "source_file": "screens/one.tsx",
+      "source_location": "L188",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "screens_one_sectionlabel",
+      "community": 41,
+      "community_name": "one.tsx",
+      "norm_label": "sectionlabel()"
+    },
+    {
+      "label": "SessionBanner()",
+      "file_type": "code",
+      "source_file": "screens/one.tsx",
+      "source_location": "L73",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "screens_one_sessionbanner",
+      "community": 41,
+      "community_name": "one.tsx",
+      "norm_label": "sessionbanner()"
+    },
+    {
+      "label": "TabOneScreen()",
+      "file_type": "code",
+      "source_file": "screens/one.tsx",
+      "source_location": "L224",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "screens_one_tabonescreen",
+      "community": 41,
+      "community_name": "one.tsx",
+      "norm_label": "tabonescreen()"
+    },
+    {
+      "label": "deduplicateBoxes()",
+      "file_type": "code",
+      "source_file": "screens/scanningBox.tsx",
+      "source_location": "L154",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "screens_scanningbox_deduplicateboxes",
+      "community": 41,
+      "community_name": "one.tsx",
+      "norm_label": "deduplicateboxes()"
+    },
+    {
+      "label": "getItemImageKey()",
+      "file_type": "code",
+      "source_file": "screens/scanningBox.tsx",
+      "source_location": "L182",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "screens_scanningbox_getitemimagekey",
+      "community": 41,
+      "community_name": "one.tsx",
+      "norm_label": "getitemimagekey()"
+    },
+    {
+      "label": "ItemImageZoomModalContent()",
+      "file_type": "code",
+      "source_file": "screens/scanningBox.tsx",
+      "source_location": "L400",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "screens_scanningbox_itemimagezoommodalcontent",
+      "community": 41,
+      "community_name": "one.tsx",
+      "norm_label": "itemimagezoommodalcontent()"
+    },
+    {
+      "label": "normalizeBox()",
+      "file_type": "code",
+      "source_file": "screens/scanningBox.tsx",
+      "source_location": "L143",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "screens_scanningbox_normalizebox",
+      "community": 41,
+      "community_name": "one.tsx",
+      "norm_label": "normalizebox()"
+    },
+    {
+      "label": "normalizeLookupCode()",
+      "file_type": "code",
+      "source_file": "screens/scanningBox.tsx",
+      "source_location": "L173",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "screens_scanningbox_normalizelookupcode",
+      "community": 41,
+      "community_name": "one.tsx",
+      "norm_label": "normalizelookupcode()"
+    },
+    {
+      "label": "playScanFeedback()",
+      "file_type": "code",
+      "source_file": "screens/scanningBox.tsx",
+      "source_location": "L62",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "screens_scanningbox_playscanfeedback",
+      "community": 41,
+      "community_name": "one.tsx",
+      "norm_label": "playscanfeedback()"
+    },
+    {
+      "label": "ScanningBoxScreen()",
+      "file_type": "code",
+      "source_file": "screens/scanningBox.tsx",
+      "source_location": "L869",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "screens_scanningbox_scanningboxscreen",
+      "community": 41,
+      "community_name": "one.tsx",
+      "norm_label": "scanningboxscreen()"
+    },
+    {
+      "label": "TrfLookupItemCard()",
+      "file_type": "code",
+      "source_file": "screens/scanningBox.tsx",
+      "source_location": "L198",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "screens_scanningbox_trflookupitemcard",
+      "community": 41,
+      "community_name": "one.tsx",
+      "norm_label": "trflookupitemcard()"
     },
     {
       "label": "saveSessionToHistory()",
@@ -1750,7 +1798,7 @@
       "_origin": "ast",
       "id": "utils_storage_savesessiontohistory",
       "community": 41,
-      "community_name": "scanningItem.tsx",
+      "community_name": "one.tsx",
       "norm_label": "savesessiontohistory()"
     },
     {
@@ -2018,30 +2066,6 @@
       "norm_label": "reboxhubscreen()"
     },
     {
-      "label": "fetchCatalog()",
-      "file_type": "code",
-      "source_file": "utils/dlr.ts",
-      "source_location": "L279",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "utils_dlr_fetchcatalog",
-      "community": 7,
-      "community_name": "rebox.ts",
-      "norm_label": "fetchcatalog()"
-    },
-    {
-      "label": "findProductInCatalog()",
-      "file_type": "code",
-      "source_file": "utils/dlr.ts",
-      "source_location": "L306",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "utils_dlr_findproductincatalog",
-      "community": 7,
-      "community_name": "rebox.ts",
-      "norm_label": "findproductincatalog()"
-    },
-    {
       "label": "getStoreIdentifiers()",
       "file_type": "code",
       "source_file": "utils/dlr.ts",
@@ -2052,18 +2076,6 @@
       "community": 7,
       "community_name": "rebox.ts",
       "norm_label": "getstoreidentifiers()"
-    },
-    {
-      "label": "matchRecordStore()",
-      "file_type": "code",
-      "source_file": "utils/dlr.ts",
-      "source_location": "L61",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "utils_dlr_matchrecordstore",
-      "community": 7,
-      "community_name": "rebox.ts",
-      "norm_label": "matchrecordstore()"
     },
     {
       "label": "base64ToUint8Array()",
@@ -2232,18 +2244,6 @@
       "community": 7,
       "community_name": "rebox.ts",
       "norm_label": "fetchwebimageaspdfjpeg()"
-    },
-    {
-      "label": "findProductInOpenSheet()",
-      "file_type": "code",
-      "source_file": "utils/rebox.ts",
-      "source_location": "L34",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "utils_rebox_findproductinopensheet",
-      "community": 7,
-      "community_name": "rebox.ts",
-      "norm_label": "findproductinopensheet()"
     },
     {
       "label": "fmtNum()",
@@ -2861,6 +2861,50 @@
       "community": 0,
       "community_name": "useTheme",
       "norm_label": "three.tsx"
+    },
+    {
+      "label": "appUpdateService.ts",
+      "file_type": "code",
+      "source_file": "services/appUpdateService.ts",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "services_appupdateservice",
+      "community": 0,
+      "community_name": "useTheme",
+      "norm_label": "appupdateservice.ts"
+    },
+    {
+      "label": "LAST_NOTIFIED_VERSION_KEY",
+      "file_type": "code",
+      "source_file": "services/appUpdateService.ts",
+      "source_location": "L7",
+      "_origin": "ast",
+      "id": "services_appupdateservice_last_notified_version_key",
+      "community": 0,
+      "community_name": "useTheme",
+      "norm_label": "last_notified_version_key"
+    },
+    {
+      "label": "UPDATE_NOTIFICATION_CHANNEL_ID",
+      "file_type": "code",
+      "source_file": "services/appUpdateService.ts",
+      "source_location": "L8",
+      "_origin": "ast",
+      "id": "services_appupdateservice_update_notification_channel_id",
+      "community": 0,
+      "community_name": "useTheme",
+      "norm_label": "update_notification_channel_id"
+    },
+    {
+      "label": "NOTE: \"App Up to Date\" alerts are ONLY shown if isManual === true (user clicked\u2026",
+      "file_type": "rationale",
+      "source_file": "services/appUpdateService.ts",
+      "source_location": "L284",
+      "_origin": "ast",
+      "id": "services_appupdateservice_rationale_284",
+      "community": 0,
+      "community_name": "useTheme",
+      "norm_label": "note: \"app up to date\" alerts are only shown if ismanual === true (user clicked..."
     },
     {
       "label": "damageLostRecord.tsx",
@@ -3565,17 +3609,6 @@
       "community": 2,
       "community_name": "expo",
       "norm_label": "expo-sharing"
-    },
-    {
-      "label": "expo-web-browser",
-      "file_type": "concept",
-      "source_file": "app.json",
-      "source_location": "L17",
-      "_origin": "ast",
-      "id": "ref_expo_web_browser",
-      "community": 2,
-      "community_name": "expo",
-      "norm_label": "expo-web-browser"
     },
     {
       "label": "eslint.config.js",
@@ -5371,48 +5404,26 @@
       "norm_label": "expo-status-bar"
     },
     {
-      "label": "appUpdateService.ts",
+      "label": "scanningItem.tsx",
       "file_type": "code",
-      "source_file": "services/appUpdateService.ts",
+      "source_file": "screens/scanningItem.tsx",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "services_appupdateservice",
+      "id": "screens_scanningitem",
       "community": 31,
-      "community_name": "appUpdateService.ts",
-      "norm_label": "appupdateservice.ts"
+      "community_name": "scanningItem.tsx",
+      "norm_label": "scanningitem.tsx"
     },
     {
-      "label": "LAST_NOTIFIED_VERSION_KEY",
+      "label": "MONTH_NAMES",
       "file_type": "code",
-      "source_file": "services/appUpdateService.ts",
-      "source_location": "L7",
+      "source_file": "screens/scanningItem.tsx",
+      "source_location": "L149",
       "_origin": "ast",
-      "id": "services_appupdateservice_last_notified_version_key",
+      "id": "screens_scanningitem_month_names",
       "community": 31,
-      "community_name": "appUpdateService.ts",
-      "norm_label": "last_notified_version_key"
-    },
-    {
-      "label": "UPDATE_NOTIFICATION_CHANNEL_ID",
-      "file_type": "code",
-      "source_file": "services/appUpdateService.ts",
-      "source_location": "L8",
-      "_origin": "ast",
-      "id": "services_appupdateservice_update_notification_channel_id",
-      "community": 31,
-      "community_name": "appUpdateService.ts",
-      "norm_label": "update_notification_channel_id"
-    },
-    {
-      "label": "NOTE: \"App Up to Date\" alerts are ONLY shown if isManual === true (user clicked\u2026",
-      "file_type": "rationale",
-      "source_file": "services/appUpdateService.ts",
-      "source_location": "L284",
-      "_origin": "ast",
-      "id": "services_appupdateservice_rationale_284",
-      "community": 31,
-      "community_name": "appUpdateService.ts",
-      "norm_label": "note: \"app up to date\" alerts are only shown if ismanual === true (user clicked..."
+      "community_name": "scanningItem.tsx",
+      "norm_label": "month_names"
     },
     {
       "label": "expo-application",
@@ -5774,7 +5785,7 @@
       "_origin": "ast",
       "id": "components_historymodal",
       "community": 41,
-      "community_name": "scanningItem.tsx",
+      "community_name": "one.tsx",
       "norm_label": "historymodal.tsx"
     },
     {
@@ -5785,7 +5796,7 @@
       "_origin": "ast",
       "id": "screens_one",
       "community": 41,
-      "community_name": "scanningItem.tsx",
+      "community_name": "one.tsx",
       "norm_label": "one.tsx"
     },
     {
@@ -5796,7 +5807,7 @@
       "_origin": "ast",
       "id": "screens_one_initial_boxes",
       "community": 41,
-      "community_name": "scanningItem.tsx",
+      "community_name": "one.tsx",
       "norm_label": "initial_boxes"
     },
     {
@@ -5807,7 +5818,7 @@
       "_origin": "ast",
       "id": "screens_scanningbox",
       "community": 41,
-      "community_name": "scanningItem.tsx",
+      "community_name": "one.tsx",
       "norm_label": "scanningbox.tsx"
     },
     {
@@ -5818,30 +5829,8 @@
       "_origin": "ast",
       "id": "screens_scanningbox_faileditemimagescache",
       "community": 41,
-      "community_name": "scanningItem.tsx",
+      "community_name": "one.tsx",
       "norm_label": "faileditemimagescache"
-    },
-    {
-      "label": "scanningItem.tsx",
-      "file_type": "code",
-      "source_file": "screens/scanningItem.tsx",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "screens_scanningitem",
-      "community": 41,
-      "community_name": "scanningItem.tsx",
-      "norm_label": "scanningitem.tsx"
-    },
-    {
-      "label": "MONTH_NAMES",
-      "file_type": "code",
-      "source_file": "screens/scanningItem.tsx",
-      "source_location": "L149",
-      "_origin": "ast",
-      "id": "screens_scanningitem_month_names",
-      "community": 41,
-      "community_name": "scanningItem.tsx",
-      "norm_label": "month_names"
     },
     {
       "label": "storage.ts",
@@ -5851,7 +5840,7 @@
       "_origin": "ast",
       "id": "utils_storage",
       "community": 41,
-      "community_name": "scanningItem.tsx",
+      "community_name": "one.tsx",
       "norm_label": "storage.ts"
     },
     {
@@ -5862,7 +5851,7 @@
       "_origin": "ast",
       "id": "utils_storage_active_box_file_key",
       "community": 41,
-      "community_name": "scanningItem.tsx",
+      "community_name": "one.tsx",
       "norm_label": "active_box_file_key"
     },
     {
@@ -5873,7 +5862,7 @@
       "_origin": "ast",
       "id": "utils_storage_active_item_file_key",
       "community": 41,
-      "community_name": "scanningItem.tsx",
+      "community_name": "one.tsx",
       "norm_label": "active_item_file_key"
     },
     {
@@ -5884,7 +5873,7 @@
       "_origin": "ast",
       "id": "utils_storage_active_rebox_container_key",
       "community": 41,
-      "community_name": "scanningItem.tsx",
+      "community_name": "one.tsx",
       "norm_label": "active_rebox_container_key"
     },
     {
@@ -5895,7 +5884,7 @@
       "_origin": "ast",
       "id": "utils_storage_item_expiry_dates_key",
       "community": 41,
-      "community_name": "scanningItem.tsx",
+      "community_name": "one.tsx",
       "norm_label": "item_expiry_dates_key"
     },
     {
@@ -5906,19 +5895,8 @@
       "_origin": "ast",
       "id": "utils_storage_manifest_cids_key",
       "community": 41,
-      "community_name": "scanningItem.tsx",
+      "community_name": "one.tsx",
       "norm_label": "manifest_cids_key"
-    },
-    {
-      "label": "MANIFEST_ITEMS_KEY",
-      "file_type": "code",
-      "source_file": "utils/storage.ts",
-      "source_location": "L6",
-      "_origin": "ast",
-      "id": "utils_storage_manifest_items_key",
-      "community": 41,
-      "community_name": "scanningItem.tsx",
-      "norm_label": "manifest_items_key"
     },
     {
       "label": "REBOX_CONTAINERS_KEY",
@@ -5928,19 +5906,8 @@
       "_origin": "ast",
       "id": "utils_storage_rebox_containers_key",
       "community": 41,
-      "community_name": "scanningItem.tsx",
+      "community_name": "one.tsx",
       "norm_label": "rebox_containers_key"
-    },
-    {
-      "label": "SCAN_HISTORY_KEY",
-      "file_type": "code",
-      "source_file": "utils/storage.ts",
-      "source_location": "L10",
-      "_origin": "ast",
-      "id": "utils_storage_scan_history_key",
-      "community": 41,
-      "community_name": "scanningItem.tsx",
-      "norm_label": "scan_history_key"
     },
     {
       "label": "SCANNED_CIDS_KEY",
@@ -5950,7 +5917,7 @@
       "_origin": "ast",
       "id": "utils_storage_scanned_cids_key",
       "community": 41,
-      "community_name": "scanningItem.tsx",
+      "community_name": "one.tsx",
       "norm_label": "scanned_cids_key"
     },
     {
@@ -5961,19 +5928,8 @@
       "_origin": "ast",
       "id": "utils_storage_scanned_items_key",
       "community": 41,
-      "community_name": "scanningItem.tsx",
+      "community_name": "one.tsx",
       "norm_label": "scanned_items_key"
-    },
-    {
-      "label": "UPLOADED_ITEM_IMAGES_KEY",
-      "file_type": "code",
-      "source_file": "utils/storage.ts",
-      "source_location": "L9",
-      "_origin": "ast",
-      "id": "utils_storage_uploaded_item_images_key",
-      "community": 41,
-      "community_name": "scanningItem.tsx",
-      "norm_label": "uploaded_item_images_key"
     },
     {
       "label": "@react-navigation/native",
@@ -6372,6 +6328,248 @@
       "norm_label": "expo-camera"
     },
     {
+      "label": "TUTORIAL_TAGLISH.md",
+      "file_type": "document",
+      "source_file": "docs/TUTORIAL_TAGLISH.md",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "docs_tutorial_taglish",
+      "community": 56,
+      "community_name": "\ud83d\udcd6 Gabay sa Paggamit ng Receiving & Delivery App (Daiso Japan)",
+      "norm_label": "tutorial_taglish.md"
+    },
+    {
+      "label": "Ano ang makikita sa loob ng na-download na PDF?",
+      "file_type": "document",
+      "source_file": "docs/TUTORIAL_TAGLISH.md",
+      "source_location": "L209",
+      "_origin": "ast",
+      "id": "docs_tutorial_taglish_ano_ang_makikita_sa_loob_ng_na_download_na_pdf",
+      "community": 56,
+      "community_name": "\ud83d\udcd6 Gabay sa Paggamit ng Receiving & Delivery App (Daiso Japan)",
+      "norm_label": "ano ang makikita sa loob ng na-download na pdf?"
+    },
+    {
+      "label": "\ud83d\udcd6 Gabay sa Paggamit ng Receiving & Delivery App (Daiso Japan)",
+      "file_type": "document",
+      "source_file": "docs/TUTORIAL_TAGLISH.md",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "docs_tutorial_taglish_gabay_sa_paggamit_ng_receiving_delivery_app_daiso_japan",
+      "community": 56,
+      "community_name": "\ud83d\udcd6 Gabay sa Paggamit ng Receiving & Delivery App (Daiso Japan)",
+      "norm_label": "\ud83d\udcd6 gabay sa paggamit ng receiving & delivery app (daiso japan)"
+    },
+    {
+      "label": "Hakbang 10: DLR (Damage & Lost Record Tool)",
+      "file_type": "document",
+      "source_file": "docs/TUTORIAL_TAGLISH.md",
+      "source_location": "L228",
+      "_origin": "ast",
+      "id": "docs_tutorial_taglish_hakbang_10_dlr_damage_lost_record_tool",
+      "community": 56,
+      "community_name": "\ud83d\udcd6 Gabay sa Paggamit ng Receiving & Delivery App (Daiso Japan)",
+      "norm_label": "hakbang 10: dlr (damage & lost record tool)"
+    },
+    {
+      "label": "Hakbang 11: Pagtatanong kay Daizo (Offline AI Assistant)",
+      "file_type": "document",
+      "source_file": "docs/TUTORIAL_TAGLISH.md",
+      "source_location": "L243",
+      "_origin": "ast",
+      "id": "docs_tutorial_taglish_hakbang_11_pagtatanong_kay_daizo_offline_ai_assistant",
+      "community": 56,
+      "community_name": "\ud83d\udcd6 Gabay sa Paggamit ng Receiving & Delivery App (Daiso Japan)",
+      "norm_label": "hakbang 11: pagtatanong kay daizo (offline ai assistant)"
+    },
+    {
+      "label": "Hakbang 1: Pag-login sa Scanner Terminal",
+      "file_type": "document",
+      "source_file": "docs/TUTORIAL_TAGLISH.md",
+      "source_location": "L30",
+      "_origin": "ast",
+      "id": "docs_tutorial_taglish_hakbang_1_pag_login_sa_scanner_terminal",
+      "community": 56,
+      "community_name": "\ud83d\udcd6 Gabay sa Paggamit ng Receiving & Delivery App (Daiso Japan)",
+      "norm_label": "hakbang 1: pag-login sa scanner terminal"
+    },
+    {
+      "label": "Hakbang 2: Pag-upload ng Manifest CSV",
+      "file_type": "document",
+      "source_file": "docs/TUTORIAL_TAGLISH.md",
+      "source_location": "L46",
+      "_origin": "ast",
+      "id": "docs_tutorial_taglish_hakbang_2_pag_upload_ng_manifest_csv",
+      "community": 56,
+      "community_name": "\ud83d\udcd6 Gabay sa Paggamit ng Receiving & Delivery App (Daiso Japan)",
+      "norm_label": "hakbang 2: pag-upload ng manifest csv"
+    },
+    {
+      "label": "Hakbang 3: Box (Carton) Scanning at CID / TRF Lookup",
+      "file_type": "document",
+      "source_file": "docs/TUTORIAL_TAGLISH.md",
+      "source_location": "L64",
+      "_origin": "ast",
+      "id": "docs_tutorial_taglish_hakbang_3_box_carton_scanning_at_cid_trf_lookup",
+      "community": 56,
+      "community_name": "\ud83d\udcd6 Gabay sa Paggamit ng Receiving & Delivery App (Daiso Japan)",
+      "norm_label": "hakbang 3: box (carton) scanning at cid / trf lookup"
+    },
+    {
+      "label": "Hakbang 4: Item Scanning at Discrepancy Tracking",
+      "file_type": "document",
+      "source_file": "docs/TUTORIAL_TAGLISH.md",
+      "source_location": "L104",
+      "_origin": "ast",
+      "id": "docs_tutorial_taglish_hakbang_4_item_scanning_at_discrepancy_tracking",
+      "community": 56,
+      "community_name": "\ud83d\udcd6 Gabay sa Paggamit ng Receiving & Delivery App (Daiso Japan)",
+      "norm_label": "hakbang 4: item scanning at discrepancy tracking"
+    },
+    {
+      "label": "Hakbang 5: Rebox Stockroom Packing (Box-First Workflow)",
+      "file_type": "document",
+      "source_file": "docs/TUTORIAL_TAGLISH.md",
+      "source_location": "L125",
+      "_origin": "ast",
+      "id": "docs_tutorial_taglish_hakbang_5_rebox_stockroom_packing_box_first_workflow",
+      "community": 56,
+      "community_name": "\ud83d\udcd6 Gabay sa Paggamit ng Receiving & Delivery App (Daiso Japan)",
+      "norm_label": "hakbang 5: rebox stockroom packing (box-first workflow)"
+    },
+    {
+      "label": "Hakbang 6: Pag-upload ng Picture ng Item sa Cloudinary (daisoimage)",
+      "file_type": "document",
+      "source_file": "docs/TUTORIAL_TAGLISH.md",
+      "source_location": "L152",
+      "_origin": "ast",
+      "id": "docs_tutorial_taglish_hakbang_6_pag_upload_ng_picture_ng_item_sa_cloudinary_daisoimage",
+      "community": 56,
+      "community_name": "\ud83d\udcd6 Gabay sa Paggamit ng Receiving & Delivery App (Daiso Japan)",
+      "norm_label": "hakbang 6: pag-upload ng picture ng item sa cloudinary (daisoimage)"
+    },
+    {
+      "label": "Hakbang 7: Pag-delete ng Item gamit ang 3-Seconds Hold Gesture",
+      "file_type": "document",
+      "source_file": "docs/TUTORIAL_TAGLISH.md",
+      "source_location": "L169",
+      "_origin": "ast",
+      "id": "docs_tutorial_taglish_hakbang_7_pag_delete_ng_item_gamit_ang_3_seconds_hold_gesture",
+      "community": 56,
+      "community_name": "\ud83d\udcd6 Gabay sa Paggamit ng Receiving & Delivery App (Daiso Japan)",
+      "norm_label": "hakbang 7: pag-delete ng item gamit ang 3-seconds hold gesture"
+    },
+    {
+      "label": "Hakbang 8: Pag-export at Pag-download ng PDF na may Pictures",
+      "file_type": "document",
+      "source_file": "docs/TUTORIAL_TAGLISH.md",
+      "source_location": "L187",
+      "_origin": "ast",
+      "id": "docs_tutorial_taglish_hakbang_8_pag_export_at_pag_download_ng_pdf_na_may_pictures",
+      "community": 56,
+      "community_name": "\ud83d\udcd6 Gabay sa Paggamit ng Receiving & Delivery App (Daiso Japan)",
+      "norm_label": "hakbang 8: pag-export at pag-download ng pdf na may pictures"
+    },
+    {
+      "label": "Hakbang 9: Find for Refill (Paghahanap ng Items sa Stockroom)",
+      "file_type": "document",
+      "source_file": "docs/TUTORIAL_TAGLISH.md",
+      "source_location": "L218",
+      "_origin": "ast",
+      "id": "docs_tutorial_taglish_hakbang_9_find_for_refill_paghahanap_ng_items_sa_stockroom",
+      "community": 56,
+      "community_name": "\ud83d\udcd6 Gabay sa Paggamit ng Receiving & Delivery App (Daiso Japan)",
+      "norm_label": "hakbang 9: find for refill (paghahanap ng items sa stockroom)"
+    },
+    {
+      "label": "\ud83c\udf38 Maligayang Pagdating sa Daizo Receiving Scanner!",
+      "file_type": "document",
+      "source_file": "docs/TUTORIAL_TAGLISH.md",
+      "source_location": "L7",
+      "_origin": "ast",
+      "id": "docs_tutorial_taglish_maligayang_pagdating_sa_daizo_receiving_scanner",
+      "community": 56,
+      "community_name": "\ud83d\udcd6 Gabay sa Paggamit ng Receiving & Delivery App (Daiso Japan)",
+      "norm_label": "\ud83c\udf38 maligayang pagdating sa daizo receiving scanner!"
+    },
+    {
+      "label": "Paano mag-download ng PDF:",
+      "file_type": "document",
+      "source_file": "docs/TUTORIAL_TAGLISH.md",
+      "source_location": "L195",
+      "_origin": "ast",
+      "id": "docs_tutorial_taglish_paano_mag_download_ng_pdf",
+      "community": 56,
+      "community_name": "\ud83d\udcd6 Gabay sa Paggamit ng Receiving & Delivery App (Daiso Japan)",
+      "norm_label": "paano mag-download ng pdf:"
+    },
+    {
+      "label": "Paano mag-scan ng Box:",
+      "file_type": "document",
+      "source_file": "docs/TUTORIAL_TAGLISH.md",
+      "source_location": "L72",
+      "_origin": "ast",
+      "id": "docs_tutorial_taglish_paano_mag_scan_ng_box",
+      "community": 56,
+      "community_name": "\ud83d\udcd6 Gabay sa Paggamit ng Receiving & Delivery App (Daiso Japan)",
+      "norm_label": "paano mag-scan ng box:"
+    },
+    {
+      "label": "Paano malaman kung anong laman ng Box? (`CID / TRF Items Lookup`)",
+      "file_type": "document",
+      "source_file": "docs/TUTORIAL_TAGLISH.md",
+      "source_location": "L79",
+      "_origin": "ast",
+      "id": "docs_tutorial_taglish_paano_malaman_kung_anong_laman_ng_box_cid_trf_items_lookup",
+      "community": 56,
+      "community_name": "\ud83d\udcd6 Gabay sa Paggamit ng Receiving & Delivery App (Daiso Japan)",
+      "norm_label": "paano malaman kung anong laman ng box? (`cid / trf items lookup`)"
+    },
+    {
+      "label": "\ud83d\udca1 Quick Tips para sa Mabilis na Trabaho",
+      "file_type": "document",
+      "source_file": "docs/TUTORIAL_TAGLISH.md",
+      "source_location": "L256",
+      "_origin": "ast",
+      "id": "docs_tutorial_taglish_quick_tips_para_sa_mabilis_na_trabaho",
+      "community": 56,
+      "community_name": "\ud83d\udcd6 Gabay sa Paggamit ng Receiving & Delivery App (Daiso Japan)",
+      "norm_label": "\ud83d\udca1 quick tips para sa mabilis na trabaho"
+    },
+    {
+      "label": "Step-by-Step sa Pag-Rebox:",
+      "file_type": "document",
+      "source_file": "docs/TUTORIAL_TAGLISH.md",
+      "source_location": "L133",
+      "_origin": "ast",
+      "id": "docs_tutorial_taglish_step_by_step_sa_pag_rebox",
+      "community": 56,
+      "community_name": "\ud83d\udcd6 Gabay sa Paggamit ng Receiving & Delivery App (Daiso Japan)",
+      "norm_label": "step-by-step sa pag-rebox:"
+    },
+    {
+      "label": "\ud83d\udcd1 Talaan ng Nilalaman (Quick Links)",
+      "file_type": "document",
+      "source_file": "docs/TUTORIAL_TAGLISH.md",
+      "source_location": "L15",
+      "_origin": "ast",
+      "id": "docs_tutorial_taglish_talaan_ng_nilalaman_quick_links",
+      "community": 56,
+      "community_name": "\ud83d\udcd6 Gabay sa Paggamit ng Receiving & Delivery App (Daiso Japan)",
+      "norm_label": "\ud83d\udcd1 talaan ng nilalaman (quick links)"
+    },
+    {
+      "label": "*Tutorial para sa mga Stockroom Clerks, Receivers, at Store Operations Team*",
+      "file_type": "document",
+      "source_file": "docs/TUTORIAL_TAGLISH.md",
+      "source_location": "L2",
+      "_origin": "ast",
+      "id": "docs_tutorial_taglish_tutorial_para_sa_mga_stockroom_clerks_receivers_at_store_operations_team",
+      "community": 56,
+      "community_name": "\ud83d\udcd6 Gabay sa Paggamit ng Receiving & Delivery App (Daiso Japan)",
+      "norm_label": "*tutorial para sa mga stockroom clerks, receivers, at store operations team*"
+    },
+    {
       "label": "README.md",
       "file_type": "document",
       "source_file": "README.md",
@@ -6379,140 +6577,118 @@
       "_origin": "ast",
       "id": "readme",
       "community": 56,
-      "community_name": "Receiving & Delivery Scanner App (Daizo) \u2014 v7.4",
+      "community_name": "\ud83d\udcd6 Gabay sa Paggamit ng Receiving & Delivery App (Daiso Japan)",
       "norm_label": "readme.md"
     },
     {
-      "label": "1. \ud83d\udce6 Receiving & Scanning Workflow",
+      "label": "\ud83d\udcf8 App Screenshots",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L23",
+      "source_location": "L20",
       "_origin": "ast",
-      "id": "readme_1_receiving_scanning_workflow",
+      "id": "readme_app_screenshots",
       "community": 56,
-      "community_name": "Receiving & Delivery Scanner App (Daizo) \u2014 v7.4",
-      "norm_label": "1. \ud83d\udce6 receiving & scanning workflow"
+      "community_name": "\ud83d\udcd6 Gabay sa Paggamit ng Receiving & Delivery App (Daiso Japan)",
+      "norm_label": "\ud83d\udcf8 app screenshots"
     },
     {
-      "label": "2. \ud83d\uddc3\ufe0f Rebox & Packing Module (`Rebox Hub` & `ReboxScanner`)",
+      "label": "Authentication, Receiving Dashboard & Box Scanning",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L30",
+      "source_location": "L22",
       "_origin": "ast",
-      "id": "readme_2_rebox_packing_module_rebox_hub_reboxscanner",
+      "id": "readme_authentication_receiving_dashboard_box_scanning",
       "community": 56,
-      "community_name": "Receiving & Delivery Scanner App (Daizo) \u2014 v7.4",
-      "norm_label": "2. \ud83d\uddc3\ufe0f rebox & packing module (`rebox hub` & `reboxscanner`)"
-    },
-    {
-      "label": "3. \u26a0\ufe0f Damage & Lost Record (DLR) Module",
-      "file_type": "document",
-      "source_file": "README.md",
-      "source_location": "L38",
-      "_origin": "ast",
-      "id": "readme_3_damage_lost_record_dlr_module",
-      "community": 56,
-      "community_name": "Receiving & Delivery Scanner App (Daizo) \u2014 v7.4",
-      "norm_label": "3. \u26a0\ufe0f damage & lost record (dlr) module"
-    },
-    {
-      "label": "4. \ud83e\udd16 On-Device AI Assistant (Daizo)",
-      "file_type": "document",
-      "source_file": "README.md",
-      "source_location": "L43",
-      "_origin": "ast",
-      "id": "readme_4_on_device_ai_assistant_daizo",
-      "community": 56,
-      "community_name": "Receiving & Delivery Scanner App (Daizo) \u2014 v7.4",
-      "norm_label": "4. \ud83e\udd16 on-device ai assistant (daizo)"
-    },
-    {
-      "label": "5. \ud83d\udcdc Audit History & Session Recovery",
-      "file_type": "document",
-      "source_file": "README.md",
-      "source_location": "L48",
-      "_origin": "ast",
-      "id": "readme_5_audit_history_session_recovery",
-      "community": 56,
-      "community_name": "Receiving & Delivery Scanner App (Daizo) \u2014 v7.4",
-      "norm_label": "5. \ud83d\udcdc audit history & session recovery"
-    },
-    {
-      "label": "6. \ud83c\udfa8 Industrial UI Design System",
-      "file_type": "document",
-      "source_file": "README.md",
-      "source_location": "L52",
-      "_origin": "ast",
-      "id": "readme_6_industrial_ui_design_system",
-      "community": 56,
-      "community_name": "Receiving & Delivery Scanner App (Daizo) \u2014 v7.4",
-      "norm_label": "6. \ud83c\udfa8 industrial ui design system"
+      "community_name": "\ud83d\udcd6 Gabay sa Paggamit ng Receiving & Delivery App (Daiso Japan)",
+      "norm_label": "authentication, receiving dashboard & box scanning"
     },
     {
       "label": "\ud83d\udc64 Author & Portfolio",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L162",
+      "source_location": "L237",
       "_origin": "ast",
       "id": "readme_author_portfolio",
       "community": 56,
-      "community_name": "Receiving & Delivery Scanner App (Daizo) \u2014 v7.4",
+      "community_name": "\ud83d\udcd6 Gabay sa Paggamit ng Receiving & Delivery App (Daiso Japan)",
       "norm_label": "\ud83d\udc64 author & portfolio"
     },
     {
-      "label": "\ud83d\udea6 Getting Started",
+      "label": "Conditional `CID / TRF` Lookup, Image Zoom & Item Scanning",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L112",
+      "source_location": "L28",
       "_origin": "ast",
-      "id": "readme_getting_started",
+      "id": "readme_conditional_cid_trf_lookup_image_zoom_item_scanning",
       "community": 56,
-      "community_name": "Receiving & Delivery Scanner App (Daizo) \u2014 v7.4",
-      "norm_label": "\ud83d\udea6 getting started"
+      "community_name": "\ud83d\udcd6 Gabay sa Paggamit ng Receiving & Delivery App (Daiso Japan)",
+      "norm_label": "conditional `cid / trf` lookup, image zoom & item scanning"
+    },
+    {
+      "label": "\ud83d\udea6 Getting Started (Developers)",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L187",
+      "_origin": "ast",
+      "id": "readme_getting_started_developers",
+      "community": 56,
+      "community_name": "\ud83d\udcd6 Gabay sa Paggamit ng Receiving & Delivery App (Daiso Japan)",
+      "norm_label": "\ud83d\udea6 getting started (developers)"
+    },
+    {
+      "label": "\ud83d\udcd6 How to Use the App (Operator Guide)",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L42",
+      "_origin": "ast",
+      "id": "readme_how_to_use_the_app_operator_guide",
+      "community": 56,
+      "community_name": "\ud83d\udcd6 Gabay sa Paggamit ng Receiving & Delivery App (Daiso Japan)",
+      "norm_label": "\ud83d\udcd6 how to use the app (operator guide)"
     },
     {
       "label": "Installation",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L120",
+      "source_location": "L195",
       "_origin": "ast",
       "id": "readme_installation",
       "community": 56,
-      "community_name": "Receiving & Delivery Scanner App (Daizo) \u2014 v7.4",
+      "community_name": "\ud83d\udcd6 Gabay sa Paggamit ng Receiving & Delivery App (Daiso Japan)",
       "norm_label": "installation"
-    },
-    {
-      "label": "\ud83d\ude80 Key Features",
-      "file_type": "document",
-      "source_file": "README.md",
-      "source_location": "L21",
-      "_origin": "ast",
-      "id": "readme_key_features",
-      "community": 56,
-      "community_name": "Receiving & Delivery Scanner App (Daizo) \u2014 v7.4",
-      "norm_label": "\ud83d\ude80 key features"
     },
     {
       "label": "Prerequisites",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L114",
+      "source_location": "L189",
       "_origin": "ast",
       "id": "readme_prerequisites",
       "community": 56,
-      "community_name": "Receiving & Delivery Scanner App (Daizo) \u2014 v7.4",
+      "community_name": "\ud83d\udcd6 Gabay sa Paggamit ng Receiving & Delivery App (Daiso Japan)",
       "norm_label": "prerequisites"
     },
     {
       "label": "\ud83d\udcc2 Project Structure",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L75",
+      "source_location": "L148",
       "_origin": "ast",
       "id": "readme_project_structure",
       "community": 56,
-      "community_name": "Receiving & Delivery Scanner App (Daizo) \u2014 v7.4",
+      "community_name": "\ud83d\udcd6 Gabay sa Paggamit ng Receiving & Delivery App (Daiso Japan)",
       "norm_label": "\ud83d\udcc2 project structure"
+    },
+    {
+      "label": "Rebox Stockroom Hub, Per-Box Packing & PDF Export",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L34",
+      "_origin": "ast",
+      "id": "readme_rebox_stockroom_hub_per_box_packing_pdf_export",
+      "community": 56,
+      "community_name": "\ud83d\udcd6 Gabay sa Paggamit ng Receiving & Delivery App (Daiso Japan)",
+      "norm_label": "rebox stockroom hub, per-box packing & pdf export"
     },
     {
       "label": "Receiving & Delivery Scanner App (Daizo) \u2014 v7.4",
@@ -6522,29 +6698,117 @@
       "_origin": "ast",
       "id": "readme_receiving_delivery_scanner_app_daizo_v7_4",
       "community": 56,
-      "community_name": "Receiving & Delivery Scanner App (Daizo) \u2014 v7.4",
+      "community_name": "\ud83d\udcd6 Gabay sa Paggamit ng Receiving & Delivery App (Daiso Japan)",
       "norm_label": "receiving & delivery scanner app (daizo) \u2014 v7.4"
+    },
+    {
+      "label": "Step 1: Authenticate the Scanner Terminal",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L48",
+      "_origin": "ast",
+      "id": "readme_step_1_authenticate_the_scanner_terminal",
+      "community": 56,
+      "community_name": "\ud83d\udcd6 Gabay sa Paggamit ng Receiving & Delivery App (Daiso Japan)",
+      "norm_label": "step 1: authenticate the scanner terminal"
+    },
+    {
+      "label": "Step 2: Upload Delivery Manifests (`Receiving` Tab)",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L55",
+      "_origin": "ast",
+      "id": "readme_step_2_upload_delivery_manifests_receiving_tab",
+      "community": 56,
+      "community_name": "\ud83d\udcd6 Gabay sa Paggamit ng Receiving & Delivery App (Daiso Japan)",
+      "norm_label": "step 2: upload delivery manifests (`receiving` tab)"
+    },
+    {
+      "label": "Step 3: Verify Incoming Cartons (`Box Scanner`)",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L64",
+      "_origin": "ast",
+      "id": "readme_step_3_verify_incoming_cartons_box_scanner",
+      "community": 56,
+      "community_name": "\ud83d\udcd6 Gabay sa Paggamit ng Receiving & Delivery App (Daiso Japan)",
+      "norm_label": "step 3: verify incoming cartons (`box scanner`)"
+    },
+    {
+      "label": "Step 4: Tally Individual Products (`Item Scanner`)",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L79",
+      "_origin": "ast",
+      "id": "readme_step_4_tally_individual_products_item_scanner",
+      "community": 56,
+      "community_name": "\ud83d\udcd6 Gabay sa Paggamit ng Receiving & Delivery App (Daiso Japan)",
+      "norm_label": "step 4: tally individual products (`item scanner`)"
+    },
+    {
+      "label": "Step 5: Organize Backroom Inventory (`Rebox` Tab)",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L89",
+      "_origin": "ast",
+      "id": "readme_step_5_organize_backroom_inventory_rebox_tab",
+      "community": 56,
+      "community_name": "\ud83d\udcd6 Gabay sa Paggamit ng Receiving & Delivery App (Daiso Japan)",
+      "norm_label": "step 5: organize backroom inventory (`rebox` tab)"
+    },
+    {
+      "label": "Step 6: Report Damaged or Missing Goods (`DLR` Tab)",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L110",
+      "_origin": "ast",
+      "id": "readme_step_6_report_damaged_or_missing_goods_dlr_tab",
+      "community": 56,
+      "community_name": "\ud83d\udcd6 Gabay sa Paggamit ng Receiving & Delivery App (Daiso Japan)",
+      "norm_label": "step 6: report damaged or missing goods (`dlr` tab)"
+    },
+    {
+      "label": "Step 7: Ask Daizo Offline AI Assistant (Center Mascot Tab)",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L117",
+      "_origin": "ast",
+      "id": "readme_step_7_ask_daizo_offline_ai_assistant_center_mascot_tab",
+      "community": 56,
+      "community_name": "\ud83d\udcd6 Gabay sa Paggamit ng Receiving & Delivery App (Daiso Japan)",
+      "norm_label": "step 7: ask daizo offline ai assistant (center mascot tab)"
+    },
+    {
+      "label": "Step 8: Session History, Themes & App Updates",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L126",
+      "_origin": "ast",
+      "id": "readme_step_8_session_history_themes_app_updates",
+      "community": 56,
+      "community_name": "\ud83d\udcd6 Gabay sa Paggamit ng Receiving & Delivery App (Daiso Japan)",
+      "norm_label": "step 8: session history, themes & app updates"
     },
     {
       "label": "\ud83d\udee0 Tech Stack",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L59",
+      "source_location": "L132",
       "_origin": "ast",
       "id": "readme_tech_stack",
       "community": 56,
-      "community_name": "Receiving & Delivery Scanner App (Daizo) \u2014 v7.4",
+      "community_name": "\ud83d\udcd6 Gabay sa Paggamit ng Receiving & Delivery App (Daiso Japan)",
       "norm_label": "\ud83d\udee0 tech stack"
     },
     {
       "label": "\ud83e\uddea Testing on Physical Devices",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L153",
+      "source_location": "L228",
       "_origin": "ast",
       "id": "readme_testing_on_physical_devices",
       "community": 56,
-      "community_name": "Receiving & Delivery Scanner App (Daizo) \u2014 v7.4",
+      "community_name": "\ud83d\udcd6 Gabay sa Paggamit ng Receiving & Delivery App (Daiso Japan)",
       "norm_label": "\ud83e\uddea testing on physical devices"
     },
     {
@@ -6555,7 +6819,7 @@
       "_origin": "ast",
       "id": "readme_what_is_this_app_for",
       "community": 56,
-      "community_name": "Receiving & Delivery Scanner App (Daizo) \u2014 v7.4",
+      "community_name": "\ud83d\udcd6 Gabay sa Paggamit ng Receiving & Delivery App (Daiso Japan)",
       "norm_label": "\ud83d\udcf1 what is this app for?"
     },
     {
@@ -6766,6 +7030,17 @@
       "community": 63,
       "community_name": "expo-image-manipulator",
       "norm_label": "expo-image-manipulator"
+    },
+    {
+      "label": "generate_taglish_pdf.py",
+      "file_type": "code",
+      "source_file": "scripts/generate_taglish_pdf.py",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "scripts_generate_taglish_pdf",
+      "community": 64,
+      "community_name": "generate_taglish_pdf.py",
+      "norm_label": "generate_taglish_pdf.py"
     },
     {
       "label": "llama.rn",
@@ -7019,6 +7294,50 @@
       "community": 7,
       "community_name": "rebox.ts",
       "norm_label": "rebox_registered_boxes_key"
+    },
+    {
+      "label": "MANIFEST_ITEMS_KEY",
+      "file_type": "code",
+      "source_file": "utils/storage.ts",
+      "source_location": "L6",
+      "_origin": "ast",
+      "id": "utils_storage_manifest_items_key",
+      "community": 7,
+      "community_name": "rebox.ts",
+      "norm_label": "manifest_items_key"
+    },
+    {
+      "label": "SCAN_HISTORY_KEY",
+      "file_type": "code",
+      "source_file": "utils/storage.ts",
+      "source_location": "L10",
+      "_origin": "ast",
+      "id": "utils_storage_scan_history_key",
+      "community": 7,
+      "community_name": "rebox.ts",
+      "norm_label": "scan_history_key"
+    },
+    {
+      "label": "UPLOADED_ITEM_IMAGES_KEY",
+      "file_type": "code",
+      "source_file": "utils/storage.ts",
+      "source_location": "L9",
+      "_origin": "ast",
+      "id": "utils_storage_uploaded_item_images_key",
+      "community": 7,
+      "community_name": "rebox.ts",
+      "norm_label": "uploaded_item_images_key"
+    },
+    {
+      "label": "expo-web-browser",
+      "file_type": "concept",
+      "source_file": "app.json",
+      "source_location": "L17",
+      "_origin": "ast",
+      "id": "ref_expo_web_browser",
+      "community": 7,
+      "community_name": "rebox.ts",
+      "norm_label": "expo-web-browser"
     },
     {
       "label": "RELEASE.md",
@@ -15466,6 +15785,237 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
+      "source_file": "docs/TUTORIAL_TAGLISH.md",
+      "source_location": "L1",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "docs_tutorial_taglish",
+      "target": "docs_tutorial_taglish_gabay_sa_paggamit_ng_receiving_delivery_app_daiso_japan",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/TUTORIAL_TAGLISH.md",
+      "source_location": "L104",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "docs_tutorial_taglish_gabay_sa_paggamit_ng_receiving_delivery_app_daiso_japan",
+      "target": "docs_tutorial_taglish_hakbang_4_item_scanning_at_discrepancy_tracking",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/TUTORIAL_TAGLISH.md",
+      "source_location": "L125",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "docs_tutorial_taglish_gabay_sa_paggamit_ng_receiving_delivery_app_daiso_japan",
+      "target": "docs_tutorial_taglish_hakbang_5_rebox_stockroom_packing_box_first_workflow",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/TUTORIAL_TAGLISH.md",
+      "source_location": "L15",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "docs_tutorial_taglish_gabay_sa_paggamit_ng_receiving_delivery_app_daiso_japan",
+      "target": "docs_tutorial_taglish_talaan_ng_nilalaman_quick_links",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/TUTORIAL_TAGLISH.md",
+      "source_location": "L152",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "docs_tutorial_taglish_gabay_sa_paggamit_ng_receiving_delivery_app_daiso_japan",
+      "target": "docs_tutorial_taglish_hakbang_6_pag_upload_ng_picture_ng_item_sa_cloudinary_daisoimage",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/TUTORIAL_TAGLISH.md",
+      "source_location": "L169",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "docs_tutorial_taglish_gabay_sa_paggamit_ng_receiving_delivery_app_daiso_japan",
+      "target": "docs_tutorial_taglish_hakbang_7_pag_delete_ng_item_gamit_ang_3_seconds_hold_gesture",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/TUTORIAL_TAGLISH.md",
+      "source_location": "L187",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "docs_tutorial_taglish_gabay_sa_paggamit_ng_receiving_delivery_app_daiso_japan",
+      "target": "docs_tutorial_taglish_hakbang_8_pag_export_at_pag_download_ng_pdf_na_may_pictures",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/TUTORIAL_TAGLISH.md",
+      "source_location": "L2",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "docs_tutorial_taglish_gabay_sa_paggamit_ng_receiving_delivery_app_daiso_japan",
+      "target": "docs_tutorial_taglish_tutorial_para_sa_mga_stockroom_clerks_receivers_at_store_operations_team",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/TUTORIAL_TAGLISH.md",
+      "source_location": "L218",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "docs_tutorial_taglish_gabay_sa_paggamit_ng_receiving_delivery_app_daiso_japan",
+      "target": "docs_tutorial_taglish_hakbang_9_find_for_refill_paghahanap_ng_items_sa_stockroom",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/TUTORIAL_TAGLISH.md",
+      "source_location": "L228",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "docs_tutorial_taglish_gabay_sa_paggamit_ng_receiving_delivery_app_daiso_japan",
+      "target": "docs_tutorial_taglish_hakbang_10_dlr_damage_lost_record_tool",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/TUTORIAL_TAGLISH.md",
+      "source_location": "L243",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "docs_tutorial_taglish_gabay_sa_paggamit_ng_receiving_delivery_app_daiso_japan",
+      "target": "docs_tutorial_taglish_hakbang_11_pagtatanong_kay_daizo_offline_ai_assistant",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/TUTORIAL_TAGLISH.md",
+      "source_location": "L256",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "docs_tutorial_taglish_gabay_sa_paggamit_ng_receiving_delivery_app_daiso_japan",
+      "target": "docs_tutorial_taglish_quick_tips_para_sa_mabilis_na_trabaho",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/TUTORIAL_TAGLISH.md",
+      "source_location": "L30",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "docs_tutorial_taglish_gabay_sa_paggamit_ng_receiving_delivery_app_daiso_japan",
+      "target": "docs_tutorial_taglish_hakbang_1_pag_login_sa_scanner_terminal",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/TUTORIAL_TAGLISH.md",
+      "source_location": "L46",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "docs_tutorial_taglish_gabay_sa_paggamit_ng_receiving_delivery_app_daiso_japan",
+      "target": "docs_tutorial_taglish_hakbang_2_pag_upload_ng_manifest_csv",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/TUTORIAL_TAGLISH.md",
+      "source_location": "L64",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "docs_tutorial_taglish_gabay_sa_paggamit_ng_receiving_delivery_app_daiso_japan",
+      "target": "docs_tutorial_taglish_hakbang_3_box_carton_scanning_at_cid_trf_lookup",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/TUTORIAL_TAGLISH.md",
+      "source_location": "L7",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "docs_tutorial_taglish_gabay_sa_paggamit_ng_receiving_delivery_app_daiso_japan",
+      "target": "docs_tutorial_taglish_maligayang_pagdating_sa_daizo_receiving_scanner",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/TUTORIAL_TAGLISH.md",
+      "source_location": "L72",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "docs_tutorial_taglish_hakbang_3_box_carton_scanning_at_cid_trf_lookup",
+      "target": "docs_tutorial_taglish_paano_mag_scan_ng_box",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/TUTORIAL_TAGLISH.md",
+      "source_location": "L79",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "docs_tutorial_taglish_hakbang_3_box_carton_scanning_at_cid_trf_lookup",
+      "target": "docs_tutorial_taglish_paano_malaman_kung_anong_laman_ng_box_cid_trf_items_lookup",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/TUTORIAL_TAGLISH.md",
+      "source_location": "L133",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "docs_tutorial_taglish_hakbang_5_rebox_stockroom_packing_box_first_workflow",
+      "target": "docs_tutorial_taglish_step_by_step_sa_pag_rebox",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/TUTORIAL_TAGLISH.md",
+      "source_location": "L195",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "docs_tutorial_taglish_hakbang_8_pag_export_at_pag_download_ng_pdf_na_may_pictures",
+      "target": "docs_tutorial_taglish_paano_mag_download_ng_pdf",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/TUTORIAL_TAGLISH.md",
+      "source_location": "L209",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "docs_tutorial_taglish_hakbang_8_pag_export_at_pag_download_ng_pdf_na_may_pictures",
+      "target": "docs_tutorial_taglish_ano_ang_makikita_sa_loob_ng_na_download_na_pdf",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
       "source_file": "eslint.config.js",
       "source_location": "L1",
       "weight": 1.0,
@@ -16358,10 +16908,43 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "README.md",
-      "source_location": "L114",
+      "source_location": "L22",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "readme_getting_started",
+      "source": "readme_app_screenshots",
+      "target": "readme_authentication_receiving_dashboard_box_scanning",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L28",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "readme_app_screenshots",
+      "target": "readme_conditional_cid_trf_lookup_image_zoom_item_scanning",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L34",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "readme_app_screenshots",
+      "target": "readme_rebox_stockroom_hub_per_box_packing_pdf_export",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L189",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "readme_getting_started_developers",
       "target": "readme_prerequisites",
       "confidence_score": 1.0
     },
@@ -16369,10 +16952,10 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "README.md",
-      "source_location": "L120",
+      "source_location": "L195",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "readme_getting_started",
+      "source": "readme_getting_started_developers",
       "target": "readme_installation",
       "confidence_score": 1.0
     },
@@ -16380,44 +16963,33 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "README.md",
-      "source_location": "L23",
+      "source_location": "L110",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "readme_key_features",
-      "target": "readme_1_receiving_scanning_workflow",
+      "source": "readme_how_to_use_the_app_operator_guide",
+      "target": "readme_step_6_report_damaged_or_missing_goods_dlr_tab",
       "confidence_score": 1.0
     },
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "README.md",
-      "source_location": "L30",
+      "source_location": "L117",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "readme_key_features",
-      "target": "readme_2_rebox_packing_module_rebox_hub_reboxscanner",
+      "source": "readme_how_to_use_the_app_operator_guide",
+      "target": "readme_step_7_ask_daizo_offline_ai_assistant_center_mascot_tab",
       "confidence_score": 1.0
     },
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "README.md",
-      "source_location": "L38",
+      "source_location": "L126",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "readme_key_features",
-      "target": "readme_3_damage_lost_record_dlr_module",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "README.md",
-      "source_location": "L43",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "readme_key_features",
-      "target": "readme_4_on_device_ai_assistant_daizo",
+      "source": "readme_how_to_use_the_app_operator_guide",
+      "target": "readme_step_8_session_history_themes_app_updates",
       "confidence_score": 1.0
     },
     {
@@ -16427,37 +16999,103 @@
       "source_location": "L48",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "readme_key_features",
-      "target": "readme_5_audit_history_session_recovery",
+      "source": "readme_how_to_use_the_app_operator_guide",
+      "target": "readme_step_1_authenticate_the_scanner_terminal",
       "confidence_score": 1.0
     },
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "README.md",
-      "source_location": "L52",
+      "source_location": "L55",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "readme_key_features",
-      "target": "readme_6_industrial_ui_design_system",
+      "source": "readme_how_to_use_the_app_operator_guide",
+      "target": "readme_step_2_upload_delivery_manifests_receiving_tab",
       "confidence_score": 1.0
     },
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "README.md",
-      "source_location": "L112",
+      "source_location": "L64",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "readme_how_to_use_the_app_operator_guide",
+      "target": "readme_step_3_verify_incoming_cartons_box_scanner",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L79",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "readme_how_to_use_the_app_operator_guide",
+      "target": "readme_step_4_tally_individual_products_item_scanner",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L89",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "readme_how_to_use_the_app_operator_guide",
+      "target": "readme_step_5_organize_backroom_inventory_rebox_tab",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L132",
       "weight": 1.0,
       "_origin": "ast",
       "source": "readme_receiving_delivery_scanner_app_daizo_v7_4",
-      "target": "readme_getting_started",
+      "target": "readme_tech_stack",
       "confidence_score": 1.0
     },
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "README.md",
-      "source_location": "L153",
+      "source_location": "L148",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "readme_receiving_delivery_scanner_app_daizo_v7_4",
+      "target": "readme_project_structure",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L187",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "readme_receiving_delivery_scanner_app_daizo_v7_4",
+      "target": "readme_getting_started_developers",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L20",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "readme_receiving_delivery_scanner_app_daizo_v7_4",
+      "target": "readme_app_screenshots",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L228",
       "weight": 1.0,
       "_origin": "ast",
       "source": "readme_receiving_delivery_scanner_app_daizo_v7_4",
@@ -16468,7 +17106,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "README.md",
-      "source_location": "L162",
+      "source_location": "L237",
       "weight": 1.0,
       "_origin": "ast",
       "source": "readme_receiving_delivery_scanner_app_daizo_v7_4",
@@ -16479,22 +17117,11 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "README.md",
-      "source_location": "L21",
+      "source_location": "L42",
       "weight": 1.0,
       "_origin": "ast",
       "source": "readme_receiving_delivery_scanner_app_daizo_v7_4",
-      "target": "readme_key_features",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "README.md",
-      "source_location": "L59",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "readme_receiving_delivery_scanner_app_daizo_v7_4",
-      "target": "readme_tech_stack",
+      "target": "readme_how_to_use_the_app_operator_guide",
       "confidence_score": 1.0
     },
     {
@@ -16506,17 +17133,6 @@
       "_origin": "ast",
       "source": "readme_receiving_delivery_scanner_app_daizo_v7_4",
       "target": "readme_what_is_this_app_for",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "README.md",
-      "source_location": "L75",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "readme_receiving_delivery_scanner_app_daizo_v7_4",
-      "target": "readme_project_structure",
       "confidence_score": 1.0
     },
     {
@@ -20392,6 +21008,17 @@
       "confidence_score": 1.0
     },
     {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L45",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "readme",
+      "target": "docs_tutorial_taglish",
+      "confidence_score": 1.0
+    },
+    {
       "relation": "indirect_call",
       "context": "argument",
       "confidence": "INFERRED",
@@ -20854,5 +21481,5 @@
       "source_file": "assets/splash.png"
     }
   ],
-  "built_at_commit": "87a59368d2be4e32919708e3a86ea3c1ed8b90d7"
+  "built_at_commit": "4aba52f7da05d4744703c3c549f1bd7d7e32d74a"
 }
